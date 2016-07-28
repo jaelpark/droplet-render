@@ -680,6 +680,20 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr *pgrid, OctreeS
     *pleafx = leafxa;
 }
 
+ParticleSystem::ParticleSystem(){
+    ParticleSystem::prss.push_back(this);
+}
+
+ParticleSystem::~ParticleSystem(){
+    //
+}
+
+void ParticleSystem::DeleteAll(){
+    for(uint i = 0; i < prss.size(); ++i)
+        delete prss[i];
+    prss.clear();
+}
+
 SceneObject::SceneObject(Node::NodeTree *_pnt) : pnt(_pnt){
     SceneObject::objs.push_back(this);
 }

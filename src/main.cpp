@@ -207,6 +207,32 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	uint objc = PyList_Size(pobl);
 	for(uint i = 0; i < objc; ++i){
 		PyObject *pobj = PyList_GetItem(pobl,i);
+
+        //get particle systems here
+        PyObject *ppro = PyObject_GetAttrString(pobj,"particle_systems");
+        PyObject *ppsl = PyObject_CallMethod(ppro,"values","");
+        uint prc = PyList_Size(ppsl);
+        for(uint j = 0; j < prc; ++j){
+            ParticleSystem *pprs = new ParticleSystem(); //TODO: reserve() the vector size
+
+            PyObject *pps = PyList_GetItem(ppsl,j);
+            PyObject *ppr = PyObject_GetAttrString(pps,"particles");
+            PyObject *ppi = PyObject_GetIter(ppr);
+            for(PyObject *pni = PyIter_Next(ppi); pni; Py_DecRef(pni), pni = PyIter_Next(ppi)){
+                PyObject *pvco = PyObject_GetAttrString(pni,"location");
+                float4 co = float4(
+                    PyGetFloat(pvco,"x"),
+                    PyGetFloat(pvco,"y"),
+                    PyGetFloat(pvco,"z"),1.0f);
+                pprs->vl.push_back(dfloat3(co)); //already in world-space
+
+                Py_DECREF(pvco);
+            }
+            Py_DECREF(ppi);
+            Py_DECREF(ppr);
+        }
+        Py_DECREF(ppro);
+
         PyObject *phdn = PyObject_GetAttrString(pobj,"hide_render");
 		if(PyLong_AsLong(phdn) != 0){
 			Py_DECREF(phdn);
@@ -401,6 +427,7 @@ static PyObject * DRE_Render(PyObject *pself, PyObject *pargs){
 }
 
 static PyObject * DRE_EndRender(PyObject *pself, PyObject *pargs){
+    ParticleSystem::DeleteAll();
     SceneObject::DeleteAll();
     Node::NodeTree::DeleteAll();
     //Node::DeleteNodes();

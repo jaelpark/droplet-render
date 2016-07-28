@@ -61,6 +61,15 @@ namespace Node{
 class NodeTree;
 }
 
+class ParticleSystem{
+public:
+    ParticleSystem();
+    ~ParticleSystem();
+    static void DeleteAll();
+    std::vector<dfloat3> vl;
+    static std::vector<ParticleSystem *> prss;
+};
+
 class SceneObject{
 public:
     SceneObject(Node::NodeTree *);
