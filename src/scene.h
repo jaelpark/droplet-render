@@ -82,7 +82,8 @@ public:
 	//void BuildScene();
 	void Destroy();
 	OctreeStructure *pob;
-    LeafVolume *pvol; //-> psdfb, pfogb
+    LeafVolume *pdsfb; //-> psdfb, pfogb
+    LeafVolume *pfogb;
     uint index;
     uint leafx;
     //uint octreesize;

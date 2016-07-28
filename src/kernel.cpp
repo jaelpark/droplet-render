@@ -318,7 +318,7 @@ inline sfloat4 L_Sample(const sfloat4 &iv, const sfloat1 &la, sint4 *prs){
 
 static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pkernel, sint4 *prs, ParallelLeafList &ls, uint r, uint samples){
 	OctreeStructure *pob = pkernel->pscene->pob;
-	LeafVolume *pvol = pkernel->pscene->pvol;
+    LeafVolume *pvol = pkernel->pscene->pdsfb;
 
     __attribute__((aligned(16))) uint sgm[BLCLOUD_VSIZE]; //TODO: dfloatN class or something for these situations
     sfloat1::store((float*)sgm,gm);

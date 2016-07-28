@@ -12,6 +12,8 @@ from bl_ui import properties_render
 import nodeitems_utils
 from bpy.props import PointerProperty
 
+from bl_ui import properties_particle
+
 #NOTE: addon directory name cannot coincide with pyd module name
 import libdroplet #libblcloud #pyd/so filename
 import numpy as np
@@ -117,7 +119,10 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 
 def register():
 	bpy.utils.register_module(__name__);
-	properties_render.RENDER_PT_render.COMPAT_ENGINES.add('droplet')
+	#properties_render.RENDER_PT_render.COMPAT_ENGINES.add('droplet');
+	properties_particle.PARTICLE_PT_context_particles.COMPAT_ENGINES.add(config.dre_engineid);
+	properties_particle.PARTICLE_PT_emission.COMPAT_ENGINES.add(config.dre_engineid);
+	properties_particle.PARTICLE_PT_draw.COMPAT_ENGINES.add(config.dre_engineid);
 
 	bpy.types.Scene.blcloudrender = PointerProperty(type=panel.ClRenderProperties);
 	bpy.types.Scene.blcloudsampling = PointerProperty(type=panel.ClSamplingProperties);

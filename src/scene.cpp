@@ -857,7 +857,8 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 
 	DebugPrintf("> Resampling volume data...\n");
 
-	pvol = new LeafVolume[leafx];
+    pdsfb = new LeafVolume[leafx];
+    pfogb = 0;
 	//openvdb::FloatGrid::ConstAccessor
 	//openvdb::tools::GridSampler<openvdb::FloatGrid::ConstAccessor, openvdb::tools::BoxSampler> fsampler(pgrid->getConstAccessor(),pgrid->transform());
 
@@ -902,7 +903,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 				pvol[pob[i].volx].pvol[1][j] = (pvol[pob[i].volx].pvol[0][j] <= 0.0f); //-1.0f
 				pob[i].pmax = openvdb::math::Max(pob[i].pmax,pvol[pob[i].volx].pvol[1][j]);
 #endif*/
-                pvol[pob[i].volx].pvol[j] = samplerd.wsSample(posw);
+                pdsfb[pob[i].volx].pvol[j] = samplerd.wsSample(posw);
 				
 				/*pvol[pob[i].volx].pvol[0][j] = samplerd.wsSample(posw);
 				pvol[pob[i].volx].pvol[1][j] = (pvol[pob[i].volx].pvol[0][j] <= 0.0f); //-1.0f
@@ -921,6 +922,6 @@ void Scene::Destroy(){
 #if 0
 	_aligned_free(pvolume);
 #endif
-	delete []pvol;
+    delete []pdsfb;
     _mm_free(pob);
 }
