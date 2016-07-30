@@ -42,16 +42,12 @@ BaseFogNode * BaseFogNode::Create(uint level, NodeTree *pnt){
     return new BaseFogNode1(level,pnt);
 }
 
-typedef std::tuple<SceneObject *, openvdb::math::Transform::Ptr> SurfaceNodeParams;
-enum SNP{
-    //SNP_VERTICES,
-    //SNP_TRIANGLES,
-    SNP_OBJECT,
-    SNP_TRANSFORM
-};
-
 template<class T>
 using InputNodeParams = std::tuple<T *, openvdb::math::Transform::Ptr>;
+enum INP{
+	INP_OBJECT,
+	INP_TRANSFORM
+};
 
 class BaseSurfaceNode1 : public virtual BaseSurfaceNode{
 public:
@@ -89,8 +85,8 @@ public:
 
     void Evaluate(const void *pp){
         //DebugPrintf("---Surface::Evaluate()\n");
-        SurfaceNodeParams *pd = (SurfaceNodeParams*)pp;
-        SceneObject *pobj = std::get<SNP_OBJECT>(*pd);
+        InputNodeParams<SceneObject> *pd = (InputNodeParams<SceneObject>*)pp;
+        SceneObject *pobj = std::get<INP_OBJECT>(*pd);
         //const std::vector<dfloat3> *pvl = std::get<SNP_VERTICES>(*pd);
         //const std::vector<uint> *ptl = std::get<SNP_TRIANGLES>(*pd);
 
@@ -135,7 +131,7 @@ public:
 		//-might be better to return actual SDF, not mesh (because here rebuilding probably isn't necessary)
 		//-use the FogSocket for SDFs that don't need rebuilding -> provide conversion node
 		InputNodeParams<ParticleSystem> *pd = (InputNodeParams<ParticleSystem>*)pp;
-		ParticleSystem *pps = std::get<SNP_OBJECT>(*pd);
+		ParticleSystem *pps = std::get<INP_OBJECT>(*pd);
 		for(uint i = 0; i < pps->vl.size(); ++i){
 			//
 		}
@@ -182,7 +178,7 @@ public:
     }
 
     void Evaluate(const void *pp){
-        SurfaceNodeParams *pd = (SurfaceNodeParams*)pp;
+        InputNodeParams<SceneObject> *pd = (InputNodeParams<SceneObject>*)pp;
         //DebugPrintf("---PerlinNoise::Evaluate()\n");
 
         const float lff = 4.0f;
@@ -205,7 +201,7 @@ public:
         pntree->EvaluateNodes0(0,level+1,emask);
         float amp = fBm::GetAmplitudeMax(poctn->result,pampn->result,pgainn->result);
 
-        openvdb::math::Transform::Ptr pgridtr = std::get<SNP_TRANSFORM>(*pd);//openvdb::math::Transform::createLinearTransform(s);
+        openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);//openvdb::math::Transform::createLinearTransform(s);
         openvdb::FloatGrid::Ptr psgrid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,pnode->vl,pnode->tl,pnode->ql,ceilf(amp/pgridtr->voxelSize().x()+lff),lff);
         //openvdb::FloatGrid::Ptr pgrid = openvdb::tools::meshToLevelSet<openvdb::FloatGrid>(*pgridtr,points,tris,4.0f);
         //openvdb::FloatGrid::Ptr pgrid = openvdb::tools::meshToLevelSet<openvdb::FloatGrid>(*pgridtr,points,tris,quads,4.0f);
@@ -611,7 +607,7 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr *pgrid, OctreeS
     //to mask off every other input except "Field".
 
     for(uint i = 0; i < SceneObject::objs.size(); ++i){
-        Node::SurfaceNodeParams snp(SceneObject::objs[i],pgridtr);
+		Node::InputNodeParams<SceneObject> snp(SceneObject::objs[i],pgridtr);
         SceneObject::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOG|1<<Node::OutputNode::INPUT_SURFACE);
 
         //dynamic cast to BaseSurfaceNode1 - getting empty
