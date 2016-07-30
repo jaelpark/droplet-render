@@ -4,12 +4,13 @@
 #include "noise.h"
 
 #include <openvdb/openvdb.h>
-#include <openvdb/tools/LevelSetSphere.h>
+//#include <openvdb/tools/LevelSetSphere.h>
 #include <openvdb/tools/MeshToVolume.h>
 #include <openvdb/tools/VolumeToMesh.h> //sdf rebuilding
 #include <openvdb/tools/Interpolation.h>
 //#include <openvdb/tools/LevelSetRebuild.h>
 #include <openvdb/tools/Composite.h>
+#include <openvdb/tools/GridTransformer.h>
 
 //#include <OpenVDB/tools/VolumeToSpheres.h>
 //#include <OpenVDB/tools/ParticlesToLevelSet.h>
@@ -27,15 +28,16 @@ namespace Node{
 class BaseFogNode1 : public virtual BaseFogNode{
 public:
     BaseFogNode1(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt){
-        pfog = openvdb::FloatGrid::create();
-        pfog->setGridClass(openvdb::GRID_FOG_VOLUME);
+        pdgrid = openvdb::FloatGrid::create();
+        pdgrid->setGridClass(openvdb::GRID_FOG_VOLUME);
     }
 
     ~BaseFogNode1(){
         //
     }
 
-    openvdb::FloatGrid::Ptr pfog;
+    openvdb::FloatGrid::Ptr pdgrid;
+	//openvdb::Vec3SGrid::Ptr pvgrid; //sadly, there's no 4d vector grid
 };
 
 BaseFogNode * BaseFogNode::Create(uint level, NodeTree *pnt){
@@ -55,7 +57,7 @@ public:
         //
         pdgrid = openvdb::FloatGrid::create();
         pdgrid->setGridClass(openvdb::GRID_FOG_VOLUME);
-        //transform shouldn't matter here
+        //transform shouldn't matter here, only index coordinates are used
     }
 
     ~BaseSurfaceNode1(){
@@ -127,18 +129,49 @@ public:
     }
 
     void Evaluate(const void *pp){
-		//TODO: rasterizeSpheres or something
-		//-might be better to return actual SDF, not mesh (because here rebuilding probably isn't necessary)
-		//-use the FogSocket for SDFs that don't need rebuilding -> provide conversion node
 		InputNodeParams<ParticleSystem> *pd = (InputNodeParams<ParticleSystem>*)pp;
 		ParticleSystem *pps = std::get<INP_OBJECT>(*pd);
-		for(uint i = 0; i < pps->vl.size(); ++i){
-			//
-		}
-    }
 
-	openvdb::FloatGrid::Ptr pdgrid;
-	//openvdb::Vec3SGrid::Ptr pvgrid; //sadly, there's no 4d vector grid
+		//BaseValueNode<int> *pdiff = dynamic_cast<BaseValueNode<int>*>(pnodes[IParticleInput::INPUT_DIFFUSION]);
+
+		openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
+		pdgrid->setTransform(pgridtr);
+
+		openvdb::math::Transform::Ptr pgridtr1 = openvdb::math::Transform::createLinearTransform(0.1f); //TODO: global setting (similar to detail size)
+		openvdb::FloatGrid::Ptr ptgrid = openvdb::FloatGrid::create();
+        ptgrid->setGridClass(openvdb::GRID_FOG_VOLUME);
+		ptgrid->setTransform(pgridtr1);
+
+		DebugPrintf("> Weighting particles...\n");
+
+		openvdb::FloatGrid::Accessor grida = ptgrid->getAccessor();
+		for(uint i = 0; i < pps->vl.size(); ++i){
+			openvdb::Vec3d t(pps->vl[i].x,pps->vl[i].y,pps->vl[i].z);
+			openvdb::Vec3f c = pgridtr1->worldToIndex(t); //assume cell-centered indices
+			openvdb::Vec3f f;
+
+			float4 sf = float4::floor(float4::load(c.asPointer())-0.5f);
+			float4::store(f.asPointer(),sf);
+			openvdb::Vec3f b = c-f;
+
+			openvdb::Coord q((int)f.x(),(int)f.y(),(int)f.z());
+			grida.setValue(q.offsetBy(0,0,0),(1.0f-b.x())*(1.0f-b.y())*(1.0f-b.z()));
+			grida.setValue(q.offsetBy(1,0,0),b.x()*(1.0f-b.y())*(1.0f-b.z()));
+			grida.setValue(q.offsetBy(0,1,0),(1.0f-b.x())*b.y()*(1.0f-b.z()));
+			grida.setValue(q.offsetBy(1,1,0),b.x()*b.y()*(1.0f-b.z()));
+			grida.setValue(q.offsetBy(0,0,1),(1.0f-b.x())*(1.0f-b.y())*b.z());
+			grida.setValue(q.offsetBy(1,0,1),b.x()*(1.0f-b.y())*b.z());
+			grida.setValue(q.offsetBy(0,1,1),(1.0f-b.x())*b.y()*b.z());
+			grida.setValue(q.offsetBy(1,1,1),b.x()*b.y()*b.z());
+		}
+
+		DebugPrintf("> Upsampling particle fog...\n");
+
+		//upsample the result
+		openvdb::Mat4R tr = pgridtr->baseMap()->getAffineMap()->getMat4()*pgridtr1->baseMap()->getAffineMap()->getMat4().inverse();
+		openvdb::tools::GridTransformer gt(tr);
+		gt.transformGrid<openvdb::tools::BoxSampler,openvdb::FloatGrid>(*ptgrid,*pdgrid);
+    }
 };
 
 Node::IParticleInput * IParticleInput::Create(uint level, NodeTree *pnt){
