@@ -219,6 +219,13 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
             PyObject *ppr = PyObject_GetAttrString(pps,"particles");
             PyObject *ppi = PyObject_GetIter(ppr);
             for(PyObject *pni = PyIter_Next(ppi); pni; Py_DecRef(pni), pni = PyIter_Next(ppi)){
+				PyObject *past = PyObject_GetAttrString(pni,"alive_state");
+				const char *past1 = PyUnicode_AsUTF8(past);
+				if(strcasecmp(past1,"DEAD") == 0){
+					Py_DECREF(past);
+					continue;
+				}
+
                 PyObject *pvco = PyObject_GetAttrString(pni,"location");
                 float4 co = float4(
                     PyGetFloat(pvco,"x"),
@@ -226,6 +233,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
                     PyGetFloat(pvco,"z"),1.0f);
                 pprs->vl.push_back(dfloat3(co)); //already in world-space
 
+				Py_DECREF(past);
                 Py_DECREF(pvco);
             }
             Py_DECREF(ppi);
@@ -240,9 +248,10 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 		}
         Py_DECREF(phdn);
 
-		const char *ptype = PyUnicode_AsUTF8(PyObject_GetAttrString(pobj,"type"));
+		PyObject *ptype = PyObject_GetAttrString(pobj,"type");
+		const char *ptype1 = PyUnicode_AsUTF8(ptype);
 
-        if(strcasecmp(ptype,"LAMP") == 0){
+        if(strcasecmp(ptype1,"LAMP") == 0){
 			prot = PyObject_GetAttrString(pobj,"rotation_euler");
 			pquat = PyObject_CallMethod(prot,"to_quaternion","");
 
@@ -274,95 +283,95 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
             Py_DECREF(pdata);
 
 			lights.push_back(light);
-			continue;
 		}
 
-        if(strcasecmp(ptype,"MESH") != 0)
-			continue;
+        else if(strcasecmp(ptype1,"MESH") == 0){
+	        std::unordered_map<Py_hash_t, Node::NodeTree *>::const_iterator m = ntm.begin();
+	        SceneObject *psobj = new SceneObject(m->second);
 
-        std::unordered_map<Py_hash_t, Node::NodeTree *>::const_iterator m = ntm.begin();
-        SceneObject *psobj = new SceneObject(m->second);
-
-        XMMATRIX wm;
-		PyObject *pwm = PyObject_GetAttrString(pobj,"matrix_world");
-		PyObject *pmr = PyObject_GetAttrString(pwm,"row");
-		PyObject *pmi = PyObject_GetIter(pmr);
-		uint mr = 0;
-		for(PyObject *pni = PyIter_Next(pmi); pni; Py_DecRef(pni), pni = PyIter_Next(pmi), ++mr){
-            wm.r[mr] = float4(
-                PyGetFloat(pni,"x"),
-                PyGetFloat(pni,"y"),
-                PyGetFloat(pni,"z"),
-                PyGetFloat(pni,"w")).v;
-		}
-		Py_DECREF(pmi);
-		Py_DECREF(pmr);
-		Py_DECREF(pwm);
-		wm = XMMatrixTranspose(wm);
-
-		PyObject *pbm = PyObject_CallMethod(pbmesh,"new","");
-		PyObject_CallMethod(pbm,"from_object","OO",pobj,pscene);
-
-		/*PyObject *pfs = PyObject_GetAttrString(pbm,"faces");
-		PyObject_CallMethod(pbmops,"triangulate","O{s,O}",pbm,"faces",pfs); //doesn't work*/
-
-		PyObject *pfa = PyObject_GetAttrString(pbm,"faces");
-		PyObject *pag = Py_BuildValue("(O)",pbm);
-		PyObject *pkw = PyDict_New();
-		PyObject *ptm = PyObject_GetAttrString(pbmops,"triangulate");
-		PyDict_SetItemString(pkw,"faces",pfa);
-		PyObject_Call(ptm,pag,pkw);
-        //Py_DECREF(ptm); //crash
-		Py_DECREF(pfa);
-		Py_DECREF(ptm);
-		Py_DECREF(pkw);
-
-        //uint vca = verts.size();
-
-		PyObject *pvs = PyObject_GetAttrString(pbm,"verts");
-		PyObject *pvi = PyObject_GetIter(pvs);
-		for(PyObject *pni = PyIter_Next(pvi); pni; Py_DecRef(pni), pni = PyIter_Next(pvi)){
-			PyObject *pvco = PyObject_GetAttrString(pni,"co");
-            float4 co = float4(
-                PyGetFloat(pvco,"x"),
-                PyGetFloat(pvco,"y"),
-                PyGetFloat(pvco,"z"),1.0f);
-            dfloat3 sco;
-            float4::store(&sco,XMVector3TransformCoord(co.v,wm));
-            //verts.push_back(sco);
-            psobj->vl.push_back(sco);
-
-            Py_DECREF(pvco);
-		}
-
-		Py_DECREF(pvi);
-		Py_DECREF(pvs);
-
-		PyObject *pfs = PyObject_GetAttrString(pbm,"faces");
-		//uint tl = PySequence_Size(pfs);
-		PyObject *pfi = PyObject_GetIter(pfs);
-		for(PyObject *pni = PyIter_Next(pfi); pni; Py_DecRef(pni), pni = PyIter_Next(pfi)){
-			PyObject *pfvs = PyObject_GetAttrString(pni,"verts");
-			PyObject *pfvi = PyObject_GetIter(pfvs);
-			//uint fvc = PySequence_Size(pfvs);
-			for(PyObject *pji = PyIter_Next(pfvi); pji; Py_DecRef(pji), pji = PyIter_Next(pfvi)){
-                PyObject *pxo = PyObject_GetAttrString(pji,"index");
-                uint index = PyLong_AsLong(pxo);
-                psobj->tl.push_back(index);
-                //tris.push_back(index+vca);
-
-                Py_DECREF(pxo);
+	        XMMATRIX wm;
+			PyObject *pwm = PyObject_GetAttrString(pobj,"matrix_world");
+			PyObject *pmr = PyObject_GetAttrString(pwm,"row");
+			PyObject *pmi = PyObject_GetIter(pmr);
+			uint mr = 0;
+			for(PyObject *pni = PyIter_Next(pmi); pni; Py_DecRef(pni), pni = PyIter_Next(pmi), ++mr){
+	            wm.r[mr] = float4(
+	                PyGetFloat(pni,"x"),
+	                PyGetFloat(pni,"y"),
+	                PyGetFloat(pni,"z"),
+	                PyGetFloat(pni,"w")).v;
 			}
-			Py_DECREF(pfvi);
+			Py_DECREF(pmi);
+			Py_DECREF(pmr);
+			Py_DECREF(pwm);
+			wm = XMMatrixTranspose(wm);
+
+			PyObject *pbm = PyObject_CallMethod(pbmesh,"new","");
+			PyObject_CallMethod(pbm,"from_object","OO",pobj,pscene);
+
+			/*PyObject *pfs = PyObject_GetAttrString(pbm,"faces");
+			PyObject_CallMethod(pbmops,"triangulate","O{s,O}",pbm,"faces",pfs); //doesn't work*/
+
+			PyObject *pfa = PyObject_GetAttrString(pbm,"faces");
+			PyObject *pag = Py_BuildValue("(O)",pbm);
+			PyObject *pkw = PyDict_New();
+			PyObject *ptm = PyObject_GetAttrString(pbmops,"triangulate");
+			PyDict_SetItemString(pkw,"faces",pfa);
+			PyObject_Call(ptm,pag,pkw);
+	        //Py_DECREF(ptm); //crash
+			Py_DECREF(pfa);
+			Py_DECREF(ptm);
+			Py_DECREF(pkw);
+
+	        //uint vca = verts.size();
+
+			PyObject *pvs = PyObject_GetAttrString(pbm,"verts");
+			PyObject *pvi = PyObject_GetIter(pvs);
+			for(PyObject *pni = PyIter_Next(pvi); pni; Py_DecRef(pni), pni = PyIter_Next(pvi)){
+				PyObject *pvco = PyObject_GetAttrString(pni,"co");
+	            float4 co = float4(
+	                PyGetFloat(pvco,"x"),
+	                PyGetFloat(pvco,"y"),
+	                PyGetFloat(pvco,"z"),1.0f);
+	            dfloat3 sco;
+	            float4::store(&sco,XMVector3TransformCoord(co.v,wm));
+	            //verts.push_back(sco);
+	            psobj->vl.push_back(sco);
+
+	            Py_DECREF(pvco);
+			}
+
+			Py_DECREF(pvi);
+			Py_DECREF(pvs);
+
+			PyObject *pfs = PyObject_GetAttrString(pbm,"faces");
+			//uint tl = PySequence_Size(pfs);
+			PyObject *pfi = PyObject_GetIter(pfs);
+			for(PyObject *pni = PyIter_Next(pfi); pni; Py_DecRef(pni), pni = PyIter_Next(pfi)){
+				PyObject *pfvs = PyObject_GetAttrString(pni,"verts");
+				PyObject *pfvi = PyObject_GetIter(pfvs);
+				//uint fvc = PySequence_Size(pfvs);
+				for(PyObject *pji = PyIter_Next(pfvi); pji; Py_DecRef(pji), pji = PyIter_Next(pfvi)){
+	                PyObject *pxo = PyObject_GetAttrString(pji,"index");
+	                uint index = PyLong_AsLong(pxo);
+	                psobj->tl.push_back(index);
+	                //tris.push_back(index+vca);
+
+	                Py_DECREF(pxo);
+				}
+				Py_DECREF(pfvi);
+			}
+
+			Py_DECREF(pfi);
+			Py_DECREF(pfs);
+
+			PyObject_CallMethod(pbm,"free","");
+			Py_DECREF(pbm);
+
+	        //Py_DECREF(pobj); //borrowed ref
 		}
 
-		Py_DECREF(pfi);
-		Py_DECREF(pfs);
-
-		PyObject_CallMethod(pbm,"free","");
-		Py_DECREF(pbm);
-
-        //Py_DECREF(pobj); //borrowed ref
+		Py_DECREF(ptype);
 	}
 
     Py_DECREF(poat);
