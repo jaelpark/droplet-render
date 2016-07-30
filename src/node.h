@@ -134,6 +134,15 @@ public:
     static ISurfaceInput * Create(uint, NodeTree *);
 };
 
+class IParticleInput : public virtual BaseFogNode{
+protected:
+	IParticleInput(uint, NodeTree *);
+	~IParticleInput();
+public:
+	virtual void Evaluate(const void *) = 0;
+	static IParticleInput * Create(uint, NodeTree *);
+};
+
 class IDisplacement : public virtual BaseSurfaceNode{
 protected:
     IDisplacement(uint, NodeTree *);
@@ -243,4 +252,3 @@ BaseNode * CreateNodeBySocket(const char *, const void *, uint, NodeTree *);
 }
 
 #endif
-

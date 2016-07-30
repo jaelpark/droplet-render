@@ -50,6 +50,9 @@ enum SNP{
     SNP_TRANSFORM
 };
 
+template<class T>
+using InputNodeParams = std::tuple<T *, openvdb::math::Transform::Ptr>;
+
 class BaseSurfaceNode1 : public virtual BaseSurfaceNode{
 public:
     BaseSurfaceNode1(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt){
@@ -63,7 +66,7 @@ public:
         //
     }
 
-    openvdb::FloatGrid::Ptr pdgrid;
+    openvdb::FloatGrid::Ptr pdgrid; //billowing grid
     std::vector<openvdb::Vec3s> vl;
     std::vector<openvdb::Vec3I> tl;
     std::vector<openvdb::Vec4I> ql;
@@ -114,6 +117,36 @@ public:
 
 Node::ISurfaceInput * ISurfaceInput::Create(uint level, NodeTree *pnt){
     return new SurfaceInput(level,pnt);
+}
+
+class ParticleInput : public BaseFogNode1, public IParticleInput{
+public:
+	ParticleInput(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), IParticleInput(_level,pnt){
+        //
+        //DebugPrintf(">> SurfaceInput()\n");
+    }
+
+    ~ParticleInput(){
+        //
+    }
+
+    void Evaluate(const void *pp){
+		//TODO: rasterizeSpheres or something
+		//-might be better to return actual SDF, not mesh (because here rebuilding probably isn't necessary)
+		//-use the FogSocket for SDFs that don't need rebuilding -> provide conversion node
+		InputNodeParams<ParticleSystem> *pd = (InputNodeParams<ParticleSystem>*)pp;
+		ParticleSystem *pps = std::get<SNP_OBJECT>(*pd);
+		for(uint i = 0; i < pps->vl.size(); ++i){
+			//
+		}
+    }
+
+	openvdb::FloatGrid::Ptr pdgrid;
+	//openvdb::Vec3SGrid::Ptr pvgrid; //sadly, there's no 4d vector grid
+};
+
+Node::IParticleInput * IParticleInput::Create(uint level, NodeTree *pnt){
+	return new ParticleInput(level,pnt);
 }
 
 class Displacement : public BaseSurfaceNode1, public IDisplacement{
@@ -621,6 +654,16 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr *pgrid, OctreeS
         //TODO: get also the field sdf here, if available.
     }
 
+	//TODO: create node system for particles? Dilate/Smooth/Erode etc nodes.
+	//Particle systems probably need their material reference and node tree.
+	//Alternatively, define additional input node type: ParticleInput (along SurfaceInput). User can then decice wether he creates sdf or fog volume
+	/*for(uint i = 0; i < ParticleSystem::prss.size(); ++i){
+		//
+		for(uint j = 0; j < ParticleSystem::prss[i]->vl.size(); ++j){
+			//
+		}
+	}*/
+
     float4 c = float4(0.5f)*(scaabbmax+scaabbmin);
     float4 e = float4(0.5f)*(scaabbmax-scaabbmin);
 
@@ -630,10 +673,12 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr *pgrid, OctreeS
     float d = 2.0f*a.get<0>();
     float N = (float)BLCLOUD_uN;
     uint mlevel = (uint)ceilf(logf(d/(N*s))/0.69315f);
+    float r = powf(2.0f,(float)mlevel)*N; //sparse voxel resolution
     //The actual voxel size is now v = d/(2^k*N), where k is the octree depth.
 
-    DebugPrintf("Center = (%f, %f, %f)\nExtents = (%f, %f, %f) (max w = %f)\n",scaabb.sc.x,scaabb.sc.y,scaabb.sc.z,scaabb.se.x,scaabb.se.y,scaabb.se.z,d);
-    DebugPrintf("> Constructing octree (depth = %u, voxel = %f)...\n",mlevel,d/(powf(2.0f,(float)mlevel)*N));
+    DebugPrintf("Center = (%f, %f, %f)\nExtents = (%f, %f, %f) (max w = %f)\n",
+        scaabb.sc.x,scaabb.sc.y,scaabb.sc.z,scaabb.se.x,scaabb.se.y,scaabb.se.z,d);
+    DebugPrintf("> Constructing octree (depth = %u, voxel = %f, sparse res = %u^3)...\n",mlevel,d/r,(uint)r);
 
 #define BLCLOUD_MAXNODES 500000 //there should be some user-defined limit here or some way to estimate this
     uint octl = BLCLOUD_MAXNODES*sizeof(Octree);
@@ -693,6 +738,8 @@ void ParticleSystem::DeleteAll(){
         delete prss[i];
     prss.clear();
 }
+
+std::vector<ParticleSystem *> ParticleSystem::prss;
 
 SceneObject::SceneObject(Node::NodeTree *_pnt) : pnt(_pnt){
     SceneObject::objs.push_back(this);
@@ -777,7 +824,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
     //Blender OpenVDB smoke cache usage testing. It works, but currently has no place here.
     openvdb::io::File vdbf = openvdb::io::File("/tmp/smoke_000130_00.vdb");
 	vdbf.open();
-	
+
 	openvdb::FloatGrid::Ptr pgrid1 = openvdb::gridPtrCast<openvdb::FloatGrid>(vdbf.readGrid("density"));
 	DebugPrintf("Grid: %s, FloatGrid: %u, Class: %u\n",pgrid1->getName().c_str(),pgrid1->isType<openvdb::FloatGrid>(),pgrid1->getGridClass());
 	openvdb::Vec3d vs = pgrid1->voxelSize();
@@ -908,7 +955,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 /*#ifdef BLCLOUD_FOGVOLUME
 				float d0 = samplerd.wsSample(posw);
 				float p0 = samplerf.wsSample(posw);
-				
+
 				pvol[pob[i].volx].pvol[0][j] = d0 < s?d0:(p0 > 0.0f?s:d0);
 				pvol[pob[i].volx].pvol[1][j] = (pvol[pob[i].volx].pvol[0][j] <= 0.0f)?1.0f:p0;
 				pob[i].pmax = openvdb::math::Max(pob[i].pmax,pvol[pob[i].volx].pvol[1][j]);
@@ -918,7 +965,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 				pob[i].pmax = openvdb::math::Max(pob[i].pmax,pvol[pob[i].volx].pvol[1][j]);
 #endif*/
                 pdsfb[pob[i].volx].pvol[j] = samplerd.wsSample(posw);
-				
+
 				/*pvol[pob[i].volx].pvol[0][j] = samplerd.wsSample(posw);
 				pvol[pob[i].volx].pvol[1][j] = (pvol[pob[i].volx].pvol[0][j] <= 0.0f); //-1.0f
 				pob[i].pmax = openvdb::math::Max(pob[i].pmax,pvol[pob[i].volx].pvol[1][j]);*/

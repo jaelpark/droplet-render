@@ -21,20 +21,20 @@ class ClNodeTree(bpy.types.NodeTree):
 	@classmethod
 	def poll(cls, context):
 		return context.scene.render.engine == config.dre_engineid;
-		
+
 class ClNodeIntSocket(bpy.types.NodeSocket):
 	bl_idname = "ClNodeIntSocket";
 	bl_label = "Int socket";
-	
+
 	value = IntProperty(name="",default=0,min=0);
 	type = "INT";
-	
+
 	def draw(self, context, layout, node, x):
 		if self.is_linked or self.is_output:
 			layout.label(self.name);
 		else:
 			layout.prop(self,"value",text=self.name);
-	
+
 	def draw_color(self, context, node):
 		#return (1.0,0.8,0.8,1);
 		return (0.5,0.5,0.5,1);
@@ -72,7 +72,7 @@ class ClNodeShaderSocket(bpy.types.NodeSocket):
 class ClNodeFogSocket(bpy.types.NodeSocket):
 	bl_idname = "ClNodeFogSocket";
 	bl_label = "Fog socket";
-	
+
 	value = FloatProperty(name="",default=0);
 	type = 'CUSTOM';
 
@@ -112,10 +112,10 @@ class ClNodeSurfaceSocket(bpy.types.NodeSocket):
 class ClNodeFieldSocket(bpy.types.NodeSocket):
 	bl_idname = "ClNodeFieldSocket";
 	bl_label = "Field socket";
-	
+
 	value = FloatProperty(name="",default=0);
 	type = 'CUSTOM';
-	
+
 	def draw(self, context, layout, node, x):
 		layout.label(self.name);
 
@@ -132,6 +132,13 @@ class ClNodeSurfaceInput(bpy.types.Node):
 
 	def init(self, context):
 		self.outputs.new("ClNodeSurfaceSocket","Surface");
+
+class ClNodeParticleInput(bpy.types.Node):
+	bl_idname = "ClNodeParticleInput";
+	bl_label = "ParticleSystem";
+
+	def init(self, context):
+		self.outputs.new("ClNodeFogSocket","Fog");
 
 class ClNodeFloatAdd(bpy.types.Node):
 	bl_idname = "ClNodeFloatAdd";
@@ -184,7 +191,7 @@ class ClNodeFloatPow(bpy.types.Node):
 class ClNodeSurfaceOutput(bpy.types.Node):
 	bl_idname = "ClNodeSurfaceOutput";
 	bl_label = "Surface Output";
-	
+
 	#props = PointerProperty(type=ClPropertyEmpty);
 
 	def init(self, context):
@@ -209,14 +216,14 @@ class ClNodeSurfaceOutput(bpy.types.Node):
 #class ClNodeFieldOutput(bpy.types.Node):
 #	bl_idname = "ClNodeFieldOutput";
 #	bl_label = "Field Output";
-#	
+#
 #	def init(self, context):
 #		self.inputs.new("ClNodeFieldSocket","Field");
 
 #class ClNodeFogVolume(bpy.types.Node):
 #	bl_idname = "ClNodeFogVolume";
 #	bl_label = "SDF to Fog";
-#	
+#
 #	def init(self, context):
 #		self.inputs.new("ClNodeSurfaceSocket","Surface");
 #		self.outputs.new("ClNodeFogSocket","Fog");
@@ -224,13 +231,13 @@ class ClNodeSurfaceOutput(bpy.types.Node):
 class ClNodeAdvection(bpy.types.Node):
 	bl_idname = "ClNodeAdvection";
 	bl_label = "Advection/Baked";
-	
+
 	def init(self, context):
 		self.inputs.new("ClNodeIntSocket","Iterations");
 		self.inputs.new("ClNodeFloatSocket","Step size");
 		self.inputs.new("ClNodeFogSocket","Fog");
 		self.outputs.new("ClNodeFogSocket","Fog");
-	
+
 	#def draw_buttons(self, context, layout):
 		#layout.row().label("Baked advection");
 
@@ -297,7 +304,7 @@ class ClNodefBmPerlinNoise(bpy.types.Node):
 		#self.inputs.new("ClNodeFloatSocket","qscale");
 		self.inputs.new("ClNodeSurfaceSocket","Surface");
 		#self.inputs.new("ClNodeGridSocket","Billowing");
-		
+
 		self.outputs.new("ClNodeSurfaceSocket","Surface");
 		#self.outputs.new("ClNodeGridSocket","Distance");
 
@@ -312,6 +319,7 @@ class ClNodeCategory(NodeCategory):
 categories = [
 	ClNodeCategory("INPUT_CATEGORY","Input",items = [
 		NodeItem("ClNodeSurfaceInput"),
+		NodeItem("ClNodeParticleInput"),
 	]),
 	ClNodeCategory("OUTPUT_CATEGORY","Output",items = [
 		NodeItem("ClNodeSurfaceOutput"),
@@ -334,4 +342,3 @@ categories = [
 		NodeItem("ClNodefBmPerlinNoise"),
 	]),
 ];
-

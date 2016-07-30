@@ -239,7 +239,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 			continue;
 		}
         Py_DECREF(phdn);
-		
+
 		const char *ptype = PyUnicode_AsUTF8(PyObject_GetAttrString(pobj,"type"));
 
         if(strcasecmp(ptype,"LAMP") == 0){
@@ -430,7 +430,6 @@ static PyObject * DRE_EndRender(PyObject *pself, PyObject *pargs){
     ParticleSystem::DeleteAll();
     SceneObject::DeleteAll();
     Node::NodeTree::DeleteAll();
-    //Node::DeleteNodes();
 
     gpkernel->Destroy();
 	delete gpkernel;
