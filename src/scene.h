@@ -26,12 +26,14 @@ public:
     dfloat3 se;
 };
 
-struct OctreeStructure{ //GPU octree
-	//XMFLOAT3 c;
+struct OctreeStructure{
     dfloat4 ce; //(center.xyz,extent)
 	uint chn[8];
 	uint volx[VOLUME_BUFFER_COUNT]; //leaf volume index
-	float pmax; //max density
+	//
+	//min/max query value to speed up rendering; sdf: min distance, fog: max density
+	//Min sdf may not be needed as leaves are always created only when surface exists
+	float qval[VOLUME_BUFFER_COUNT];
 };
 
 class Octree{
@@ -94,13 +96,11 @@ public:
 	OctreeStructure *pob;
     LeafVolume *pbuf[VOLUME_BUFFER_COUNT]; //-> psdfb, pfogb
     uint index;
-    uint leafx;
+    uint leafx[VOLUME_BUFFER_COUNT];
     //uint octreesize;
     /*enum CACHE_MODE{
         //
     };*/
 };
-
-//octree
 
 #endif

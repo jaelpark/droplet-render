@@ -514,12 +514,12 @@ Octree::~Octree(){
 //Some template setup to combine BoundingBox/Triangle cases?
 void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &c1, const float4 &e1, uint level, uint mlevel, std::atomic<uint> *pindex, std::atomic<uint> *pleafx, Octree *proot, OctreeStructure *pob, VOLUME_BUFFER bx){
     float4::store(&pob[x].ce,float4::select(c,e,float4::selectctrl(0,0,0,1)));
-    pob[x].pmax = 0.0f;
+    memset(pob[x].qval,0,sizeof(pob[x].qval)); //these are set during the resampling phase
 
     if(level >= mlevel-1){
         for(; lock.test_and_set(std::memory_order_acquire););
         if(pob[x].volx[bx] == ~0u)
-            pob[x].volx[bx] = pleafx->fetch_add(1);//(*pleafx)++;
+            pob[x].volx[bx] = pleafx->fetch_add(1);
         lock.clear(std::memory_order_release);
         return;
     }//else pob[x].volx = ~0;
@@ -536,9 +536,6 @@ void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &c1, const
         if(aabb.Intersects(aabb1)){
             for(; lock.test_and_set(std::memory_order_acquire););
             if(!pch[i]){
-                //pch[i] = NEWM(Octree)(++(*pindex));
-                //pch[i] = new Octree(++(*pindex));
-                //++(*pindex);
                 uint index = pindex->fetch_add(1)+1;
                 pch[i] = new(proot+index) Octree(index);
                 pob[x].chn[i] = index;
@@ -552,12 +549,12 @@ void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &c1, const
 
 void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &v0, const float4 &v1, const float4 &v2, uint level, uint mlevel, std::atomic<uint> *pindex, std::atomic<uint> *pleafx, Octree *proot, OctreeStructure *pob, VOLUME_BUFFER bx){
     float4::store(&pob[x].ce,float4::select(c,e,float4::selectctrl(0,0,0,1)));
-    pob[x].pmax = 0.0f;
+    memset(pob[x].qval,0,sizeof(pob[x].qval)); //these are set during the resampling phase
 
     if(level >= mlevel-1){
         for(; lock.test_and_set(std::memory_order_acquire););
         if(pob[x].volx[bx] == ~0u)
-            pob[x].volx[bx] = pleafx->fetch_add(1);//(*pleafx)++;
+            pob[x].volx[bx] = pleafx->fetch_add(1);
         lock.clear(std::memory_order_release);
         return;
     }//else pob[x].volx = ~0;
@@ -571,9 +568,6 @@ void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &v0, const
         if(aabb.Intersects(v0,v1,v2)){
             for(; lock.test_and_set(std::memory_order_acquire););
             if(!pch[i]){
-                //pch[i] = NEWM(Octree)(++(*pindex));
-                //pch[i] = new Octree(++(*pindex));
-                //++(*pindex);
                 uint index = pindex->fetch_add(1)+1;
                 pch[i] = new(proot+index) Octree(index);
                 pob[x].chn[i] = index;
@@ -614,7 +608,7 @@ protected:
 	openvdb::Real vscale;
 };*/
 
-static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr *pgrid, OctreeStructure **pob, uint *pindex, uint *pleafx){
+static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr *pgrid, Scene *pscene){
     openvdb::math::Transform::Ptr pgridtr = openvdb::math::Transform::createLinearTransform(s);
     *pgrid = 0;
 
@@ -728,12 +722,12 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr *pgrid, OctreeS
     new(proot) Octree(0);
 
     uint pobl = BLCLOUD_MAXNODES*sizeof(OctreeStructure);
-    *pob = (OctreeStructure*)_mm_malloc(pobl,16);
-    memset(*pob,0,pobl);
+    pscene->pob = (OctreeStructure*)_mm_malloc(pobl,16);
+    memset(pscene->pob,0,pobl);
 
     for(uint i = 0; i < pobl/sizeof(OctreeStructure); ++i)
 		for(uint j = 0; j < VOLUME_BUFFER_COUNT; ++j)
-        	(*pob)[i].volx[j] = ~0u;
+        	pscene->pob[i].volx[j] = ~0u;
 
     std::atomic<uint> indexa(0);
     std::atomic<uint> leafxa(0); //sdf
@@ -743,7 +737,7 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr *pgrid, OctreeS
             float4 v0 = float4::load(&vl[tl[i].x]);
             float4 v1 = float4::load(&vl[tl[i].y]);
             float4 v2 = float4::load(&vl[tl[i].z]);
-            proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,proot,*pob,VOLUME_BUFFER_SDF);
+            proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,proot,pscene->pob,VOLUME_BUFFER_SDF);
         }
     });
 
@@ -754,12 +748,12 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr *pgrid, OctreeS
             v0 = float4::load(&vl[ql[i].x]);
             v1 = float4::load(&vl[ql[i].y]);
             v2 = float4::load(&vl[ql[i].z]);
-            proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,proot,*pob,VOLUME_BUFFER_SDF);
+            proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,proot,pscene->pob,VOLUME_BUFFER_SDF);
 
             v0 = float4::load(&vl[ql[i].z]);
             v1 = float4::load(&vl[ql[i].w]);
             v2 = float4::load(&vl[ql[i].x]);
-            proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,proot,*pob,VOLUME_BUFFER_SDF);
+            proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,proot,pscene->pob,VOLUME_BUFFER_SDF);
         }
     });
 
@@ -767,14 +761,15 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr *pgrid, OctreeS
         for(uint i = nr.begin(); i < nr.end(); ++i){
 			float4 c1 = float4::load(&fogbvs[i].sc);
 			float4 e1 = float4::load(&fogbvs[i].se);
-            proot->BuildPath(c,a,c1,e1,0,mlevel,&indexa,&leafxb,proot,*pob,VOLUME_BUFFER_FOG);
+            proot->BuildPath(c,a,c1,e1,0,mlevel,&indexa,&leafxb,proot,pscene->pob,VOLUME_BUFFER_FOG);
         }
     });
 
     _mm_free(proot);
 
-    *pindex = indexa;
-    *pleafx = leafxa;
+	pscene->index = indexa;
+	pscene->leafx[VOLUME_BUFFER_SDF] = leafxa;
+	pscene->leafx[VOLUME_BUFFER_FOG] = leafxb;
 }
 
 ParticleSystem::ParticleSystem(Node::NodeTree *_pnt) : pnt(_pnt){
@@ -837,7 +832,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
             if(!pf)
                 throw(0);
             fread(&index,1,4,pf);
-            fread(&leafx,1,4,pf);
+            fread(&leafx[VOLUME_BUFFER_SDF],1,4,pf);
 
             uint pobl = (index+1)*sizeof(OctreeStructure);
             pob = (OctreeStructure*)_mm_malloc(pobl,16);
@@ -853,7 +848,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
         }
 
         //S_Create(pvl,ptl,s,lff,&pgrid,&pob,&index,&leafx);
-        S_Create(s,lff,&pgrid,&pob,&index,&leafx);
+        S_Create(s,lff,&pgrid,this);
         pgrid->setName("surface-levelset");
 
         if(cm == SCENE_CACHE_WRITE){
@@ -863,122 +858,21 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 
             FILE *pf = fopen("/tmp/droplet-fileid.bin","wb");
             fwrite(&index,1,4,pf);
-            fwrite(&leafx,1,4,pf);
+            fwrite(&leafx[VOLUME_BUFFER_SDF],1,4,pf);
             fwrite(pob,1,(index+1)*sizeof(OctreeStructure),pf);
 
             fclose(pf);
         }
     }
-#if 0
-
-//#define BLCLOUD_FOGVOLUME
-#ifdef BLCLOUD_FOGVOLUME
-    //Blender OpenVDB smoke cache usage testing. It works, but currently has no place here.
-    openvdb::io::File vdbf = openvdb::io::File("/tmp/smoke_000130_00.vdb");
-	vdbf.open();
-
-	openvdb::FloatGrid::Ptr pgrid1 = openvdb::gridPtrCast<openvdb::FloatGrid>(vdbf.readGrid("density"));
-	DebugPrintf("Grid: %s, FloatGrid: %u, Class: %u\n",pgrid1->getName().c_str(),pgrid1->isType<openvdb::FloatGrid>(),pgrid1->getGridClass());
-	openvdb::Vec3d vs = pgrid1->voxelSize();
-	DebugPrintf("Voxel size = %f, %f, %f\n",vs.x(),vs.y(),vs.z());
-
-	openvdb::math::CoordBBox bbox = pgrid1->evalActiveVoxelBoundingBox();
-	openvdb::math::Coord crd = bbox.dim();
-	openvdb::Vec3d dimi = crd.asVec3d();
-	openvdb::Vec3d extw = 0.5f*dimi*vs;//pgridtr->indexToWorld(dimi);
-
-	openvdb::Vec3d posi = bbox.getCenter();
-	openvdb::Vec3d posw = pgrid1->transformPtr()->indexToWorld(posi);//posi*vs;//pgridtr->indexToWorld(posi);
-	//hopefully index(0,0,0) is defined to be the origin^^
-
-	pgrid1->setGridClass(openvdb::GridClass::GRID_FOG_VOLUME);
-
-	DebugPrintf("center = [%f, %f, %f], extents = [%f, %f, %f]\n",posw.x(),posw.y(),posw.z(),extw.x(),extw.y(),extw.z());
-
-	vdbf.close();
-
-	std::vector<BoundingBox> fogbvs; //TODO: preallocate by leaf count, if possible
-	//openvdb::tools::fillWithSpheres(*pgrid1,spheres,10000,true,4.0f,16.0f,0.5f);
-	for(openvdb::FloatGrid::TreeType::LeafCIter m = pgrid1->tree().cbeginLeaf(); m; ++m){
-		const openvdb::FloatGrid::TreeType::LeafNodeType *pl = m.getLeaf();
-		openvdb::math::CoordBBox bbox;// = pl->getNodeBoundingBox();
-		pl->evalActiveBoundingBox(bbox);
-		openvdb::math::Coord crd = bbox.dim();
-		openvdb::Vec3d dimi = crd.asVec3d();
-		openvdb::Vec3d extw = 0.5f*dimi*vs;//pgrid1->transform().indexToWorld(dimi);
-
-		openvdb::Vec3d posi = bbox.getCenter();
-		openvdb::Vec3d posw = pgrid1->transformPtr()->indexToWorld(posi);
-		//openvdb::Vec4s s(posw.x(),posw.y(),posw.z(),sqrt(3.0f)*dimw.x()); //inclusive
-		//openvdb::Vec4s s(posw.x(),posw.y(),posw.z(),dimw.x()); //exclusive
-
-		BoundingBox aabb;
-		aabb.Center = XMFLOAT3(posw.x(),posw.y(),posw.z());
-		aabb.Extents = XMFLOAT3(extw.x(),extw.y(),extw.z());
-
-		fogbvs.push_back(aabb);
-	}
-
-	//openvdb::FloatGrid::Ptr pgrida = openvdb::createLevelSet<openvdb::FloatGrid>(s,4.0f);
-	/*openvdb::tools::ParticlesToLevelSet<openvdb::FloatGrid> lsf(*pgrid);
-	ParticleList pl(&spheres);
-	lsf.setGrainSize(1);
-	lsf.rasterizeSpheres(pl);*/
-
-	//DebugPrintf("Fog sphere count = %u\n",spheres.size());
-	DebugPrintf("Fog subvolume count = %u\n",fogbvs.size());
-#endif
-
-    /*float4 scaabbmin = float4::load((dfloat3*)&pdn->vl[0]);//XMVECTOR scaabbmin = XMLoadFloat3((XMFLOAT3*)&points[0]);
-    float4 scaabbmax = scaabbmin;//XMVECTOR scaabbmax = scaabbmin;
-    uint pointc = pdn->vl.size();
-    for(uint i = 0; i < pointc; ++i){
-        float4 p = float4::load((dfloat3*)&pdn->vl[i]);//XMVECTOR p = XMLoadFloat3((XMFLOAT3*)&points[i]);
-        scaabbmin = float4::min(p,scaabbmin);
-        scaabbmax = float4::max(p,scaabbmax);
-    }*/
-
-#ifdef BLCLOUD_FOGVOLUME
-	uint fogbvc = fogbvs.size();
-	for(uint i = 0; i < fogbvc; ++i){
-		XMVECTOR c = XMLoadFloat3(&fogbvs[i].Center);
-		XMVECTOR e = XMLoadFloat3(&fogbvs[i].Extents);
-		scaabbmin = XMVectorMin(c-e,scaabbmin);
-		scaabbmax = XMVectorMax(c+e,scaabbmax);
-	}
-#endif
-
-	/*uint spherec = spheres.size();
-	XMFLOAT4 *psdata = (XMFLOAT4*)spheres.data();
-	for(uint i = 0; i < spherec; ++i){
-		XMVECTOR p = XMLoadFloat4(&psdata[i]);
-		XMVECTOR r = XMVectorSplatW(p);
-		scaabbmin = XMVectorMin(p-r,scaabbmin);
-		scaabbmax = XMVectorMax(p+r,scaabbmax);
-	}*/
-
-#ifdef BLCLOUD_FOGVOLUME
-	for(uint i = 0; i < fogbvc; ++i){
-		XMVECTOR c1 = XMLoadFloat3(&fogbvs[i].Center);
-		XMVECTOR e1 = XMLoadFloat3(&fogbvs[i].Extents);
-
-		proot->BuildPath(c,a,c1,e1,0,mlevel,&index,&leafx,pob);
-	}
-#endif
-
-#endif
 
 	DebugPrintf("> Resampling volume data...\n");
 
-    pbuf[VOLUME_BUFFER_SDF] = new LeafVolume[leafx];
-    pbuf[VOLUME_BUFFER_FOG] = new LeafVolume[1];
+	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
+    	pbuf[i] = new LeafVolume[leafx[i]];
 	//openvdb::FloatGrid::ConstAccessor
 	//openvdb::tools::GridSampler<openvdb::FloatGrid::ConstAccessor, openvdb::tools::BoxSampler> fsampler(pgrid->getConstAccessor(),pgrid->transform());
 
     openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler> samplerd(*pgrid); //non-cached, thread safe version
-#ifdef BLCLOUD_FOGVOLUME
-	openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler> samplerf(*pgrid1);
-#endif
 
     //float4 nv = float4(N);
     const uint uN = BLCLOUD_uN;
@@ -992,11 +886,15 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
         //FastGridSampler &ffs = fsampler.local();
 
 		for(uint i = nr.begin(); i < nr.end(); ++i){
-            if(pob[i].volx[VOLUME_BUFFER_SDF] == ~0u)
+            if(pob[i].volx[VOLUME_BUFFER_SDF] == ~0u && pob[i].volx[VOLUME_BUFFER_FOG] == ~0u)
 				continue;
+			//
             float4 nc = float4::load(&pob[i].ce);
             float4 ne = nc.splat<3>();
             //
+			pob[i].qval[VOLUME_BUFFER_SDF] = FLT_MAX;
+			pob[i].qval[VOLUME_BUFFER_FOG] = 0.0f;
+			//
             for(uint j = 0; j < uN*uN*uN; ++j){
                 float4 nn = (nv-float4(2.0f)*float4((float)(j%uN),(float)((j/uN)%uN),(float)(j/(uN*uN)),1.0f)-float4::one())/(nv-float4::one());
                 float4 nw = nc-ne*nn;
@@ -1016,7 +914,15 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 				pvol[pob[i].volx].pvol[1][j] = (pvol[pob[i].volx].pvol[0][j] <= 0.0f); //-1.0f
 				pob[i].pmax = openvdb::math::Max(pob[i].pmax,pvol[pob[i].volx].pvol[1][j]);
 #endif*/
-                pbuf[VOLUME_BUFFER_SDF][pob[i].volx[VOLUME_BUFFER_SDF]].pvol[j] = samplerd.wsSample(posw);
+				if(pob[i].volx[VOLUME_BUFFER_SDF] != ~0u){
+	                pbuf[VOLUME_BUFFER_SDF][pob[i].volx[VOLUME_BUFFER_SDF]].pvol[j] = samplerd.wsSample(posw);
+					pob[i].qval[VOLUME_BUFFER_SDF] = openvdb::math::Min(pob[i].qval[VOLUME_BUFFER_SDF],pbuf[VOLUME_BUFFER_SDF][pob[i].volx[VOLUME_BUFFER_SDF]].pvol[j]);
+				}
+
+				if(pob[i].volx[VOLUME_BUFFER_FOG] != 0u){
+					pbuf[VOLUME_BUFFER_FOG][pob[i].volx[VOLUME_BUFFER_FOG]].pvol[j] = 0.0f;
+					pob[i].qval[VOLUME_BUFFER_FOG] = openvdb::math::Max(pob[i].qval[VOLUME_BUFFER_FOG],pbuf[VOLUME_BUFFER_FOG][pob[i].volx[VOLUME_BUFFER_FOG]].pvol[j]);
+				}
 
 				/*pvol[pob[i].volx].pvol[0][j] = samplerd.wsSample(posw);
 				pvol[pob[i].volx].pvol[1][j] = (pvol[pob[i].volx].pvol[0][j] <= 0.0f); //-1.0f
@@ -1027,7 +933,9 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 		}
 	});
 
-	DebugPrintf("Volume size = %f MB\n",(float)(leafx*sizeof(LeafVolume))/1e6f);
+	uint sdfs = leafx[VOLUME_BUFFER_SDF]*sizeof(LeafVolume);
+	uint fogs = leafx[VOLUME_BUFFER_FOG]*sizeof(LeafVolume);
+	DebugPrintf("Volume size = %f MB\n  SDF = %f MB\n  Fog = %f MB\n",(float)(sdfs+fogs)/1e6f,(float)sdfs/1e6f,(float)fogs/1e6f);
     //
 }
 
