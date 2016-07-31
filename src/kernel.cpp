@@ -208,9 +208,7 @@ static void OctreeProcessSubtree(const dfloat3 &t0, const dfloat3 &t1, uint a, O
 		return;
 	//if(level == mlevel){... return;} //leaf, volume index != ~0
     if(pob[n].volx[VOLUME_BUFFER_SDF] != ~0u){
-		//++(*ph);
 		pls->push_back(n);
-
         return; //true: stop
 	}
 	//float3 tm = 0.5f*(t0+t1);
@@ -329,7 +327,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
         float4 ro1 = ro.get(i)-ce+ce.splat<3>();
         float4 rd1 = rd.get(i);
         float4 scaabbmin = float4::zero();
-        float4 scaabbmax = float4(2.0f)*ce.splat<3>();
+        float4 scaabbmax = 2.0f*ce.splat<3>();
 
         dfloat3 ros = dfloat3(ro1);
         dfloat3 rds = dfloat3(rd1);
@@ -372,21 +370,22 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 	/*rc = ro;
 	for(ll){
 		if(tr0[i] > 0.0f){
-			d0 = distance(tr0[i]);
+			//if outside the next leaf...
+			d0 = distance(tr0[i]); //...get the distance at the leaf intersection...
 			if(d0 > 0.0f)
-				rc = tr0[i]; //if outside the volume and leaf, skip empty space
+				rc = tr0[i]; //...and skip the empty space if outside the surface (approaching the volume from outside)
 		}
 		for(woodcock){
             rc += r*rd; //sample random position
 			if(rc > tr1[i]){
-                //region after the current leaf (region skipped, move on to next one)
+                //region after the current leaf (the region was skipped, move on to next one)
                 rc = tr1[i];
 				break;
 			}
             if(rc < tr0[i]){
-                //region before the leaf
+                //region before the leaf (inside the volume)
                 rho = 1; //uniform density
-                rm = 0; //ready
+                rm = 0; //ready: sample this location
 				break;
             }else{
                 //region inside the leaf
@@ -516,13 +515,6 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
             lc.v[0] = sfloat1::Or(sfloat1::And(lt,c.splat<0>()),sfloat1::AndNot(lt,lc.v[0]));
             lc.v[1] = sfloat1::Or(sfloat1::And(lt,c.splat<1>()),sfloat1::AndNot(lt,lc.v[1]));
             lc.v[2] = sfloat1::Or(sfloat1::And(lt,c.splat<2>()),sfloat1::AndNot(lt,lc.v[2]));
-
-            /*float4 c = float4::load(&pkernel->plights[i].color);
-            sfloat1 dd = sfloat4::dot3(rd,sfloat4(float4::load(&pkernel->plights[i].direction)));
-
-            lc.v[0] = sfloat1::Or(sfloat1::And(lt,c.splat<0>()),sfloat1::AndNot(lt,lc.v[0]));
-            lc.v[1] = sfloat1::Or(sfloat1::And(lt,c.splat<1>()),sfloat1::AndNot(lt,lc.v[1]));
-            lc.v[2] = sfloat1::Or(sfloat1::And(lt,c.splat<2>()),sfloat1::AndNot(lt,lc.v[2]*1.0f/0.02f*(dd-0.98f)));*/
         }
 
         //skylighting
@@ -574,11 +566,6 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 		}
         ca.v[3] = sfloat1::zero();
 
-        /*sfloat1 tcm = sfloat1::Less(rd.v[2],sfloat1::zero());
-        ca.v[0] = sfloat1::Or(sfloat1::And(tcm,sfloat1(1.0f)),sfloat1::AndNot(tcm,ca.v[0]));
-        ca.v[1] = sfloat1::Or(sfloat1::And(tcm,sfloat1(1.0f)),sfloat1::AndNot(tcm,ca.v[1]));
-        ca.v[2] = sfloat1::Or(sfloat1::And(tcm,sfloat1(0.8f)),sfloat1::AndNot(tcm,ca.v[2]));*/
-
         sfloat4 ll = lc+ca;
 
         if(r < pkernel->scattevs && sfloat1::AnyTrue(sfloat1::EqualR(rm,zr))){
@@ -615,21 +602,14 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
             c.v[0] += sfloat1::Or(sfloat1::And(rm,ll.v[0]),sfloat1::AndNot(rm,cm.v[0]));
             c.v[1] += sfloat1::Or(sfloat1::And(rm,ll.v[1]),sfloat1::AndNot(rm,cm.v[1]));
             c.v[2] += sfloat1::Or(sfloat1::And(rm,ll.v[2]),sfloat1::AndNot(rm,cm.v[2]));
-            //c.v[3] += sfloat1::Or(sfloat1::And(rm,ll.v[3]),sfloat1::AndNot(rm,cm.v[3]));
             c.v[3] += sfloat1::one();
         }else if(!(pkernel->flags & RENDER_TRANSPARENT) || r > 0){
-            /*c.v[0] += sfloat1::Or(sfloat1::And(rm,ll.v[0]),sfloat1::AndNot(rm,zr));
-            c.v[1] += sfloat1::Or(sfloat1::And(rm,ll.v[1]),sfloat1::AndNot(rm,zr));
-            c.v[2] += sfloat1::Or(sfloat1::And(rm,ll.v[2]),sfloat1::AndNot(rm,zr));*/
             c.v[0] += sfloat1::Or(sfloat1::And(rm,ll.v[0]),sfloat1::AndNot(rm,zr));
             c.v[1] += sfloat1::Or(sfloat1::And(rm,ll.v[1]),sfloat1::AndNot(rm,zr));
             c.v[2] += sfloat1::Or(sfloat1::And(rm,ll.v[2]),sfloat1::AndNot(rm,zr));
             c.v[3] += sfloat1::one();
-            //c.v[3] += sfloat1::Or(sfloat1::And(rm,ll.v[3]),sfloat1::AndNot(rm,zr));
 		}
 	}
-
-    //c.v[3] = sfloat1((float)samples); //Do not divide by samples here. External script handles the division.
 
 	for(uint i = 0; i < BLCLOUD_VSIZE; ++i)
 		ls.ls[r][i].clear();
