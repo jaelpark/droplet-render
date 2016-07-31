@@ -32,12 +32,8 @@ class Octree{
 public:
 	Octree(uint);
 	~Octree();
-	//void BuildPath(FXMVECTOR, FXMVECTOR, FXMVECTOR, uint, uint, uint *, uint *, OctreeStructure *);
-    //void BuildPath(const float4 &, const float4 &, const float4 &, const float4 &, uint, uint, uint *, uint *, Octree *, OctreeStructure *);
-    //void BuildPath(const float4 &, const float4 &, const float4 &, const float4 &, const float4 &, uint, uint, uint *, uint *, Octree *, OctreeStructure *);
-    void BuildPath(const float4 &, const float4 &, const float4 &, const float4 &, uint, uint, std::atomic<uint> *, std::atomic<uint> *, Octree *, OctreeStructure *);
+	void BuildPath(const float4 &, const float4 &, const float4 &, const float4 &, uint, uint, std::atomic<uint> *, std::atomic<uint> *, Octree *, OctreeStructure *);
     void BuildPath(const float4 &, const float4 &, const float4 &, const float4 &, const float4 &, uint, uint, std::atomic<uint> *, std::atomic<uint> *, Octree *, OctreeStructure *);
-	//void DeleteChildren(Octree *);
 	Octree *pch[8];
 	uint x; //node index
     std::atomic_flag lock; //MT node write-access
@@ -63,9 +59,10 @@ class NodeTree;
 
 class ParticleSystem{
 public:
-    ParticleSystem();
+    ParticleSystem(Node::NodeTree *);
     ~ParticleSystem();
     static void DeleteAll();
+	class Node::NodeTree *pnt;
     std::vector<dfloat3> vl;
     static std::vector<ParticleSystem *> prss;
 };

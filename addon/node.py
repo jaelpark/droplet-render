@@ -198,7 +198,7 @@ class ClNodeSurfaceOutput(bpy.types.Node):
 	def init(self, context):
 		#TODO: 3d space to surface node: using sdf gradients, get the closest surface point and convert to texc
 		#self.inputs.new("ClNodeShaderSocket","Shader");
-		self.inputs.new("ClNodeFogSocket","Advection"); #static advection - gridless maybe later
+		self.inputs.new("ClNodeFogSocket","Fog");
 		self.inputs.new("ClNodeSurfaceSocket","Surface.Field");
 		self.inputs.new("ClNodeSurfaceSocket","Surface");
 

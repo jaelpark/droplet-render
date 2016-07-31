@@ -213,7 +213,8 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
         PyObject *ppsl = PyObject_CallMethod(ppro,"values","");
         uint prc = PyList_Size(ppsl);
         for(uint j = 0; j < prc; ++j){
-            ParticleSystem *pprs = new ParticleSystem(); //TODO: reserve() the vector size
+			std::unordered_map<Py_hash_t, Node::NodeTree *>::const_iterator m = ntm.begin();
+            ParticleSystem *pprs = new ParticleSystem(m->second); //TODO: reserve() the vector size
 
             PyObject *pps = PyList_GetItem(ppsl,j);
             PyObject *ppr = PyObject_GetAttrString(pps,"particles");

@@ -121,7 +121,7 @@ class ParticleInput : public BaseFogNode1, public IParticleInput{
 public:
 	ParticleInput(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), IParticleInput(_level,pnt){
         //
-        //DebugPrintf(">> SurfaceInput()\n");
+        DebugPrintf(">> ParticleInput()\n");
     }
 
     ~ParticleInput(){
@@ -131,8 +131,6 @@ public:
     void Evaluate(const void *pp){
 		InputNodeParams<ParticleSystem> *pd = (InputNodeParams<ParticleSystem>*)pp;
 		ParticleSystem *pps = std::get<INP_OBJECT>(*pd);
-
-		//BaseValueNode<int> *pdiff = dynamic_cast<BaseValueNode<int>*>(pnodes[IParticleInput::INPUT_DIFFUSION]);
 
 		openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
 		pdgrid->setTransform(pgridtr);
@@ -147,30 +145,26 @@ public:
 		openvdb::FloatGrid::Accessor grida = ptgrid->getAccessor();
 		for(uint i = 0; i < pps->vl.size(); ++i){
 			openvdb::Vec3d t(pps->vl[i].x,pps->vl[i].y,pps->vl[i].z);
-			openvdb::Vec3f c = pgridtr1->worldToIndex(t); //assume cell-centered indices
-			openvdb::Vec3f f;
-
-			float4 sf = float4::floor(float4::load(c.asPointer())-0.5f);
-			float4::store(f.asPointer(),sf);
+			openvdb::Vec3d c = pgridtr1->worldToIndex(t); //assume cell-centered indices
+			openvdb::Vec3d f = openvdb::Vec3d(floorf(c.x()-0.5f),floorf(c.y()-0.5f),floorf(c.z()-0.5f));
 			openvdb::Vec3f b = c-f;
 
+			//TODO: particle weight factor
 			openvdb::Coord q((int)f.x(),(int)f.y(),(int)f.z());
-			grida.setValue(q.offsetBy(0,0,0),(1.0f-b.x())*(1.0f-b.y())*(1.0f-b.z()));
-			grida.setValue(q.offsetBy(1,0,0),b.x()*(1.0f-b.y())*(1.0f-b.z()));
-			grida.setValue(q.offsetBy(0,1,0),(1.0f-b.x())*b.y()*(1.0f-b.z()));
-			grida.setValue(q.offsetBy(1,1,0),b.x()*b.y()*(1.0f-b.z()));
-			grida.setValue(q.offsetBy(0,0,1),(1.0f-b.x())*(1.0f-b.y())*b.z());
-			grida.setValue(q.offsetBy(1,0,1),b.x()*(1.0f-b.y())*b.z());
-			grida.setValue(q.offsetBy(0,1,1),(1.0f-b.x())*b.y()*b.z());
-			grida.setValue(q.offsetBy(1,1,1),b.x()*b.y()*b.z());
+			grida.modifyValue(q.offsetBy(0,0,0),[&](float &v){v += (1.0f-b.x())*(1.0f-b.y())*(1.0f-b.z());});
+			grida.modifyValue(q.offsetBy(1,0,0),[&](float &v){v += b.x()*(1.0f-b.y())*(1.0f-b.z());});
+			grida.modifyValue(q.offsetBy(0,1,0),[&](float &v){v += (1.0f-b.x())*b.y()*(1.0f-b.z());});
+			grida.modifyValue(q.offsetBy(1,1,0),[&](float &v){v += b.x()*b.y()*(1.0f-b.z());});
+			grida.modifyValue(q.offsetBy(0,0,1),[&](float &v){v += (1.0f-b.x())*(1.0f-b.y())*b.z();});
+			grida.modifyValue(q.offsetBy(1,0,1),[&](float &v){v += b.x()*(1.0f-b.y())*b.z();});
+			grida.modifyValue(q.offsetBy(0,1,1),[&](float &v){v += (1.0f-b.x())*b.y()*b.z();});
+			grida.modifyValue(q.offsetBy(1,1,1),[&](float &v){v += b.x()*b.y()*b.z();});
 		}
 
 		DebugPrintf("> Upsampling particle fog...\n");
 
 		//upsample the result
-		openvdb::Mat4R tr = pgridtr->baseMap()->getAffineMap()->getMat4()*pgridtr1->baseMap()->getAffineMap()->getMat4().inverse();
-		openvdb::tools::GridTransformer gt(tr);
-		gt.transformGrid<openvdb::tools::BoxSampler,openvdb::FloatGrid>(*ptgrid,*pdgrid);
+		openvdb::tools::resampleToMatch<openvdb::tools::BoxSampler>(*ptgrid,*pdgrid);
     }
 };
 
@@ -532,9 +526,9 @@ void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &c1, const
 
     BoundingBox aabb1(c1,e1);
 
-    float4 ee = float4(0.5f)*e;
+    float4 ee = 0.5f*e;
     for(uint i = 0; i < 8; ++i){
-        float4 sv = float4(2.0f)*float4((float)(i%2),(float)((i/2)%2),(float)(i/4),0.0f)-float4::one();
+        float4 sv = 2.0f*float4((float)(i%2),(float)((i/2)%2),(float)(i/4),0.0f)-float4::one();
         float4 cc = c+sv*ee;
         BoundingBox aabb(cc,ee);
 
@@ -568,9 +562,9 @@ void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &v0, const
         return;
     }//else pob[x].volx = ~0;
 
-    float4 ee = float4(0.5f)*e;
+    float4 ee = 0.5f*e;
     for(uint i = 0; i < 8; ++i){
-        float4 sv = float4(2.0f)*float4((float)(i%2),(float)((i/2)%2),(float)(i/4),0.0f)-float4::one();
+        float4 sv = 2.0f*float4((float)(i%2),(float)((i/2)%2),(float)(i/4),0.0f)-float4::one();
         float4 cc = c+sv*ee;
         BoundingBox aabb(cc,ee);
 
@@ -623,9 +617,6 @@ protected:
 static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr *pgrid, OctreeStructure **pob, uint *pindex, uint *pleafx){
     openvdb::math::Transform::Ptr pgridtr = openvdb::math::Transform::createLinearTransform(s);
     *pgrid = 0;
-    /**pgrid = openvdb::FloatGrid::create();
-    (*pgrid)->setGridClass(openvdb::GRID_LEVEL_SET);
-    (*pgrid)->setTransform(pgridtr);*/
 
     float4 scaabbmin = float4(FLT_MAX);
     float4 scaabbmax = -scaabbmin;
@@ -636,12 +627,11 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr *pgrid, OctreeS
     std::vector<duint4> ql;
     uint vca = 0;
 
-    //TODO: Evaluate field generators here. Implement NodeTree::AddBranchMask() (recursive post process to add bitmask for output node children)
-    //to mask off every other input except "Field".
+	std::vector<BoundingBox> fogbvs;
 
     for(uint i = 0; i < SceneObject::objs.size(); ++i){
 		Node::InputNodeParams<SceneObject> snp(SceneObject::objs[i],pgridtr);
-        SceneObject::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOG|1<<Node::OutputNode::INPUT_SURFACE);
+		SceneObject::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_SURFACE);
 
         //dynamic cast to BaseSurfaceNode1 - getting empty
         Node::BaseSurfaceNode1 *pdsn = dynamic_cast<Node::BaseSurfaceNode1*>(SceneObject::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_SURFACE]);
@@ -683,18 +673,42 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr *pgrid, OctreeS
         //TODO: get also the field sdf here, if available.
     }
 
-	//TODO: create node system for particles? Dilate/Smooth/Erode etc nodes.
-	//Particle systems probably need their material reference and node tree.
-	//Alternatively, define additional input node type: ParticleInput (along SurfaceInput). User can then decice wether he creates sdf or fog volume
-	/*for(uint i = 0; i < ParticleSystem::prss.size(); ++i){
-		//
-		for(uint j = 0; j < ParticleSystem::prss[i]->vl.size(); ++j){
-			//
-		}
-	}*/
+	//Particle systems probably need their own material reference and node tree.
+	for(uint i = 0; i < ParticleSystem::prss.size(); ++i){
+		Node::InputNodeParams<ParticleSystem> snp(ParticleSystem::prss[i],pgridtr);
+        ParticleSystem::prss[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOG);
 
-    float4 c = float4(0.5f)*(scaabbmax+scaabbmin);
-    float4 e = float4(0.5f)*(scaabbmax-scaabbmin);
+		Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(ParticleSystem::prss[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOG]);
+		{ //TODO: check if not empty
+			for(openvdb::FloatGrid::TreeType::LeafCIter m = pdfn->pdgrid->tree().cbeginLeaf(); m; ++m){
+				const openvdb::FloatGrid::TreeType::LeafNodeType *pl = m.getLeaf();
+
+				openvdb::math::CoordBBox bbox;// = pl->getNodeBoundingBox();
+				pl->evalActiveBoundingBox(bbox);
+
+				openvdb::math::Coord bdim = bbox.dim();
+				openvdb::Vec3s dimi = bdim.asVec3s(); //index-space dimension
+				openvdb::Vec3s extw = 0.5f*dimi*s; //pgrid1->transform().indexToWorld(dimi);
+
+				openvdb::Vec3d posi = bbox.getCenter();
+				openvdb::Vec3d posw = pdfn->pdgrid->transformPtr()->indexToWorld(posi);
+
+				BoundingBox aabb;
+				aabb.sc = dfloat3(posw.x(),posw.y(),posw.z());
+				aabb.se = dfloat3(extw.x(),extw.y(),extw.z());
+
+				fogbvs.push_back(aabb);
+
+				float4 c = float4::load(&aabb.sc);
+				float4 e = float4::load(&aabb.se);
+				scaabbmin = float4::min(c-e,scaabbmin);
+                scaabbmax = float4::max(c+e,scaabbmax);
+			}
+		}
+	}
+
+    float4 c = 0.5f*(scaabbmax+scaabbmin);
+    float4 e = 0.5f*(scaabbmax-scaabbmin);
 
     BoundingBox scaabb(c,e);
     float4 a = float4::max(float4::max(e.splat<0>(),e.splat<1>()),e.splat<2>());
@@ -705,8 +719,7 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr *pgrid, OctreeS
     float r = powf(2.0f,(float)mlevel)*N; //sparse voxel resolution
     //The actual voxel size is now v = d/(2^k*N), where k is the octree depth.
 
-    DebugPrintf("Center = (%f, %f, %f)\nExtents = (%f, %f, %f) (max w = %f)\n",
-        scaabb.sc.x,scaabb.sc.y,scaabb.sc.z,scaabb.se.x,scaabb.se.y,scaabb.se.z,d);
+    DebugPrintf("Center = (%f, %f, %f)\nExtents = (%f, %f, %f) (max w = %f)\n",scaabb.sc.x,scaabb.sc.y,scaabb.sc.z,scaabb.se.x,scaabb.se.y,scaabb.se.z,d);
     DebugPrintf("> Constructing octree (depth = %u, voxel = %f, sparse res = %u^3)...\n",mlevel,d/r,(uint)r);
 
 #define BLCLOUD_MAXNODES 500000 //there should be some user-defined limit here or some way to estimate this
@@ -748,13 +761,21 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr *pgrid, OctreeS
         }
     });
 
+	tbb::parallel_for(tbb::blocked_range<size_t>(0,fogbvs.size()),[&](const tbb::blocked_range<size_t> &nr){
+        for(uint i = nr.begin(); i < nr.end(); ++i){
+			float4 c1 = float4::load(&fogbvs[i].sc);
+			float4 e1 = float4::load(&fogbvs[i].se);
+            proot->BuildPath(c,a,c1,e1,0,mlevel,&indexa,&leafxa,proot,*pob);
+        }
+    });
+
     _mm_free(proot);
 
     *pindex = indexa;
     *pleafx = leafxa;
 }
 
-ParticleSystem::ParticleSystem(){
+ParticleSystem::ParticleSystem(Node::NodeTree *_pnt) : pnt(_pnt){
     ParticleSystem::prss.push_back(this);
 }
 
@@ -971,7 +992,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 		for(uint i = nr.begin(); i < nr.end(); ++i){
             if(pob[i].volx == ~0u)
 				continue;
-            float4 nc = float4::load((dfloat4*)&pob[i].ce);
+            float4 nc = float4::load(&pob[i].ce);
             float4 ne = nc.splat<3>();
             //
             for(uint j = 0; j < uN*uN*uN; ++j){
@@ -979,7 +1000,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
                 float4 nw = nc-ne*nn;
 
 				openvdb::Vec3f posw;
-                float4::store((dfloat3*)&posw,nw);
+                float4::store((dfloat3*)posw.asPointer(),nw);
 
 /*#ifdef BLCLOUD_FOGVOLUME
 				float d0 = samplerd.wsSample(posw);
