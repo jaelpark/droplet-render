@@ -608,9 +608,10 @@ protected:
 	openvdb::Real vscale;
 };*/
 
-static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr *pgrid, Scene *pscene){
+static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT], Scene *pscene){
     openvdb::math::Transform::Ptr pgridtr = openvdb::math::Transform::createLinearTransform(s);
-    *pgrid = 0;
+	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
+		pgrid[i] = 0;
 
     float4 scaabbmin = float4(FLT_MAX);
     float4 scaabbmax = -scaabbmin;
@@ -651,9 +652,9 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr *pgrid, Scene *
 
             vca += vl.size();
 
-            if(*pgrid)
-               openvdb::tools::csgUnion(**pgrid,*ptgrid);
-            else *pgrid = ptgrid;
+            if(pgrid[VOLUME_BUFFER_SDF])
+               openvdb::tools::csgUnion(*pgrid[VOLUME_BUFFER_SDF],*ptgrid);
+            else pgrid[VOLUME_BUFFER_SDF] = ptgrid;
         }
 
         /*Node::BaseSurfaceNode1 *pdfn = dynamic_cast<Node::BaseSurfaceNode1*>(SceneObject::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FIELD]);
@@ -698,6 +699,11 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr *pgrid, Scene *
 				scaabbmin = float4::min(c-e,scaabbmin);
                 scaabbmax = float4::max(c+e,scaabbmax);
 			}
+
+			/*if(pgrid[VOLUME_BUFFER_FOG])
+				openvdb::tools::compSum(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
+			else pgrid[VOLUME_BUFFER_FOG] = pdfn->pdgrid;*/
+			pgrid[VOLUME_BUFFER_FOG] = pdfn->pdgrid;
 		}
 	}
 
@@ -817,14 +823,14 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 
     const float lff = 4.0f; //levelset offset (narrow band voxels counting from the surface)
 
-    openvdb::FloatGrid::Ptr pgrid = 0;
+    openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT] = {0};
     openvdb::io::File vdbc = openvdb::io::File("/tmp/droplet-fileid.vdb");
     try{
         if(cm != SCENE_CACHE_READ)
             throw(0);
 
         vdbc.open(false);
-        pgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(vdbc.readGrid("surface-levelset"));
+        pgrid[VOLUME_BUFFER_SDF] = openvdb::gridPtrCast<openvdb::FloatGrid>(vdbc.readGrid("surface-levelset"));
         vdbc.close();
 
         {
@@ -848,11 +854,11 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
         }
 
         //S_Create(pvl,ptl,s,lff,&pgrid,&pob,&index,&leafx);
-        S_Create(s,lff,&pgrid,this);
-        pgrid->setName("surface-levelset");
+        S_Create(s,lff,pgrid,this);
+        pgrid[VOLUME_BUFFER_SDF]->setName("surface-levelset");
 
         if(cm == SCENE_CACHE_WRITE){
-            openvdb::GridCPtrVec gvec{pgrid}; //include the fog grid also
+            openvdb::GridCPtrVec gvec{pgrid[VOLUME_BUFFER_SDF]}; //include the fog grid also
             vdbc.write(gvec);
             vdbc.close();
 
@@ -872,7 +878,8 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 	//openvdb::FloatGrid::ConstAccessor
 	//openvdb::tools::GridSampler<openvdb::FloatGrid::ConstAccessor, openvdb::tools::BoxSampler> fsampler(pgrid->getConstAccessor(),pgrid->transform());
 
-    openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler> samplerd(*pgrid); //non-cached, thread safe version
+    openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler> samplerd(*pgrid[VOLUME_BUFFER_SDF]); //non-cached, thread safe version
+	openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler> samplerf(*pgrid[VOLUME_BUFFER_FOG]);
 
     //float4 nv = float4(N);
     const uint uN = BLCLOUD_uN;
@@ -887,7 +894,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 
 		for(uint i = nr.begin(); i < nr.end(); ++i){
             if(pob[i].volx[VOLUME_BUFFER_SDF] == ~0u && pob[i].volx[VOLUME_BUFFER_FOG] == ~0u)
-				continue;
+				continue; //not a leaf; exit early
 			//
             float4 nc = float4::load(&pob[i].ce);
             float4 ne = nc.splat<3>();
@@ -902,33 +909,15 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 				openvdb::Vec3f posw;
                 float4::store((dfloat3*)posw.asPointer(),nw);
 
-/*#ifdef BLCLOUD_FOGVOLUME
-				float d0 = samplerd.wsSample(posw);
-				float p0 = samplerf.wsSample(posw);
-
-				pvol[pob[i].volx].pvol[0][j] = d0 < s?d0:(p0 > 0.0f?s:d0);
-				pvol[pob[i].volx].pvol[1][j] = (pvol[pob[i].volx].pvol[0][j] <= 0.0f)?1.0f:p0;
-				pob[i].pmax = openvdb::math::Max(pob[i].pmax,pvol[pob[i].volx].pvol[1][j]);
-#else
-                pvol[pob[i].volx].pvol[0][j] = samplerd.wsSample(posw);//samplerd.wsSample(posw);
-				pvol[pob[i].volx].pvol[1][j] = (pvol[pob[i].volx].pvol[0][j] <= 0.0f); //-1.0f
-				pob[i].pmax = openvdb::math::Max(pob[i].pmax,pvol[pob[i].volx].pvol[1][j]);
-#endif*/
 				if(pob[i].volx[VOLUME_BUFFER_SDF] != ~0u){
 	                pbuf[VOLUME_BUFFER_SDF][pob[i].volx[VOLUME_BUFFER_SDF]].pvol[j] = samplerd.wsSample(posw);
 					pob[i].qval[VOLUME_BUFFER_SDF] = openvdb::math::Min(pob[i].qval[VOLUME_BUFFER_SDF],pbuf[VOLUME_BUFFER_SDF][pob[i].volx[VOLUME_BUFFER_SDF]].pvol[j]);
 				}
 
 				if(pob[i].volx[VOLUME_BUFFER_FOG] != 0u){
-					pbuf[VOLUME_BUFFER_FOG][pob[i].volx[VOLUME_BUFFER_FOG]].pvol[j] = 0.0f;
+					pbuf[VOLUME_BUFFER_FOG][pob[i].volx[VOLUME_BUFFER_FOG]].pvol[j] = samplerf.wsSample(posw);
 					pob[i].qval[VOLUME_BUFFER_FOG] = openvdb::math::Max(pob[i].qval[VOLUME_BUFFER_FOG],pbuf[VOLUME_BUFFER_FOG][pob[i].volx[VOLUME_BUFFER_FOG]].pvol[j]);
 				}
-
-				/*pvol[pob[i].volx].pvol[0][j] = samplerd.wsSample(posw);
-				pvol[pob[i].volx].pvol[1][j] = (pvol[pob[i].volx].pvol[0][j] <= 0.0f); //-1.0f
-				pob[i].pmax = openvdb::math::Max(pob[i].pmax,pvol[pob[i].volx].pvol[1][j]);*/
-
-                //TODO: find max value and store this with other leaf params. Evaluate density at the given posw.
 			}
 		}
 	});
