@@ -918,7 +918,7 @@ public:
     }
 
     sint1(int x, int y, int z, int w){
-        v = _mm_set_epi32(w,y,z,x);
+        v = _mm_set_epi32(w,z,y,x);
     }
 
     sint1(const sfloat1 &s);
@@ -940,7 +940,7 @@ public:
         return v;
     }
 
-    static sint1 convert(const sfloat1 &s){
+    static inline sint1 convert(const sfloat1 &s){
         return _mm_cvttps_epi32(s.v);
     }
 
@@ -964,6 +964,14 @@ public:
         v = _mm_sub_epi32(v,s.v);
     }
 
+	static inline sint1 mask(int m){
+		return _mm_set_epi32(
+			m & (1<<3)?-1:0,
+			m & (1<<2)?-1:0,
+			m & (1<<1)?-1:0,
+			m & (1<<0)?-1:0);
+	}
+
     static inline sint1 Equal(const sint1 &a, const sint1 &b){
         return _mm_cmpeq_epi32(a.v,b.v);
     }
@@ -979,9 +987,7 @@ public:
     }*/
 
     static inline sint1 Less(const sint1 &a, const sint1 &b){
-        sint1 r;
-        r.v = _mm_cmplt_epi32(a.v,b.v);
-        return r;
+		return _mm_cmplt_epi32(a.v,b.v);
     }
 
     /*static inline sint1 LessOrEqual(const sint1 &a, const sint1 &b){
