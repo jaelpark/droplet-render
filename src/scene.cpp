@@ -892,9 +892,19 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 	tbb::parallel_for(tbb::blocked_range<size_t>(0,index),[&](const tbb::blocked_range<size_t> &nr){
         //FastGridSampler &ffs = fsampler.local();
 
+		openvdb::Vec3f posw;
 		for(uint i = nr.begin(); i < nr.end(); ++i){
-            if(pob[i].volx[VOLUME_BUFFER_SDF] == ~0u && pob[i].volx[VOLUME_BUFFER_FOG] == ~0u)
-				continue; //not a leaf; exit early
+			if(pob[i].volx[VOLUME_BUFFER_SDF] == ~0u){
+				if(pob[i].volx[VOLUME_BUFFER_FOG] == ~0u)
+					continue; //not a leaf; exit early
+				float d = samplerd.wsSample(*(openvdb::Vec3f*)&pob[i].ce);
+				if(d < 0.0f){
+					//If the fog leaf is completely inside the sdf surface (no overlapping sdf leaf -> volx == ~0u),
+					//remove it. It's useless there, and it causes incorrect space skipping.
+					pob[i].volx[VOLUME_BUFFER_FOG] = ~0u;
+					continue;
+				}
+			}
 			//
             float4 nc = float4::load(&pob[i].ce);
             float4 ne = nc.splat<3>();
@@ -903,10 +913,8 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 			pob[i].qval[VOLUME_BUFFER_FOG] = 0.0f;
 			//
             for(uint j = 0; j < uN*uN*uN; ++j){
-                float4 nn = (nv-float4(2.0f)*float4((float)(j%uN),(float)((j/uN)%uN),(float)(j/(uN*uN)),1.0f)-float4::one())/(nv-float4::one());
+                float4 nn = (nv-2.0f*float4((float)(j%uN),(float)((j/uN)%uN),(float)(j/(uN*uN)),1.0f)-float4::one())/(nv-float4::one());
                 float4 nw = nc-ne*nn;
-
-				openvdb::Vec3f posw;
                 float4::store((dfloat3*)posw.asPointer(),nw);
 
 				if(pob[i].volx[VOLUME_BUFFER_SDF] != ~0u){
