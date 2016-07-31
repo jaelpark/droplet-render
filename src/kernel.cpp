@@ -142,16 +142,16 @@ inline float SampleVoxelSpace(const float4 &p, LeafVolume *pvol, const float4 &c
     //Safe-guard to clamp indices. There's a rare case where indices go out bounds.
     nc = float4::max(float4::min(nc,float4(BLCLOUD_uN-1)),float4(0));
     nf = float4::max(float4::min(nf,float4(BLCLOUD_uN-1)),float4(0));
-	
+
     duint3 a = duint3((uint)nf.get<0>(),(uint)nf.get<1>(),(uint)nf.get<2>());
     duint3 b = duint3((uint)nc.get<0>(),(uint)nc.get<1>(),(uint)nc.get<2>());
-	
+
     float4 ua = float4(pvol->pvol[a.z*BLCLOUD_uN*BLCLOUD_uN+a.y*BLCLOUD_uN+a.x],pvol->pvol[a.z*BLCLOUD_uN*BLCLOUD_uN+b.y*BLCLOUD_uN+a.x],
         pvol->pvol[b.z*BLCLOUD_uN*BLCLOUD_uN+a.y*BLCLOUD_uN+a.x],pvol->pvol[b.z*BLCLOUD_uN*BLCLOUD_uN+b.y*BLCLOUD_uN+a.x]); //([x0,y0,z0],[x0,y1,z0],[x0,y0,z1],[x0,y1,z1])
     float4 ub = float4(pvol->pvol[a.z*BLCLOUD_uN*BLCLOUD_uN+a.y*BLCLOUD_uN+b.x],pvol->pvol[a.z*BLCLOUD_uN*BLCLOUD_uN+b.y*BLCLOUD_uN+b.x],
         pvol->pvol[b.z*BLCLOUD_uN*BLCLOUD_uN+a.y*BLCLOUD_uN+b.x],pvol->pvol[b.z*BLCLOUD_uN*BLCLOUD_uN+b.y*BLCLOUD_uN+b.x]); //([x1,y0,z0],[x1,y1,z0],[x1,y0,z1],[x1,y1,z1])
     float4 u = float4::lerp(ua,ub,nl.splat<0>()); //([x,y0,z0],[x,y1,z0],[x,y0,z1],[x,y1,z1])
-	
+
     float4 va = u.swizzle<0,2,0,2>();
     float4 vb = u.swizzle<1,3,1,3>();
     float4 v = float4::lerp(va,vb,nl.splat<1>()); //([x,y,z0],[x,y,z1],-,-)
@@ -207,7 +207,7 @@ static void OctreeProcessSubtree(const dfloat3 &t0, const dfloat3 &t1, uint a, O
 	if(t1.x < 0.0f || t1.y < 0.0f || t1.z < 0.0f || (n == 0 && l > 0))
 		return;
 	//if(level == mlevel){... return;} //leaf, volume index != ~0
-    if(pob[n].volx != ~0u){
+    if(pob[n].volx[VOLUME_BUFFER_SDF] != ~0u){
 		//++(*ph);
 		pls->push_back(n);
 
@@ -286,7 +286,7 @@ inline sfloat4 HG_Sample(const sfloat4 &iv, sint4 *prs){
     sfloat1 ct = (1.0f+g*g-sq*sq)/(t*g);
     sfloat1 st = sfloat1::sqrt(sfloat1::max(1.0f-ct*ct,sfloat1::zero()));
     sfloat1 ph = 4.0f*XM_PI*RNG_Sample(prs);
-	
+
     sfloat4 b1, b2;
     SamplingBasis(iv,&b1,&b2);
     sfloat1 sph, cph;
@@ -318,7 +318,7 @@ inline sfloat4 L_Sample(const sfloat4 &iv, const sfloat1 &la, sint4 *prs){
 
 static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pkernel, sint4 *prs, ParallelLeafList &ls, uint r, uint samples){
 	OctreeStructure *pob = pkernel->pscene->pob;
-    LeafVolume *pvol = pkernel->pscene->pdsfb;
+    LeafVolume *pvol = pkernel->pscene->pbuf[VOLUME_BUFFER_SDF];
 
     __attribute__((aligned(16))) uint sgm[BLCLOUD_VSIZE]; //TODO: dfloatN class or something for these situations
     sfloat1::store((float*)sgm,gm);
@@ -398,7 +398,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 			}
 		}
 	}
-	
+
     //finally, sample with given density and position
 	sample();*/
 
@@ -440,10 +440,10 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
             sfloat1 sm = sfloat1::And(qm,sfloat1::Greater(tr0,zr));
             sfloat1 d0 = sfloat1(
-                sm.get<0>() != 0.0f?SampleVoxelSpace(r0.get(0),&pvol[pob[ls.GetLeaf(r,0,i)].volx],ce.get(0)):1.0f,
-                sm.get<1>() != 0.0f?SampleVoxelSpace(r0.get(1),&pvol[pob[ls.GetLeaf(r,1,i)].volx],ce.get(1)):1.0f,
-                sm.get<2>() != 0.0f?SampleVoxelSpace(r0.get(2),&pvol[pob[ls.GetLeaf(r,2,i)].volx],ce.get(2)):1.0f,
-                sm.get<3>() != 0.0f?SampleVoxelSpace(r0.get(3),&pvol[pob[ls.GetLeaf(r,3,i)].volx],ce.get(3)):1.0f);
+                sm.get<0>() != 0.0f?SampleVoxelSpace(r0.get(0),&pvol[pob[ls.GetLeaf(r,0,i)].volx[VOLUME_BUFFER_SDF]],ce.get(0)):1.0f,
+                sm.get<1>() != 0.0f?SampleVoxelSpace(r0.get(1),&pvol[pob[ls.GetLeaf(r,1,i)].volx[VOLUME_BUFFER_SDF]],ce.get(1)):1.0f,
+                sm.get<2>() != 0.0f?SampleVoxelSpace(r0.get(2),&pvol[pob[ls.GetLeaf(r,2,i)].volx[VOLUME_BUFFER_SDF]],ce.get(2)):1.0f,
+                sm.get<3>() != 0.0f?SampleVoxelSpace(r0.get(3),&pvol[pob[ls.GetLeaf(r,3,i)].volx[VOLUME_BUFFER_SDF]],ce.get(3)):1.0f);
             sm = sfloat1::And(sm,sfloat1::Greater(d0,zr));
 
             rc.v[0] = sfloat1::Or(sfloat1::And(sm,r0.v[0]),sfloat1::AndNot(sm,rc.v[0]));
@@ -484,10 +484,10 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
                 sh = sfloat1::And(sm,rm);
                 sfloat1 d = sfloat1(
-                    sh.get<0>() != 0.0f?SampleVoxelSpace(rc.get(0),&pvol[pob[ls.GetLeaf(r,0,i)].volx],ce.get(0)):1.0f,
-                    sh.get<1>() != 0.0f?SampleVoxelSpace(rc.get(1),&pvol[pob[ls.GetLeaf(r,1,i)].volx],ce.get(1)):1.0f,
-                    sh.get<2>() != 0.0f?SampleVoxelSpace(rc.get(2),&pvol[pob[ls.GetLeaf(r,2,i)].volx],ce.get(2)):1.0f,
-                    sh.get<3>() != 0.0f?SampleVoxelSpace(rc.get(3),&pvol[pob[ls.GetLeaf(r,3,i)].volx],ce.get(3)):1.0f);
+                    sh.get<0>() != 0.0f?SampleVoxelSpace(rc.get(0),&pvol[pob[ls.GetLeaf(r,0,i)].volx[VOLUME_BUFFER_SDF]],ce.get(0)):1.0f,
+                    sh.get<1>() != 0.0f?SampleVoxelSpace(rc.get(1),&pvol[pob[ls.GetLeaf(r,1,i)].volx[VOLUME_BUFFER_SDF]],ce.get(1)):1.0f,
+                    sh.get<2>() != 0.0f?SampleVoxelSpace(rc.get(2),&pvol[pob[ls.GetLeaf(r,2,i)].volx[VOLUME_BUFFER_SDF]],ce.get(2)):1.0f,
+                    sh.get<3>() != 0.0f?SampleVoxelSpace(rc.get(3),&pvol[pob[ls.GetLeaf(r,3,i)].volx[VOLUME_BUFFER_SDF]],ce.get(3)):1.0f);
                 rm = sfloat1::And(rm,sfloat1::Greater(d,zr));
 
                 /*sh = sfloat1::And(sm,rm);
@@ -524,7 +524,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
             lc.v[1] = sfloat1::Or(sfloat1::And(lt,c.splat<1>()),sfloat1::AndNot(lt,lc.v[1]));
             lc.v[2] = sfloat1::Or(sfloat1::And(lt,c.splat<2>()),sfloat1::AndNot(lt,lc.v[2]*1.0f/0.02f*(dd-0.98f)));*/
         }
-		
+
         //skylighting
         //sfloat1 th = sfloat1::acos(rd.v[2]); //add/remove abs to remove/get ground
         //sfloat1 ph = sfloat1::atan2(rd.v[0],rd.v[1]);

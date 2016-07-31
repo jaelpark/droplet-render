@@ -9,6 +9,12 @@ enum SCENE_CACHE_MODE{
     SCENE_CACHE_WRITE
 };
 
+enum VOLUME_BUFFER{
+	VOLUME_BUFFER_SDF,
+	VOLUME_BUFFER_FOG,
+	VOLUME_BUFFER_COUNT
+};
+
 class BoundingBox{
 public:
     BoundingBox();
@@ -24,7 +30,7 @@ struct OctreeStructure{ //GPU octree
 	//XMFLOAT3 c;
     dfloat4 ce; //(center.xyz,extent)
 	uint chn[8];
-	uint volx; //leaf volume index
+	uint volx[VOLUME_BUFFER_COUNT]; //leaf volume index
 	float pmax; //max density
 };
 
@@ -32,14 +38,13 @@ class Octree{
 public:
 	Octree(uint);
 	~Octree();
-	void BuildPath(const float4 &, const float4 &, const float4 &, const float4 &, uint, uint, std::atomic<uint> *, std::atomic<uint> *, Octree *, OctreeStructure *);
-    void BuildPath(const float4 &, const float4 &, const float4 &, const float4 &, const float4 &, uint, uint, std::atomic<uint> *, std::atomic<uint> *, Octree *, OctreeStructure *);
+	void BuildPath(const float4 &, const float4 &, const float4 &, const float4 &, uint, uint, std::atomic<uint> *, std::atomic<uint> *, Octree *, OctreeStructure *, VOLUME_BUFFER);
+    void BuildPath(const float4 &, const float4 &, const float4 &, const float4 &, const float4 &, uint, uint, std::atomic<uint> *, std::atomic<uint> *, Octree *, OctreeStructure *, VOLUME_BUFFER);
 	Octree *pch[8];
 	uint x; //node index
     std::atomic_flag lock; //MT node write-access
 };
 
-#ifdef BLCLOUD_CPU
 //CPU version works with array of volumes
 struct LeafVolume{
     float pvol[BLCLOUD_uN*BLCLOUD_uN*BLCLOUD_uN]; //pdst
@@ -51,7 +56,6 @@ struct LeafVolume{
        and the end of the voxel buffer array.
     */
 };
-#endif
 
 namespace Node{
 class NodeTree;
@@ -88,8 +92,7 @@ public:
 	//void BuildScene();
 	void Destroy();
 	OctreeStructure *pob;
-    LeafVolume *pdsfb; //-> psdfb, pfogb
-    LeafVolume *pfogb;
+    LeafVolume *pbuf[VOLUME_BUFFER_COUNT]; //-> psdfb, pfogb
     uint index;
     uint leafx;
     //uint octreesize;

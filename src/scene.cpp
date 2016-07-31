@@ -512,14 +512,14 @@ Octree::~Octree(){
 }
 
 //Some template setup to combine BoundingBox/Triangle cases?
-void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &c1, const float4 &e1, uint level, uint mlevel, std::atomic<uint> *pindex, std::atomic<uint> *pleafx, Octree *proot, OctreeStructure *pob){
+void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &c1, const float4 &e1, uint level, uint mlevel, std::atomic<uint> *pindex, std::atomic<uint> *pleafx, Octree *proot, OctreeStructure *pob, VOLUME_BUFFER bx){
     float4::store(&pob[x].ce,float4::select(c,e,float4::selectctrl(0,0,0,1)));
     pob[x].pmax = 0.0f;
 
     if(level >= mlevel-1){
         for(; lock.test_and_set(std::memory_order_acquire););
-        if(pob[x].volx == ~0u)
-            pob[x].volx = pleafx->fetch_add(1);//(*pleafx)++;
+        if(pob[x].volx[bx] == ~0u)
+            pob[x].volx[bx] = pleafx->fetch_add(1);//(*pleafx)++;
         lock.clear(std::memory_order_release);
         return;
     }//else pob[x].volx = ~0;
@@ -545,19 +545,19 @@ void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &c1, const
             }
             lock.clear(std::memory_order_release);
 
-            pch[i]->BuildPath(cc,ee,c1,e1,level+1,mlevel,pindex,pleafx,proot,pob);
+            pch[i]->BuildPath(cc,ee,c1,e1,level+1,mlevel,pindex,pleafx,proot,pob,bx);
         }
     }
 }
 
-void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &v0, const float4 &v1, const float4 &v2, uint level, uint mlevel, std::atomic<uint> *pindex, std::atomic<uint> *pleafx, Octree *proot, OctreeStructure *pob){
+void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &v0, const float4 &v1, const float4 &v2, uint level, uint mlevel, std::atomic<uint> *pindex, std::atomic<uint> *pleafx, Octree *proot, OctreeStructure *pob, VOLUME_BUFFER bx){
     float4::store(&pob[x].ce,float4::select(c,e,float4::selectctrl(0,0,0,1)));
     pob[x].pmax = 0.0f;
 
     if(level >= mlevel-1){
         for(; lock.test_and_set(std::memory_order_acquire););
-        if(pob[x].volx == ~0u)
-            pob[x].volx = pleafx->fetch_add(1);//(*pleafx)++;
+        if(pob[x].volx[bx] == ~0u)
+            pob[x].volx[bx] = pleafx->fetch_add(1);//(*pleafx)++;
         lock.clear(std::memory_order_release);
         return;
     }//else pob[x].volx = ~0;
@@ -580,7 +580,7 @@ void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &v0, const
             }
             lock.clear(std::memory_order_release);
 
-            pch[i]->BuildPath(cc,ee,v0,v1,v2,level+1,mlevel,pindex,pleafx,proot,pob);
+            pch[i]->BuildPath(cc,ee,v0,v1,v2,level+1,mlevel,pindex,pleafx,proot,pob,bx);
         }
     }
 }
@@ -732,16 +732,18 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr *pgrid, OctreeS
     memset(*pob,0,pobl);
 
     for(uint i = 0; i < pobl/sizeof(OctreeStructure); ++i)
-        (*pob)[i].volx = ~0u;
+		for(uint j = 0; j < VOLUME_BUFFER_COUNT; ++j)
+        	(*pob)[i].volx[j] = ~0u;
 
     std::atomic<uint> indexa(0);
-    std::atomic<uint> leafxa(0);
+    std::atomic<uint> leafxa(0); //sdf
+	std::atomic<uint> leafxb(0); //fog
     tbb::parallel_for(tbb::blocked_range<size_t>(0,tl.size()),[&](const tbb::blocked_range<size_t> &nr){
         for(uint i = nr.begin(); i < nr.end(); ++i){
             float4 v0 = float4::load(&vl[tl[i].x]);
             float4 v1 = float4::load(&vl[tl[i].y]);
             float4 v2 = float4::load(&vl[tl[i].z]);
-            proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,proot,*pob);
+            proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,proot,*pob,VOLUME_BUFFER_SDF);
         }
     });
 
@@ -752,12 +754,12 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr *pgrid, OctreeS
             v0 = float4::load(&vl[ql[i].x]);
             v1 = float4::load(&vl[ql[i].y]);
             v2 = float4::load(&vl[ql[i].z]);
-            proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,proot,*pob);
+            proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,proot,*pob,VOLUME_BUFFER_SDF);
 
             v0 = float4::load(&vl[ql[i].z]);
             v1 = float4::load(&vl[ql[i].w]);
             v2 = float4::load(&vl[ql[i].x]);
-            proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,proot,*pob);
+            proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,proot,*pob,VOLUME_BUFFER_SDF);
         }
     });
 
@@ -765,7 +767,7 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr *pgrid, OctreeS
         for(uint i = nr.begin(); i < nr.end(); ++i){
 			float4 c1 = float4::load(&fogbvs[i].sc);
 			float4 e1 = float4::load(&fogbvs[i].se);
-            proot->BuildPath(c,a,c1,e1,0,mlevel,&indexa,&leafxa,proot,*pob);
+            proot->BuildPath(c,a,c1,e1,0,mlevel,&indexa,&leafxb,proot,*pob,VOLUME_BUFFER_FOG);
         }
     });
 
@@ -968,8 +970,8 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 
 	DebugPrintf("> Resampling volume data...\n");
 
-    pdsfb = new LeafVolume[leafx];
-    pfogb = 0;
+    pbuf[VOLUME_BUFFER_SDF] = new LeafVolume[leafx];
+    pbuf[VOLUME_BUFFER_FOG] = new LeafVolume[1];
 	//openvdb::FloatGrid::ConstAccessor
 	//openvdb::tools::GridSampler<openvdb::FloatGrid::ConstAccessor, openvdb::tools::BoxSampler> fsampler(pgrid->getConstAccessor(),pgrid->transform());
 
@@ -990,7 +992,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
         //FastGridSampler &ffs = fsampler.local();
 
 		for(uint i = nr.begin(); i < nr.end(); ++i){
-            if(pob[i].volx == ~0u)
+            if(pob[i].volx[VOLUME_BUFFER_SDF] == ~0u)
 				continue;
             float4 nc = float4::load(&pob[i].ce);
             float4 ne = nc.splat<3>();
@@ -1014,7 +1016,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 				pvol[pob[i].volx].pvol[1][j] = (pvol[pob[i].volx].pvol[0][j] <= 0.0f); //-1.0f
 				pob[i].pmax = openvdb::math::Max(pob[i].pmax,pvol[pob[i].volx].pvol[1][j]);
 #endif*/
-                pdsfb[pob[i].volx].pvol[j] = samplerd.wsSample(posw);
+                pbuf[VOLUME_BUFFER_SDF][pob[i].volx[VOLUME_BUFFER_SDF]].pvol[j] = samplerd.wsSample(posw);
 
 				/*pvol[pob[i].volx].pvol[0][j] = samplerd.wsSample(posw);
 				pvol[pob[i].volx].pvol[1][j] = (pvol[pob[i].volx].pvol[0][j] <= 0.0f); //-1.0f
@@ -1033,6 +1035,7 @@ void Scene::Destroy(){
 #if 0
 	_aligned_free(pvolume);
 #endif
-    delete []pdsfb;
+	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
+    	delete []pbuf[i];
     _mm_free(pob);
 }
