@@ -8,6 +8,20 @@
 #define FL_PERMUTE(v,c) _mm_shuffle_ps(v,v,c)
 #define IL_PERMUTE(v,c) _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(v),_mm_castsi128_ps(v),c))//_mm_shuffle_epi32(v,c)
 
+class dfloatN{
+public:
+	dfloatN(){}
+	dfloatN(float s){
+		for(uint i = 0; i < BLCLOUD_VSIZE; v[i++] = s);
+	}
+	dfloatN(float *p){
+		//memcpy(v,p,sizeof(v));
+		for(uint i = 0; i < BLCLOUD_VSIZE; v[i] = p[i], ++i);
+	}
+
+	float v[BLCLOUD_VSIZE];
+} __attribute__((aligned(16)));
+
 class dfloat3{
 public:
     dfloat3(){}
@@ -67,6 +81,20 @@ public:
     dfloat4 r[4];
 } __attribute__((aligned(16)));
 
+class dintN{
+public:
+	dintN(){}
+	dintN(int s){
+		for(uint i = 0; i < BLCLOUD_VSIZE; v[i++] = s);
+	}
+	dintN(int *p){
+		//memcpy(v,p,sizeof(v));
+		for(uint i = 0; i < BLCLOUD_VSIZE; v[i] = p[i], ++i);
+	}
+
+	int v[BLCLOUD_VSIZE];
+} __attribute__((aligned(16)));
+
 class dint3{
 public:
     dint3(){}
@@ -81,6 +109,20 @@ public:
     //dint4(const class sint4 &);
     dint4(int _x, int _y, int _z, int _w) : x(_x), y(_y), z(_z), w(_w){}
     int x, y, z, w;
+} __attribute__((aligned(16)));
+
+class duintN{
+public:
+	duintN(){}
+	duintN(uint s){
+		for(uint i = 0; i < BLCLOUD_VSIZE; v[i++] = s);
+	}
+	duintN(uint *p){
+		//memcpy(v,p,sizeof(v));
+		for(uint i = 0; i < BLCLOUD_VSIZE; v[i] = p[i], ++i);
+	}
+
+	uint v[BLCLOUD_VSIZE];
 } __attribute__((aligned(16)));
 
 class duint3{
@@ -493,13 +535,21 @@ public:
         return _mm_or_ps(a.v,b.v);
     }
 
-    static inline void store(float *p, const sfloat1 &s){
-        _mm_store_ps(p,s.v);
+    static inline void store(float *pdst, const sfloat1 &s){
+        _mm_store_ps(pdst,s.v);
     }
 
-    static inline sfloat1 load(const float *p){
-        return _mm_load_ps(p);
+    static inline sfloat1 load(const float *psrc){
+        return _mm_load_ps(psrc);
     }
+
+	static inline void store(dfloatN *pdst, const sfloat1 &s){
+		_mm_store_ps(pdst->v,s.v);
+	}
+
+	static inline sfloat1 load(const dfloatN *psrc){
+		return _mm_load_ps(psrc->v);
+	}
 
     __m128 v;
 };
@@ -1008,12 +1058,20 @@ public:
         return _mm_or_si128(a.v,b.v);
     }
 
-    static inline void store(int *p, const sint1 &s){
-        _mm_store_si128(reinterpret_cast<__m128i*>(p),s.v);
+    static inline void store(int *pdst, const sint1 &s){
+        _mm_store_si128(reinterpret_cast<__m128i*>(pdst),s.v);
     }
 
-    static inline sint1 load(const int *p){
-        return _mm_load_si128(reinterpret_cast<const __m128i*>(p));
+    static inline sint1 load(const int *psrc){
+        return _mm_load_si128(reinterpret_cast<const __m128i*>(psrc));
+    }
+
+	static inline void store(dintN *pdst, const sint1 &s){
+        _mm_store_si128(reinterpret_cast<__m128i*>(pdst),s.v);
+    }
+
+    static inline sint1 load(const dintN *psrc){
+        return _mm_load_si128(reinterpret_cast<const __m128i*>(psrc));
     }
 
     __m128i v;
