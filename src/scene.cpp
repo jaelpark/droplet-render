@@ -922,7 +922,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 					pob[i].qval[VOLUME_BUFFER_SDF] = openvdb::math::Min(pob[i].qval[VOLUME_BUFFER_SDF],pbuf[VOLUME_BUFFER_SDF][pob[i].volx[VOLUME_BUFFER_SDF]].pvol[j]);
 				}
 
-				if(pob[i].volx[VOLUME_BUFFER_FOG] != 0u){
+				if(pob[i].volx[VOLUME_BUFFER_FOG] != ~0u){
 					pbuf[VOLUME_BUFFER_FOG][pob[i].volx[VOLUME_BUFFER_FOG]].pvol[j] = samplerf.wsSample(posw);
 					pob[i].qval[VOLUME_BUFFER_FOG] = openvdb::math::Max(pob[i].qval[VOLUME_BUFFER_FOG],pbuf[VOLUME_BUFFER_FOG][pob[i].volx[VOLUME_BUFFER_FOG]].pvol[j]);
 				}

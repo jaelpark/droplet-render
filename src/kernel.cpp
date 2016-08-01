@@ -466,8 +466,8 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 			sfloat1 d0 = sfloat1::load(&dist1);
 			sint1 vm = sint1::load(&VM);
 
-			sm = sfloat1::Or(sm,vm); //skip if the next leaf is sole fog
             sm = sfloat1::And(sm,sfloat1::Greater(d0,zr));
+			sm = sfloat1::Or(sm,vm); //skip if the next leaf is sole fog
 
             rc.v[0] = sfloat1::Or(sfloat1::And(sm,r0.v[0]),sfloat1::AndNot(sm,rc.v[0]));
             rc.v[1] = sfloat1::Or(sfloat1::And(sm,r0.v[1]),sfloat1::AndNot(sm,rc.v[1]));
