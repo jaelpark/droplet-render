@@ -207,7 +207,7 @@ static void OctreeProcessSubtree(const dfloat3 &t0, const dfloat3 &t1, uint a, O
 	if(t1.x < 0.0f || t1.y < 0.0f || t1.z < 0.0f || (n == 0 && l > 0))
 		return;
 	//if(level == mlevel){... return;} //leaf, volume index != ~0
-    if(pob[n].volx[VOLUME_BUFFER_SDF] != ~0u){
+    if(pob[n].volx[VOLUME_BUFFER_SDF] != ~0u || pob[n].volx[VOLUME_BUFFER_FOG] != ~0u){
 		pls->push_back(n);
         return; //true: stop
 	}
@@ -316,7 +316,7 @@ inline sfloat4 L_Sample(const sfloat4 &iv, const sfloat1 &la, sint4 *prs){
 
 static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pkernel, sint4 *prs, ParallelLeafList &ls, uint r, uint samples){
 	OctreeStructure *pob = pkernel->pscene->pob;
-    LeafVolume *pvol = pkernel->pscene->pbuf[VOLUME_BUFFER_SDF];
+    //LeafVolume *pvol = pkernel->pscene->pbuf[VOLUME_BUFFER_SDF];
 
 	dintN sgm = dintN(gm);
 	for(uint i = 0; i < BLCLOUD_VSIZE; ++i){
@@ -443,11 +443,10 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 			sint1 sm = sfloat1::Greater(tr0,zr);
 			dintN SM = dintN(sm);
 
-			dfloatN smax1;
-			dfloatN dist1;
+			dfloatN smax1, dist1, rho1;
 
 			dintN QM = dintN(qm);
-			dintN VM; //true: next leaf is a sole fog
+			dintN VM; //true: next leaf is a sole fog; false: sdf exists, but fog may not
 			for(uint j = 0; j < BLCLOUD_VSIZE; ++j){
 				if(QM.v[j] != 0){
 					if(pob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_SDF] != ~0u){
@@ -459,17 +458,17 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 					}
 
 					if(SM.v[j] != 0 && VM.v[j] == 0)
-						dist1.v[j] = SampleVoxelSpace(r0.get(j),&pvol[pob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_SDF]],ce.get(j));
+						dist1.v[j] = SampleVoxelSpace(r0.get(j),&pkernel->pscene->pbuf[VOLUME_BUFFER_SDF][pob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_SDF]],ce.get(j));
 					else dist1.v[j] = 1.0f;
 				}else VM.v[j] = 0;
 			}
 			sfloat1 d0 = sfloat1::load(&dist1);
 			sint1 vm = sint1::load(&VM);
 
-			sm = sfloat1::And(sm,qm); //can't allow any further changes in 'rc' if qm == 0
-
             sm = sfloat1::And(sm,sfloat1::Greater(d0,zr));
 			sm = sfloat1::Or(sm,vm); //skip if the next leaf is a sole fog
+
+			sm = sfloat1::And(sm,qm); //can't allow any further changes in 'rc' if qm == 0
 
             rc.v[0] = sfloat1::Or(sfloat1::And(sm,r0.v[0]),sfloat1::AndNot(sm,rc.v[0]));
             rc.v[1] = sfloat1::Or(sfloat1::And(sm,r0.v[1]),sfloat1::AndNot(sm,rc.v[1]));
@@ -479,7 +478,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
 			sm = qm;
 
-            sfloat1 smax = sfloat1::load(&smax1);//sfloat1(1.0f); //local max in this leaf
+            sfloat1 smax = sfloat1(1.0f);//sfloat1::load(&smax1);//sfloat1(1.0f); //local max in this leaf
             for(sfloat1 sr = -log_ps(RNG_Sample(prs))/(msigmae*smax), sc, sh;; sr -= log_ps(RNG_Sample(prs))/(msigmae*smax)){
                 sm = sfloat1::And(sm,rm);
                 if(sfloat1::AllTrue(sfloat1::EqualR(sm,zr)))
@@ -494,7 +493,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
                 sm = sfloat1::And(sm,sfloat1::Less(sc,tr1)); //check if out of extents
                 sh = sfloat1::Or(sm,sfloat1::AndNot(rm,sfloat1::trueI())); //prevent modifications if rm == false
 
-                rc.v[0] = sfloat1::Or(sfloat1::AndNot(sh,r1.v[0]),sfloat1::And(sh,rc.v[0]));
+                rc.v[0] = sfloat1::Or(sfloat1::AndNot(sh,r1.v[0]),sfloat1::And(sh,rc.v[0])); //rc = tr1[i]
                 rc.v[1] = sfloat1::Or(sfloat1::AndNot(sh,r1.v[1]),sfloat1::And(sh,rc.v[1]));
                 rc.v[2] = sfloat1::Or(sfloat1::AndNot(sh,r1.v[2]),sfloat1::And(sh,rc.v[2]));
 
@@ -502,13 +501,39 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 				//-> unless the ray has run out of leafs
                 rm = sfloat1::Or(sfloat1::And(sm,sfloat1::Greater(sc,tr0)),sfloat1::AndNot(sm,rm));
 
-                sh = sfloat1::And(sm,rm);
+                /*sh = sfloat1::And(sm,rm);
 				dintN SH = dintN(sh);
 				for(uint j = 0; j < BLCLOUD_VSIZE; ++j)
 					dist1.v[j] = SH.v[j] != 0?SampleVoxelSpace(rc.get(j),&pvol[pob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_SDF]],ce.get(j)):1.0f;
 				sfloat1 d = sfloat1::load(&dist1);
-				
-                rm = sfloat1::And(rm,sfloat1::Greater(d,zr));
+
+				rm = sfloat1::And(rm,sfloat1::Greater(d,zr));*/
+
+				sh = sfloat1::And(sm,rm);
+				dintN SH = dintN(sh);
+				for(uint j = 0; j < BLCLOUD_VSIZE; ++j){
+					if(SH.v[j] != 0){
+						if(VM.v[j] == 0){
+							dist1.v[j] = SampleVoxelSpace(rc.get(j),&pkernel->pscene->pbuf[VOLUME_BUFFER_SDF][pob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_SDF]],ce.get(j));
+							//have to check if fog exists
+							if(dist1.v[j] > 0.0f && pob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_FOG] != ~0u)
+								rho1.v[j] = SampleVoxelSpace(rc.get(j),&pkernel->pscene->pbuf[VOLUME_BUFFER_FOG][pob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_FOG]],ce.get(j));
+							else rho1.v[j] = -1.0f;
+						}else{
+							dist1.v[j] = 1.0f;
+							rho1.v[j] = SampleVoxelSpace(rc.get(j),&pkernel->pscene->pbuf[VOLUME_BUFFER_FOG][pob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_FOG]],ce.get(j));
+						}
+					}else{
+						dist1.v[j] = 1.0f;
+						rho1.v[j] = -1.0f;
+					}
+				}
+				sfloat1 d = sfloat1::load(&dist1);
+				sfloat1 p = sfloat1::load(&rho1);
+				sfloat1 q = RNG_Sample(prs);
+
+				//if(p > q || d < 0) break;
+				rm = sfloat1::And(rm,sfloat1::And(sfloat1::Less(p,q),sfloat1::Greater(d,zr)));
 
                 /*sh = sfloat1::And(sm,rm);
                 sfloat1 p = sfloat1(

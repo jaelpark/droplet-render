@@ -135,7 +135,7 @@ public:
 		openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
 		pdgrid->setTransform(pgridtr);
 
-		openvdb::math::Transform::Ptr pgridtr1 = openvdb::math::Transform::createLinearTransform(0.1f); //TODO: global setting (similar to detail size)
+		openvdb::math::Transform::Ptr pgridtr1 = openvdb::math::Transform::createLinearTransform(0.03f); //TODO: global setting (similar to detail size)
 		openvdb::FloatGrid::Ptr ptgrid = openvdb::FloatGrid::create();
         ptgrid->setGridClass(openvdb::GRID_FOG_VOLUME);
 		ptgrid->setTransform(pgridtr1);
@@ -703,10 +703,10 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
                 scaabbmax = float4::max(c+e,scaabbmax);
 			}
 
-			/*if(pgrid[VOLUME_BUFFER_FOG])
+			if(pgrid[VOLUME_BUFFER_FOG])
 				openvdb::tools::compSum(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
-			else pgrid[VOLUME_BUFFER_FOG] = pdfn->pdgrid;*/
-			pgrid[VOLUME_BUFFER_FOG] = pdfn->pdgrid;
+			else pgrid[VOLUME_BUFFER_FOG] = pdfn->pdgrid;
+			//pgrid[VOLUME_BUFFER_FOG] = pdfn->pdgrid;
 		}
 	}
 
@@ -876,15 +876,20 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 
 	DebugPrintf("> Resampling volume data...\n");
 
-	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
-    	pbuf[i] = new LeafVolume[leafx[i]];
 	//openvdb::FloatGrid::ConstAccessor
 	//openvdb::tools::GridSampler<openvdb::FloatGrid::ConstAccessor, openvdb::tools::BoxSampler> fsampler(pgrid->getConstAccessor(),pgrid->transform());
 
 	//TODO: fix: in case where the grid is unused and null, no sampler should be created
 	openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler> *psampler[VOLUME_BUFFER_COUNT];
-	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
-		psampler[i] = pgrid[i]?new openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler>(*pgrid[i]):0;
+	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i){
+		if(pgrid[i]){
+			pbuf[i] = new LeafVolume[leafx[i]];
+			psampler[i] = new openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler>(*pgrid[i]);
+		}else{
+			pbuf[i] = 0;
+			psampler[i] = 0;
+		}
+	}
     //openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler> samplerd(*pgrid[VOLUME_BUFFER_SDF]); //non-cached, thread safe version
 	//openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler> samplerf(*pgrid[VOLUME_BUFFER_FOG]);
 
@@ -930,7 +935,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 				}
 
 				if(pob[i].volx[VOLUME_BUFFER_FOG] != ~0u){
-					pbuf[VOLUME_BUFFER_FOG][pob[i].volx[VOLUME_BUFFER_FOG]].pvol[j] = psampler[VOLUME_BUFFER_FOG]->wsSample(posw);
+					pbuf[VOLUME_BUFFER_FOG][pob[i].volx[VOLUME_BUFFER_FOG]].pvol[j] = openvdb::math::Min(psampler[VOLUME_BUFFER_FOG]->wsSample(posw),1.0f);
 					pob[i].qval[VOLUME_BUFFER_FOG] = openvdb::math::Max(pob[i].qval[VOLUME_BUFFER_FOG],pbuf[VOLUME_BUFFER_FOG][pob[i].volx[VOLUME_BUFFER_FOG]].pvol[j]);
 				}
 			}
@@ -938,7 +943,8 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 	});
 
 	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
-		delete psampler[i];
+		if(psampler[i])
+			delete psampler[i];
 
 	uint sdfs = leafx[VOLUME_BUFFER_SDF]*sizeof(LeafVolume);
 	uint fogs = leafx[VOLUME_BUFFER_FOG]*sizeof(LeafVolume);
@@ -951,6 +957,7 @@ void Scene::Destroy(){
 	_aligned_free(pvolume);
 #endif
 	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
-    	delete []pbuf[i];
+		if(pbuf[i])
+    		delete []pbuf[i];
     _mm_free(pob);
 }

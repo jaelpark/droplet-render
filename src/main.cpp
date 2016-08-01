@@ -217,6 +217,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
             ParticleSystem *pprs = new ParticleSystem(m->second); //TODO: reserve() the vector size
 
             PyObject *pps = PyList_GetItem(ppsl,j);
+			//TODO: Get visibility status. There's some weird modifier class for this.
             PyObject *ppr = PyObject_GetAttrString(pps,"particles");
             PyObject *ppi = PyObject_GetIter(ppr);
             for(PyObject *pni = PyIter_Next(ppi); pni; Py_DecRef(pni), pni = PyIter_Next(ppi)){
@@ -226,6 +227,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 					Py_DECREF(past);
 					continue;
 				}
+				Py_DECREF(past);
 
                 PyObject *pvco = PyObject_GetAttrString(pni,"location");
                 float4 co = float4(
@@ -234,7 +236,6 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
                     PyGetFloat(pvco,"z"),1.0f);
                 pprs->vl.push_back(dfloat3(co)); //already in world-space
 
-				Py_DECREF(past);
                 Py_DECREF(pvco);
             }
             Py_DECREF(ppi);
