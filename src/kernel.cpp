@@ -439,34 +439,34 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
             sfloat4 r0 = lo+rd*tr0;
 			sfloat4 r1 = lo+rd*tr1;
 
-            //sint1 sm = sfloat1::And(qm,sfloat1::Greater(tr0,zr));
-			sint1 sm = sfloat1::Greater(tr0,zr);
+            sint1 sm = sfloat1::And(qm,sfloat1::Greater(tr0,zr));
+			//sint1 sm = sfloat1::Greater(tr0,zr);
 			dintN SM = dintN(sm);
 
 			dfloatN smax1;
 			dfloatN dist1;
 
 			dintN QM = dintN(qm);
-			dintN VM; //true: next leaf has a sdf volume
+			dintN VM; //true: next leaf is a sole fog
 			for(uint j = 0; j < BLCLOUD_VSIZE; ++j){
 				if(QM.v[j] != 0){
 					if(pob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_SDF] != ~0u){
 						smax1.v[j] = 1.0f;
-						VM.v[j] = -1;
+						VM.v[j] = 0;
 					}else{
 						smax1.v[j] = pob[ls.GetLeaf(r,j,i)].qval[VOLUME_BUFFER_FOG];
-						VM.v[j] = 0;
+						VM.v[j] = 1;
 					}
 
-					if(SM.v[j] != 0 && VM.v[j] != 0)
+					if(SM.v[j] != 0 && VM.v[j] == 0)
 						dist1.v[j] = SampleVoxelSpace(r0.get(j),&pvol[pob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_SDF]],ce.get(j));
 					else dist1.v[j] = 1.0f;
-				}
+				}else VM.v[j] = SM.v[j];
 			}
 			sfloat1 d0 = sfloat1::load(&dist1);
 			sint1 vm = sint1::load(&VM);
 
-			sm = sfloat1::Or(sm,vm); //skip if the next leaf if sole fog
+			sm = sfloat1::Or(sm,vm); //skip if the next leaf is sole fog
             sm = sfloat1::And(sm,sfloat1::Greater(d0,zr));
 
             rc.v[0] = sfloat1::Or(sfloat1::And(sm,r0.v[0]),sfloat1::AndNot(sm,rc.v[0]));
