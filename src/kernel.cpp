@@ -416,12 +416,12 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
 		sfloat4 rc = ro;
 		for(uint i = 0;; ++i){
+			dintN leafcount;
+			for(uint j = 0; j < BLCLOUD_VSIZE; ++j)
+				leafcount.v[j] = ls.GetLeafCount(r,j);
+
             qm = sfloat1::And(qm,rm);
-			qm = sfloat1::And(qm,sint1::Less(sint1(i),sint1(
-				ls.GetLeafCount(r,0),
-				ls.GetLeafCount(r,1),
-				ls.GetLeafCount(r,2),
-				ls.GetLeafCount(r,3))));
+			qm = sfloat1::And(qm,sint1::Less(sint1(i),sint1::load(&leafcount)));
             if(sfloat1::AllTrue(sfloat1::EqualR(qm,zr)))
 				break;
 
@@ -439,8 +439,8 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
             sfloat4 r0 = lo+rd*tr0;
 			sfloat4 r1 = lo+rd*tr1;
 
-            sint1 sm = sfloat1::And(qm,sfloat1::Greater(tr0,zr));
-			//sint1 sm = sfloat1::Greater(tr0,zr);
+            //sint1 sm = sfloat1::And(qm,sfloat1::Greater(tr0,zr));
+			sint1 sm = sfloat1::Greater(tr0,zr);
 			dintN SM = dintN(sm);
 
 			dfloatN smax1;
@@ -461,10 +461,12 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 					if(SM.v[j] != 0 && VM.v[j] == 0)
 						dist1.v[j] = SampleVoxelSpace(r0.get(j),&pvol[pob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_SDF]],ce.get(j));
 					else dist1.v[j] = 1.0f;
-				}else VM.v[j] = SM.v[j];
+				}else VM.v[j] = 0;
 			}
 			sfloat1 d0 = sfloat1::load(&dist1);
 			sint1 vm = sint1::load(&VM);
+
+			sm = sfloat1::And(sm,qm); //can't allow any further changes in 'rc' if qm == 0
 
             sm = sfloat1::And(sm,sfloat1::Greater(d0,zr));
 			sm = sfloat1::Or(sm,vm); //skip if the next leaf is a sole fog
@@ -505,11 +507,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 				for(uint j = 0; j < BLCLOUD_VSIZE; ++j)
 					dist1.v[j] = SH.v[j] != 0?SampleVoxelSpace(rc.get(j),&pvol[pob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_SDF]],ce.get(j)):1.0f;
 				sfloat1 d = sfloat1::load(&dist1);
-                /*sfloat1 d = sfloat1(
-                    sh.get<0>() != 0.0f?SampleVoxelSpace(rc.get(0),&pvol[pob[ls.GetLeaf(r,0,i)].volx[VOLUME_BUFFER_SDF]],ce.get(0)):1.0f,
-                    sh.get<1>() != 0.0f?SampleVoxelSpace(rc.get(1),&pvol[pob[ls.GetLeaf(r,1,i)].volx[VOLUME_BUFFER_SDF]],ce.get(1)):1.0f,
-                    sh.get<2>() != 0.0f?SampleVoxelSpace(rc.get(2),&pvol[pob[ls.GetLeaf(r,2,i)].volx[VOLUME_BUFFER_SDF]],ce.get(2)):1.0f,
-                    sh.get<3>() != 0.0f?SampleVoxelSpace(rc.get(3),&pvol[pob[ls.GetLeaf(r,3,i)].volx[VOLUME_BUFFER_SDF]],ce.get(3)):1.0f);*/
+				
                 rm = sfloat1::And(rm,sfloat1::Greater(d,zr));
 
                 /*sh = sfloat1::And(sm,rm);
