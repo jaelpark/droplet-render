@@ -624,6 +624,9 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
 
 	std::vector<BoundingBox> fogbvs;
 
+	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
+		pgrid[i] = 0;
+
     for(uint i = 0; i < SceneObject::objs.size(); ++i){
 		Node::InputNodeParams<SceneObject> snp(SceneObject::objs[i],pgridtr);
 		SceneObject::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_SURFACE);
@@ -823,7 +826,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 
     const float lff = 4.0f; //levelset offset (narrow band voxels counting from the surface)
 
-    openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT] = {0};
+    openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT];// = {0};
     openvdb::io::File vdbc = openvdb::io::File("/tmp/droplet-fileid.vdb");
     try{
         if(cm != SCENE_CACHE_READ)
@@ -878,8 +881,12 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 	//openvdb::FloatGrid::ConstAccessor
 	//openvdb::tools::GridSampler<openvdb::FloatGrid::ConstAccessor, openvdb::tools::BoxSampler> fsampler(pgrid->getConstAccessor(),pgrid->transform());
 
-    openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler> samplerd(*pgrid[VOLUME_BUFFER_SDF]); //non-cached, thread safe version
-	openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler> samplerf(*pgrid[VOLUME_BUFFER_FOG]);
+	//TODO: fix: in case where the grid is unused and null, no sampler should be created
+	openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler> *psampler[VOLUME_BUFFER_COUNT];
+	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
+		psampler[i] = pgrid[i]?new openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler>(*pgrid[i]):0;
+    //openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler> samplerd(*pgrid[VOLUME_BUFFER_SDF]); //non-cached, thread safe version
+	//openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler> samplerf(*pgrid[VOLUME_BUFFER_FOG]);
 
     //float4 nv = float4(N);
     const uint uN = BLCLOUD_uN;
@@ -897,7 +904,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 			if(pob[i].volx[VOLUME_BUFFER_SDF] == ~0u){
 				if(pob[i].volx[VOLUME_BUFFER_FOG] == ~0u)
 					continue; //not a leaf; exit early
-				float d = samplerd.wsSample(*(openvdb::Vec3f*)&pob[i].ce);
+				float d = psampler[VOLUME_BUFFER_SDF]->wsSample(*(openvdb::Vec3f*)&pob[i].ce);
 				if(d < 0.0f){
 					//If the fog leaf is completely inside the sdf surface (no overlapping sdf leaf -> volx == ~0u),
 					//remove it. It's useless there, and it causes incorrect space skipping.
@@ -918,17 +925,20 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
                 float4::store((dfloat3*)posw.asPointer(),nw);
 
 				if(pob[i].volx[VOLUME_BUFFER_SDF] != ~0u){
-	                pbuf[VOLUME_BUFFER_SDF][pob[i].volx[VOLUME_BUFFER_SDF]].pvol[j] = samplerd.wsSample(posw);
+	                pbuf[VOLUME_BUFFER_SDF][pob[i].volx[VOLUME_BUFFER_SDF]].pvol[j] = psampler[VOLUME_BUFFER_SDF]->wsSample(posw);
 					pob[i].qval[VOLUME_BUFFER_SDF] = openvdb::math::Min(pob[i].qval[VOLUME_BUFFER_SDF],pbuf[VOLUME_BUFFER_SDF][pob[i].volx[VOLUME_BUFFER_SDF]].pvol[j]);
 				}
 
 				if(pob[i].volx[VOLUME_BUFFER_FOG] != ~0u){
-					pbuf[VOLUME_BUFFER_FOG][pob[i].volx[VOLUME_BUFFER_FOG]].pvol[j] = samplerf.wsSample(posw);
+					pbuf[VOLUME_BUFFER_FOG][pob[i].volx[VOLUME_BUFFER_FOG]].pvol[j] = psampler[VOLUME_BUFFER_FOG]->wsSample(posw);
 					pob[i].qval[VOLUME_BUFFER_FOG] = openvdb::math::Max(pob[i].qval[VOLUME_BUFFER_FOG],pbuf[VOLUME_BUFFER_FOG][pob[i].volx[VOLUME_BUFFER_FOG]].pvol[j]);
 				}
 			}
 		}
 	});
+
+	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
+		delete psampler[i];
 
 	uint sdfs = leafx[VOLUME_BUFFER_SDF]*sizeof(LeafVolume);
 	uint fogs = leafx[VOLUME_BUFFER_FOG]*sizeof(LeafVolume);
