@@ -334,9 +334,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	                PyGetFloat(pvco,"x"),
 	                PyGetFloat(pvco,"y"),
 	                PyGetFloat(pvco,"z"),1.0f);
-	            dfloat3 sco;
-	            float4::store(&sco,XMVector3TransformCoord(co.v,wm));
-	            //verts.push_back(sco);
+				dfloat3 sco = dfloat3(XMVector3TransformCoord(co.v,wm));
 	            psobj->vl.push_back(sco);
 
 	            Py_DECREF(pvco);

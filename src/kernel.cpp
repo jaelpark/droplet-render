@@ -318,10 +318,9 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 	OctreeStructure *pob = pkernel->pscene->pob;
     LeafVolume *pvol = pkernel->pscene->pbuf[VOLUME_BUFFER_SDF];
 
-    __attribute__((aligned(16))) uint sgm[BLCLOUD_VSIZE]; //TODO: dfloatN class or something for these situations
-    sfloat1::store((float*)sgm,gm);
+	dintN sgm = dintN(gm);
 	for(uint i = 0; i < BLCLOUD_VSIZE; ++i){
-		if(sgm[i] == 0)
+		if(sgm.v[i] == 0)
 			continue;
         float4 ce = float4::load(&pob[0].ce);
         float4 ro1 = ro.get(i)-ce+ce.splat<3>();
@@ -371,25 +370,28 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 	for(ll){
 		if(tr0[i] > 0.0f){
 			//if outside the next leaf...
-			d0 = distance(tr0[i]); //...get the distance at the leaf intersection...
-			if(d0 > 0.0f)
-				rc = tr0[i]; //...and skip the empty space if outside the surface (approaching the volume from outside)
+			if(volx[SDF] != ~0u){
+				d0 = distance(tr0[i]); //...get the distance at the leaf intersection...
+				if(d0 > 0.0f)
+					rc = tr0[i]; //...and skip the empty space if outside the surface (approaching the volume from outside)
+			}else rc = tr0[i]; //sole fog leaf means we're completely outside surface (since the inside nodes were removed)
 		}
+		//if volx[SDF] != ~0u, use the max density 1.0 for the woodcock tracking
 		for(woodcock){
-            rc += r*rd; //sample random position
+	        rc += r*rd; //sample random position
 			if(rc > tr1[i]){
-                //region after the current leaf (the region was skipped, move on to next one)
-                rc = tr1[i];
+	            //region after the current leaf (the region was skipped, move on to next one)
+	            rc = tr1[i];
 				break;
 			}
-            if(rc < tr0[i]){
-                //region before the leaf (inside the volume)
-                rho = 1; //uniform density
-                rm = 0; //ready: sample this location
+	        if(rc < tr0[i]){
+	            //region before the leaf (inside the volume, no empty space was skipped)
+	            rho = 1; //uniform density
+	            rm = 0; //ready: sample this location
 				break;
-            }else{
-                //region inside the leaf
-                rho = woodcockSample(); //potentially heterogenous medium
+	        }else{
+	            //region inside the leaf
+	            rho = woodcockSample(); //potentially heterogenous medium
 				if(accept){
 					rm = 0;
 					break;
@@ -415,7 +417,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 		sfloat4 rc = ro;
 		for(uint i = 0;; ++i){
             qm = sfloat1::And(qm,rm);
-            qm = sfloat1::And(qm,sfloat1::Less(sfloat1(i),sfloat1(
+			qm = sfloat1::And(qm,sint1::Less(sint1(i),sint1(
 				ls.GetLeafCount(r,0),
 				ls.GetLeafCount(r,1),
 				ls.GetLeafCount(r,2),
@@ -437,12 +439,34 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
             sfloat4 r0 = lo+rd*tr0;
 			sfloat4 r1 = lo+rd*tr1;
 
-            sfloat1 sm = sfloat1::And(qm,sfloat1::Greater(tr0,zr));
-            sfloat1 d0 = sfloat1(
-                sm.get<0>() != 0.0f?SampleVoxelSpace(r0.get(0),&pvol[pob[ls.GetLeaf(r,0,i)].volx[VOLUME_BUFFER_SDF]],ce.get(0)):1.0f,
-                sm.get<1>() != 0.0f?SampleVoxelSpace(r0.get(1),&pvol[pob[ls.GetLeaf(r,1,i)].volx[VOLUME_BUFFER_SDF]],ce.get(1)):1.0f,
-                sm.get<2>() != 0.0f?SampleVoxelSpace(r0.get(2),&pvol[pob[ls.GetLeaf(r,2,i)].volx[VOLUME_BUFFER_SDF]],ce.get(2)):1.0f,
-                sm.get<3>() != 0.0f?SampleVoxelSpace(r0.get(3),&pvol[pob[ls.GetLeaf(r,3,i)].volx[VOLUME_BUFFER_SDF]],ce.get(3)):1.0f);
+            //sint1 sm = sfloat1::And(qm,sfloat1::Greater(tr0,zr));
+			sint1 sm = sfloat1::Greater(tr0,zr);
+			dintN SM = dintN(sm);
+
+			dfloatN smax1;
+			dfloatN dist1;
+
+			dintN QM = dintN(qm);
+			dintN VM; //true: next leaf has a sdf volume
+			for(uint j = 0; j < BLCLOUD_VSIZE; ++j){
+				if(QM.v[j] != 0){
+					if(pob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_SDF] != ~0u){
+						smax1.v[j] = 1.0f;
+						VM.v[j] = -1;
+					}else{
+						smax1.v[j] = pob[ls.GetLeaf(r,j,i)].qval[VOLUME_BUFFER_FOG];
+						VM.v[j] = 0;
+					}
+
+					if(SM.v[j] != 0 && VM.v[j] != 0)
+						dist1.v[j] = SampleVoxelSpace(r0.get(j),&pvol[pob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_SDF]],ce.get(j));
+					else dist1.v[j] = 1.0f;
+				}
+			}
+			sfloat1 d0 = sfloat1::load(&dist1);
+			sint1 vm = sint1::load(&VM);
+
+			sm = sfloat1::Or(sm,vm); //skip if the next leaf if sole fog
             sm = sfloat1::And(sm,sfloat1::Greater(d0,zr));
 
             rc.v[0] = sfloat1::Or(sfloat1::And(sm,r0.v[0]),sfloat1::AndNot(sm,rc.v[0]));
@@ -453,12 +477,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
 			sm = qm;
 
-            /*sfloat1 smax = sfloat1(
-                sm.get<0>() != 0.0f?pob[ls.GetLeaf(r,0,i)].pmax:1.0f,
-                sm.get<1>() != 0.0f?pob[ls.GetLeaf(r,1,i)].pmax:1.0f,
-                sm.get<2>() != 0.0f?pob[ls.GetLeaf(r,2,i)].pmax:1.0f,
-                sm.get<3>() != 0.0f?pob[ls.GetLeaf(r,3,i)].pmax:1.0f);*/
-            sfloat1 smax = sfloat1(1.0f); //local max in this leaf
+            sfloat1 smax = sfloat1::load(&smax1);//sfloat1(1.0f); //local max in this leaf
             for(sfloat1 sr = -log_ps(RNG_Sample(prs))/(msigmae*smax), sc, sh;; sr -= log_ps(RNG_Sample(prs))/(msigmae*smax)){
                 sm = sfloat1::And(sm,rm);
                 if(sfloat1::AllTrue(sfloat1::EqualR(sm,zr)))
@@ -482,11 +501,15 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
                 rm = sfloat1::Or(sfloat1::And(sm,sfloat1::Greater(sc,tr0)),sfloat1::AndNot(sm,rm));
 
                 sh = sfloat1::And(sm,rm);
-                sfloat1 d = sfloat1(
+				dintN SH = dintN(sh);
+				for(uint j = 0; j < BLCLOUD_VSIZE; ++j)
+					dist1.v[j] = SH.v[j] != 0?SampleVoxelSpace(rc.get(j),&pvol[pob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_SDF]],ce.get(j)):1.0f;
+				sfloat1 d = sfloat1::load(&dist1);
+                /*sfloat1 d = sfloat1(
                     sh.get<0>() != 0.0f?SampleVoxelSpace(rc.get(0),&pvol[pob[ls.GetLeaf(r,0,i)].volx[VOLUME_BUFFER_SDF]],ce.get(0)):1.0f,
                     sh.get<1>() != 0.0f?SampleVoxelSpace(rc.get(1),&pvol[pob[ls.GetLeaf(r,1,i)].volx[VOLUME_BUFFER_SDF]],ce.get(1)):1.0f,
                     sh.get<2>() != 0.0f?SampleVoxelSpace(rc.get(2),&pvol[pob[ls.GetLeaf(r,2,i)].volx[VOLUME_BUFFER_SDF]],ce.get(2)):1.0f,
-                    sh.get<3>() != 0.0f?SampleVoxelSpace(rc.get(3),&pvol[pob[ls.GetLeaf(r,3,i)].volx[VOLUME_BUFFER_SDF]],ce.get(3)):1.0f);
+                    sh.get<3>() != 0.0f?SampleVoxelSpace(rc.get(3),&pvol[pob[ls.GetLeaf(r,3,i)].volx[VOLUME_BUFFER_SDF]],ce.get(3)):1.0f);*/
                 rm = sfloat1::And(rm,sfloat1::Greater(d,zr));
 
                 /*sh = sfloat1::And(sm,rm);
@@ -649,7 +672,6 @@ static void K_Render(dmatrix44 *pviewi, dmatrix44 *pproji, RenderKernel *pkernel
 				sfloat4 rd = mul(rv.xyz0(),viewi).xyz0();
                 rd = sfloat4::normalize3(rd);
 
-                //__m128i rngs[4];
                 sint4 rngs;
                 RNG_Init(&rngs);
 
@@ -661,21 +683,15 @@ static void K_Render(dmatrix44 *pviewi, dmatrix44 *pproji, RenderKernel *pkernel
 
                 sfloat4 c = SampleVolume(ro,rd,gm,pkernel,&rngs,ls,0,samples);
 
-                __attribute__((aligned(16))) uint wmask[4];
-                sfloat1::store((float*)wmask,gm);
-
-                if(wmask[0] != 0)
+				dintN wmask = dintN(gm);
+                if(wmask.v[0] != 0)
                     float4::store(&pout[(BLCLOUD_VY*(y-y0)+0)*rx+BLCLOUD_VX*(x-x0)+0],c.get(0));
-                if(wmask[1] != 0)
+                if(wmask.v[1] != 0)
                     float4::store(&pout[(BLCLOUD_VY*(y-y0)+0)*rx+BLCLOUD_VX*(x-x0)+1],c.get(1));
-                if(wmask[2] != 0)
+                if(wmask.v[2] != 0)
                     float4::store(&pout[(BLCLOUD_VY*(y-y0)+1)*rx+BLCLOUD_VX*(x-x0)+0],c.get(2));
-                if(wmask[3] != 0)
+                if(wmask.v[3] != 0)
                     float4::store(&pout[(BLCLOUD_VY*(y-y0)+1)*rx+BLCLOUD_VX*(x-x0)+1],c.get(3));
-                /*for(uint i = 0; i < BLCLOUD_VSIZE; ++i)
-                    if(wmask[i] != 0)
-                        float4::store(&pout[(y-y0)*rx+BLCLOUD_VX*(x-x0)+i],c.get(i));*/
-                        //float4::store(&pout[(y-y0)*rx+BLCLOUD_VSIZE*(x-x0)+i],c.get(i));
 			}
 		}
 #ifdef BLCLOUD_MT

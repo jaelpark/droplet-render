@@ -11,6 +11,7 @@
 class dfloatN{
 public:
 	dfloatN(){}
+	dfloatN(const class sfloat1 &s);
 	dfloatN(float s){
 		for(uint i = 0; i < BLCLOUD_VSIZE; v[i++] = s);
 	}
@@ -18,6 +19,10 @@ public:
 		//memcpy(v,p,sizeof(v));
 		for(uint i = 0; i < BLCLOUD_VSIZE; v[i] = p[i], ++i);
 	}
+
+	/*inline float operator[](uint x) const{
+		return v[x];
+	}*/
 
 	float v[BLCLOUD_VSIZE];
 } __attribute__((aligned(16)));
@@ -84,6 +89,7 @@ public:
 class dintN{
 public:
 	dintN(){}
+	dintN(const class sint1 &s);
 	dintN(int s){
 		for(uint i = 0; i < BLCLOUD_VSIZE; v[i++] = s);
 	}
@@ -91,6 +97,10 @@ public:
 		//memcpy(v,p,sizeof(v));
 		for(uint i = 0; i < BLCLOUD_VSIZE; v[i] = p[i], ++i);
 	}
+
+	/*inline int operator[](uint x) const{
+		return v[x];
+	}*/
 
 	int v[BLCLOUD_VSIZE];
 } __attribute__((aligned(16)));
@@ -121,6 +131,10 @@ public:
 		//memcpy(v,p,sizeof(v));
 		for(uint i = 0; i < BLCLOUD_VSIZE; v[i] = p[i], ++i);
 	}
+
+	/*inline uint operator[](uint x) const{
+		return v[x];
+	}*/
 
 	uint v[BLCLOUD_VSIZE];
 } __attribute__((aligned(16)));
@@ -577,6 +591,10 @@ inline sfloat1 operator*(float a, const sfloat1 &b){
 
 inline sfloat1 operator/(float a, const sfloat1 &b){
     return _mm_div_ps(_mm_set1_ps(a),b.v);
+}
+
+inline dfloatN::dfloatN(const sfloat1 &s){
+	sfloat1::store(v,s);
 }
 
 //typedef sfloat1 float4;
@@ -1164,6 +1182,10 @@ inline sfloat1::sfloat1(const sint1 &s){
 inline sint1::sint1(const sfloat1 &s){
     v = _mm_castps_si128(s.v); //no conversion
     //v = _mm_cvttps_epi32(s.v); //truncate
+}
+
+inline dintN::dintN(const sint1 &s){
+	sint1::store(v,s);
 }
 
 class matrix44{
