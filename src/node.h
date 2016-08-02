@@ -141,6 +141,11 @@ protected:
 public:
 	virtual void Evaluate(const void *) = 0;
 	static IParticleInput * Create(uint, NodeTree *);
+	enum INPUT{
+		INPUT_RASTERIZATIONRES,
+		INPUT_WEIGHT,
+		INPUT_COUNT
+	};
 };
 
 class IDisplacement : public virtual BaseSurfaceNode{
