@@ -19,6 +19,13 @@ public:
     void Evaluate(const void *);
 };
 
+class Advection : public BaseFogNode1, public IAdvection{
+public:
+	Advection(uint, NodeTree *);
+	~Advection();
+	void Evaluate(const void *);
+};
+
 }
 
 #endif

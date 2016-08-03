@@ -232,7 +232,7 @@ class ClNodeSurfaceOutput(bpy.types.Node):
 
 class ClNodeAdvection(bpy.types.Node):
 	bl_idname = "ClNodeAdvection";
-	bl_label = "Advection/Baked";
+	bl_label = "Advection";
 
 	def init(self, context):
 		self.inputs.new("ClNodeIntSocket","Iterations");
@@ -335,8 +335,6 @@ categories = [
 		NodeItem("ClNodeFloatPow"),
 	]),
 	ClNodeCategory("DENSITY_CATEGORY","Fog",items = [
-		#NodeItem("ClNodeFogVolume"), #not used - result from the root "surface" input must be used
-		#+density manipulators
 		NodeItem("ClNodeAdvection"),
 	]),
 	ClNodeCategory("SURFACE_CATEGORY","Surface",items = [

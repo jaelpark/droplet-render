@@ -86,11 +86,29 @@ void ParticleInput::Evaluate(const void *pp){
 		openvdb::tools::resampleToMatch<openvdb::tools::BoxSampler>(*ptgrid,*pdgrid);
 	}else DebugPrintf("Used native grid resolution for particle rasterization.\n");
 
+	//advection: trace voxel if density < threshold
+
 	pdgrid->tree().prune();
 }
 
 Node::IParticleInput * IParticleInput::Create(uint level, NodeTree *pnt){
 	return new ParticleInput(level,pnt);
+}
+
+Advection::Advection(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), IAdvection(_level,pnt){
+	//
+}
+
+Advection::~Advection(){
+	//
+}
+
+void Advection::Evaluate(const void *pp){
+	//
+}
+
+Node::IAdvection * IAdvection::Create(uint level, NodeTree *pnt){
+	return new Advection(level,pnt);
 }
 
 }

@@ -323,6 +323,7 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
         //dynamic cast to BaseSurfaceNode1 - getting empty
         Node::BaseSurfaceNode1 *pdsn = dynamic_cast<Node::BaseSurfaceNode1*>(SceneObject::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_SURFACE]);
         if(pdsn->vl.size() > 0){
+			//TODO: move the "big" openvdb calls to appropriate sources, significantly speeds up compilation
             openvdb::FloatGrid::Ptr ptgrid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,pdsn->vl,pdsn->tl,pdsn->ql,lff,lff);
 
             for(uint j = 0; j < pdsn->vl.size(); ++j){
@@ -391,6 +392,19 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
 				scaabbmin = float4::min(c-e,scaabbmin);
                 scaabbmax = float4::max(c+e,scaabbmax);
 			}
+
+			/*for(uint j = 0; j < ParticleSystem::prss[i]->vl.size(); ++j){
+				BoundingBox aabb;
+				aabb.sc = ParticleSystem::prss[i]->vl[j];
+				aabb.se = dfloat3(rr); //this would have to be estimated in some clever way
+
+				fogbvs.push_back(aabb);
+
+				float4 c = float4::load(&aabb.sc);
+				float4 e = float4::load(&aabb.se);
+				scaabbmin = float4::min(c-e,scaabbmin);
+                scaabbmax = float4::max(c+e,scaabbmax);
+			}*/
 
 			if(pgrid[VOLUME_BUFFER_FOG])
 				openvdb::tools::compSum(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);

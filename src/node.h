@@ -148,6 +148,20 @@ public:
 	};
 };
 
+class IAdvection : public virtual BaseFogNode{
+protected:
+	IAdvection(uint, NodeTree *);
+	~IAdvection();
+public:
+	virtual void Evaluate(const void *) = 0;
+	static IAdvection * Create(uint, NodeTree *);
+	enum INPUT{
+		INPUT_ITERATIONS,
+		INPUT_STEPSIZE,
+		INPUT_COUNT
+	};
+};
+
 class IDisplacement : public virtual BaseSurfaceNode{
 protected:
     IDisplacement(uint, NodeTree *);

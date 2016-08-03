@@ -213,6 +213,14 @@ IParticleInput::~IParticleInput(){
 	//
 }
 
+IAdvection::IAdvection(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt){
+	//
+}
+
+IAdvection::~IAdvection(){
+	//
+}
+
 IDisplacement::IDisplacement(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt){
     //
 }
@@ -333,6 +341,8 @@ BaseNode * CreateNodeByType(const char *pname, uint level, NodeTree *pnt){
         return ISurfaceInput::Create(level,pnt);
 	}else if(strcmp(pname,"ClNodeParticleInput") == 0){
 		return IParticleInput::Create(level,pnt);
+	}else if(strcmp(pname,"ClNodeAdvection") == 0){
+		return IAdvection::Create(level,pnt);
     }else if(strcmp(pname,"ClNodeDisplacement") == 0){
         return IDisplacement::Create(level,pnt);
     }else if(strcmp(pname,"ClNodefBmPerlinNoise") == 0){
