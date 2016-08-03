@@ -478,7 +478,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
 			sm = qm;
 
-            sfloat1 smax = sfloat1(1.0f);//sfloat1::load(&smax1);//sfloat1(1.0f); //local max in this leaf
+            sfloat1 smax = sfloat1::load(&smax1);//sfloat1(1.0f); //local max in this leaf
             for(sfloat1 sr = -log_ps(RNG_Sample(prs))/(msigmae*smax), sc, sh;; sr -= log_ps(RNG_Sample(prs))/(msigmae*smax)){
                 sm = sfloat1::And(sm,rm);
                 if(sfloat1::AllTrue(sfloat1::EqualR(sm,zr)))
@@ -533,7 +533,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 				sfloat1 q = RNG_Sample(prs);
 
 				//if(p > q || d < 0) break;
-				rm = sfloat1::And(rm,sfloat1::And(sfloat1::Less(p,q),sfloat1::Greater(d,zr)));
+				rm = sfloat1::And(rm,sfloat1::And(sfloat1::Less(p/smax,q),sfloat1::Greater(d,zr)));
 
                 /*sh = sfloat1::And(sm,rm);
                 sfloat1 p = sfloat1(
@@ -542,8 +542,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
                     sh.get<2>() != 0.0f?SampleVoxelSpace<1>(rc.get(2),&pvol[pob[ls.GetLeaf(r,2,i)].volx],ce.get(2)):-1.0f,
                     sh.get<3>() != 0.0f?SampleVoxelSpace<1>(rc.get(3),&pvol[pob[ls.GetLeaf(r,3,i)].volx],ce.get(3)):-1.0f);
                 sfloat1 q = RNG_Sample(prs);
-                rm = sfloat1::And(rm,sfloat1::Less(p,q));
-                //TODO: some kind of hybrid sampling: if(p > q && d < 0) break;*/
+                rm = sfloat1::And(rm,sfloat1::Less(p,q));*/
 			}
 		}
 

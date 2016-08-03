@@ -32,7 +32,7 @@ struct OctreeStructure{
 	uint volx[VOLUME_BUFFER_COUNT]; //leaf volume index
 	//
 	//min/max query value to speed up rendering; sdf: min distance, fog: max density
-	//Min sdf may not be needed as leaves are always created only when surface exists
+	//Min sdf may not be needed as leaves are created only when surface exists
 	float qval[VOLUME_BUFFER_COUNT];
 };
 
@@ -51,12 +51,6 @@ public:
 struct LeafVolume{
     float pvol[BLCLOUD_uN*BLCLOUD_uN*BLCLOUD_uN]; //pdst
 	//float max; //should probably go to the OctreeStructure, to let this correspond more to the actual 3d volume texture
-    /*
-       TODO: Two separate LeafVolume arrays, one for distance and another for density. This allows resolutions to be independent
-       of each other. Additionally one can allocate one type of leaf while the other doesn't exist. This requires two volx pointer
-       indices. Whenever there's a need to allocate a leaf for just one type of voxels, the other volx points to an empty section (zeros)
-       and the end of the voxel buffer array.
-    */
 };
 
 namespace Node{
