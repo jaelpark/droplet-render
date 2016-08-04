@@ -88,6 +88,15 @@ void ParticleInput::Evaluate(const void *pp){
 
 	//advection: trace voxel if density < threshold
 
+	/*
+	options:
+	-include the velocity with the fog:
+		-need bool input to enable computation
+		-hard to separate fog/velocity - e.g. for need to use different velocity field than the fog provides
+	-separate ParticleInput (ParticleVelocity) node
+		-use the VectorField base class
+	*/
+
 	pdgrid->tree().prune();
 }
 

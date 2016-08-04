@@ -185,6 +185,18 @@ void BaseSurfaceNode::Evaluate(const void *pp){
     //
 }
 
+/*BaseVectorFieldNode::BaseVectorFieldNode(uint level, NodeTree *pnt) : BaseNode(level,pnt){
+	pnt->nodes1.push_back(this);
+}
+
+BaseVectorFieldNode::~BaseVectorFieldNode(){
+	//
+}
+
+void BaseVectorFieldNode::Evaluate(const void *pp){
+	//
+}*/
+
 /*void BaseSurfaceNode::SortNodes(){
     std::sort(nodes.begin(),nodes.end(),[&](BaseSurfaceNode *pa, BaseSurfaceNode *pb)->bool{
         return pa->level > pb->level;
@@ -335,8 +347,6 @@ BaseNode * CreateNodeByType(const char *pname, uint level, NodeTree *pnt){
     }else if(strcmp(pname,"ClNodeFloatPow") == 0){
         return new PowNode<float>(level,pnt);
 
-    }else if(strcmp(pname,"ClNodeFogVolume") == 0){
-        return 0; //wip
     }else if(strcmp(pname,"ClNodeSurfaceInput") == 0){
         return ISurfaceInput::Create(level,pnt);
 	}else if(strcmp(pname,"ClNodeParticleInput") == 0){
@@ -371,6 +381,8 @@ BaseNode * CreateNodeBySocket(const char *pname, const void *pvalue, uint level,
         return BaseFogNode::Create(level,pnt);
     else if(strcmp(pname,"ClNodeSurfaceSocket") == 0)
         return BaseSurfaceNode::Create(level,pnt);//return new BaseSurfaceNode(level);
+	//else if(strcmp(pname,"ClNodeVectorFieldSocket") == 0)
+		//return BaseVectorFieldNode::Create(level,pnt);
     return 0;
 
 }

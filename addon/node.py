@@ -109,6 +109,19 @@ class ClNodeSurfaceSocket(bpy.types.NodeSocket):
 	def draw_color(self, context, node):
 		return (1,1,1,1);
 
+# class ClNodeVectorFieldSocket(bpy.types.NodeSocket):
+# 	bl_idname = "ClNodeVectorFieldSocket";
+# 	bl_label = "Vector field socket";
+#
+# 	value = FloatProperty(name="",default=0);
+# 	type = 'CUSTOM';
+#
+# 	def draw(self, context, layout, node, x):
+# 		layout.label(self.name);
+#
+# 	def draw_color(self, context, node):
+# 		return (0.6,0,1,1);
+
 class ClNodeFieldSocket(bpy.types.NodeSocket):
 	bl_idname = "ClNodeFieldSocket";
 	bl_label = "Field socket";
@@ -136,6 +149,8 @@ class ClNodeSurfaceInput(bpy.types.Node):
 class ClNodeParticleInput(bpy.types.Node):
 	bl_idname = "ClNodeParticleInput";
 	bl_label = "ParticleSystem";
+
+	#bool: velocity
 
 	def init(self, context):
 		self.inputs.new("ClNodeFloatSocket","Raster.res");

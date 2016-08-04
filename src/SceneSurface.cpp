@@ -30,6 +30,11 @@ BaseSurfaceNode1::~BaseSurfaceNode1(){
     //
 }
 
+openvdb::FloatGrid::Ptr BaseSurfaceNode1::ComputeLevelSet(openvdb::math::Transform::Ptr pgridtr, float lff) const{
+	openvdb::FloatGrid::Ptr ptgrid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,vl,tl,ql,lff,lff);
+	return ptgrid;
+}
+
 BaseSurfaceNode * BaseSurfaceNode::Create(uint level, NodeTree *pnt){
     return new BaseSurfaceNode1(level,pnt);
 }

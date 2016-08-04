@@ -115,6 +115,15 @@ public:
     static std::vector<BaseSurfaceNode *> nodes;*/
 };
 
+/*class BaseVectorFieldNode : public BaseNode{
+protected:
+	BaseVectorFieldNode(uint, NodeTree *);
+	virtual ~BaseVectorFieldNode();
+public:
+	virtual void Evaluate(const void *);
+	static BaseVectorFieldNode * Create(uint, NodeTree *);
+};*/
+
 /*class fBmPerlinNoise : public BaseSurfaceNode{
 public:
     fBmPerlinNoise(uint);

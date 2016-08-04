@@ -4,7 +4,6 @@
 #include "noise.h"
 
 #include <openvdb/openvdb.h>
-#include <openvdb/tools/MeshToVolume.h>
 #include <openvdb/tools/Interpolation.h> //samplers
 #include <openvdb/tools/Composite.h> //csg/comp
 
@@ -323,8 +322,8 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
         //dynamic cast to BaseSurfaceNode1 - getting empty
         Node::BaseSurfaceNode1 *pdsn = dynamic_cast<Node::BaseSurfaceNode1*>(SceneObject::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_SURFACE]);
         if(pdsn->vl.size() > 0){
-			//TODO: move the "big" openvdb calls to appropriate sources, significantly speeds up compilation
-            openvdb::FloatGrid::Ptr ptgrid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,pdsn->vl,pdsn->tl,pdsn->ql,lff,lff);
+            //openvdb::FloatGrid::Ptr ptgrid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,pdsn->vl,pdsn->tl,pdsn->ql,lff,lff);
+			openvdb::FloatGrid::Ptr ptgrid = pdsn->ComputeLevelSet(pgridtr,lff);
 
             for(uint j = 0; j < pdsn->vl.size(); ++j){
                 float4 p = float4::load((dfloat3*)&pdsn->vl[j]);
