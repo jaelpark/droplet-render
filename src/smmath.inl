@@ -20,10 +20,6 @@ public:
 		for(uint i = 0; i < BLCLOUD_VSIZE; v[i] = p[i], ++i);
 	}
 
-	/*inline float operator[](uint x) const{
-		return v[x];
-	}*/
-
 	float v[BLCLOUD_VSIZE];
 } __attribute__((aligned(16)));
 
@@ -98,10 +94,6 @@ public:
 		for(uint i = 0; i < BLCLOUD_VSIZE; v[i] = p[i], ++i);
 	}
 
-	/*inline int operator[](uint x) const{
-		return v[x];
-	}*/
-
 	int v[BLCLOUD_VSIZE];
 } __attribute__((aligned(16)));
 
@@ -131,10 +123,6 @@ public:
 		//memcpy(v,p,sizeof(v));
 		for(uint i = 0; i < BLCLOUD_VSIZE; v[i] = p[i], ++i);
 	}
-
-	/*inline uint operator[](uint x) const{
-		return v[x];
-	}*/
 
 	uint v[BLCLOUD_VSIZE];
 } __attribute__((aligned(16)));
@@ -169,7 +157,6 @@ public:
     }
 
     sfloat1(float x, float y, float z, float w){
-        //v = _mm_set_ps(x,y,z,w);
         v = _mm_set_ps(w,z,y,x);
     }
 
@@ -315,26 +302,6 @@ public:
     static inline sfloat1 falseI(){
         return zero();
     }
-
-    /*static inline sfloat1 splat(const sfloat1 &s, uint x){
-        return s.swizzle(x,x,x,x);
-    }*/
-
-    /*template<uint x>
-    static inline sfloat1 splat(const sfloat1 &s){
-        return FL_PERMUTE(s.v,_MM_SHUFFLE(x,x,x,x));
-    }*/
-
-    /*static inline sfloat1 swizzle(const sfloat1 &s, uint a, uint b, uint c, uint d){
-        sfloat1 r;
-        const uint *psrc = (const uint*)(&s.v);
-        uint *pdst = (uint*)(&r.v);
-        pdst[0] = psrc[a];
-        pdst[1] = psrc[b];
-        pdst[2] = psrc[c];
-        pdst[3] = psrc[d];
-        return r;
-    }*/
 
     static inline sfloat1 selectctrl(uint a, uint b, uint c, uint d){
         __m128i t = _mm_set_epi32(d,c,b,a);
@@ -720,14 +687,6 @@ public:
         v[3].v = FL_PERMUTE(n.v,_MM_SHUFFLE(3,3,3,3));
     }
 
-    /*sfloat4(XMVECTOR a, XMVECTOR b, XMVECTOR c, GXMVECTOR d){
-         XMMATRIX m = XMMatrixTranspose(XMMATRIX(a,b,c,d));
-         v[0] = m.r[0];
-         v[1] = m.r[1];
-         v[2] = m.r[2];
-         v[3] = m.r[3];
-    }*/
-
     sfloat4(const sfloat1 &a, const sfloat1 &b, const sfloat1 &c, const sfloat1 &d){
         set(0,a);
         set(1,b);
@@ -847,50 +806,24 @@ public:
 
     template<uint x>
     inline float4 get() const{
-        /*return XMVectorSelect(
-            XMVectorSelect(XMVectorSwizzle<x,x,x,x>(v[0]),XMVectorSwizzle<x,x,x,x>(v[1]),XMVectorSelectControl(0,1,0,1)),
-            XMVectorSelect(XMVectorSwizzle<x,x,x,x>(v[2]),XMVectorSwizzle<x,x,x,x>(v[3]),XMVectorSelectControl(0,1,0,1)),XMVectorSelectControl(0,0,1,1));*/
-        /*float4 r; //hack
-        r.v = sfloat1::select(
-            sfloat1::select(sfloat1::splat(v[0],x),sfloat1::splat(v[1],x),sfloat1::selectctrl(0,1,0,1)),
-            sfloat1::select(sfloat1::splat(v[2],x),sfloat1::splat(v[3],x),sfloat1::selectctrl(0,1,0,1)),sfloat1::selectctrl(0,0,1,1)).v;*/
-        float4 r;
-        r.v = sfloat1::select(
+        return sfloat1::select(
             sfloat1::select(sfloat1::splat<x>(v[0]),sfloat1::splat<x>(v[1]),sfloat1::selectctrl(0,1,0,1)),
             sfloat1::select(sfloat1::splat<x>(v[2]),sfloat1::splat<x>(v[3]),sfloat1::selectctrl(0,1,0,1)),sfloat1::selectctrl(0,0,1,1)).v;
-        return r;
-        //return sfloat1::select(sfloat1::select(sfloat1::swizzle(v[0],x,x,x,x),sfloat1::swizzle(v[1],x,x,x,x),
     }
 
     inline float4 get(uint x) const{
-        /*return XMVectorSelect(
-            XMVectorSelect(XMVectorSwizzle(v[0],x,x,x,x),XMVectorSwizzle(v[1],x,x,x,x),XMVectorSelectControl(0,1,0,1)),
-            XMVectorSelect(XMVectorSwizzle(v[2],x,x,x,x),XMVectorSwizzle(v[3],x,x,x,x),XMVectorSelectControl(0,1,0,1)),XMVectorSelectControl(0,0,1,1));*/
-        float4 r; //hack
-        r.v = sfloat1::select(
+        return sfloat1::select(
             sfloat1::select(v[0].splat(x),v[1].splat(x),sfloat1::selectctrl(0,1,0,1)),
             sfloat1::select(v[2].splat(x),v[3].splat(x),sfloat1::selectctrl(0,1,0,1)),sfloat1::selectctrl(0,0,1,1)).v;
-        return r;
     }
 
     inline void set(uint x, const float4 &s){
-        /*XMVECTOR c = XMVectorSelectControl(x == 0,x == 1,x == 2,x == 3);
-        v[0] = XMVectorSelect(v[0],XMVectorSplatX(s),c);
-        v[1] = XMVectorSelect(v[1],XMVectorSplatY(s),c);
-        v[2] = XMVectorSelect(v[2],XMVectorSplatZ(s),c);
-        v[3] = XMVectorSelect(v[3],XMVectorSplatW(s),c);*/
         sfloat1 c = sfloat1::selectctrl(x == 0,x == 1,x == 2,x == 3);
         v[0] = sfloat1::select(v[0],s.splat<0>(),c);
         v[1] = sfloat1::select(v[1],s.splat<1>(),c);
         v[2] = sfloat1::select(v[2],s.splat<2>(),c);
         v[3] = sfloat1::select(v[3],s.splat<3>(),c);
     }
-
-    /*inline XMVECTOR operator[](uint x) const{
-        return XMVectorSelect(
-            XMVectorSelect(XMVectorSwizzle(v[0],x,x,x,x),XMVectorSwizzle(v[1],x,x,x,x),XMVectorSelectControl(0,1,0,1)),
-            XMVectorSelect(XMVectorSwizzle(v[2],x,x,x,x),XMVectorSwizzle(v[3],x,x,x,x),XMVectorSelectControl(0,1,0,1)),XMVectorSelectControl(0,0,1,1));
-    }*/
 
     inline sfloat4 xyz0() const{
         sfloat4 r;

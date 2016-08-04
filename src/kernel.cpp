@@ -664,9 +664,6 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
 static void K_Render(dmatrix44 *pviewi, dmatrix44 *pproji, RenderKernel *pkernel, uint x0, uint y0, uint rx, uint ry, uint w, uint h, uint samples, dfloat4 *pout){
     tbb::enumerable_thread_specific<ParallelLeafList> leafs; //list here to avoid memory allocations
-
-	//tbb::parallel_for(tbb::blocked_range2d<size_t>(x0/BLCLOUD_VSIZE,(x0+rx)/BLCLOUD_VSIZE,y0,y0+ry),[&](const tbb::blocked_range2d<size_t> &nr){
-	//tbb::parallel_for(tbb::blocked_range2d<size_t>(0,rx/BLCLOUD_VSIZE,y0,y0+ry),[&](const tbb::blocked_range2d<size_t> &nr){
 #define BLCLOUD_MT
 #ifdef BLCLOUD_MT
     //tbb::parallel_for(tbb::blocked_range2d<size_t>(y0,y0+ry,x0,x0+rx/BLCLOUD_VSIZE),[&](const tbb::blocked_range2d<size_t> &nr){

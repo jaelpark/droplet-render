@@ -52,11 +52,6 @@ void SurfaceInput::Evaluate(const void *pp){
     //DebugPrintf("---Surface::Evaluate()\n");
     InputNodeParams<SceneObject> *pd = (InputNodeParams<SceneObject>*)pp;
     SceneObject *pobj = std::get<INP_OBJECT>(*pd);
-    //const std::vector<dfloat3> *pvl = std::get<SNP_VERTICES>(*pd);
-    //const std::vector<uint> *ptl = std::get<SNP_TRIANGLES>(*pd);
-
-    //vl.assign((openvdb::Vec3s*)pobj->vl.data(),(openvdb::Vec3s*)pobj->vl.data()+pobj->vl.size());
-    //tl.assign((openvdb::Vec3I*)pobj->tl.data(),(openvdb::Vec3I*)pobj->tl.data()+pobj->tl.size()/3);
 
     //clear possible data from previous evaluation
     vl.clear();
@@ -123,18 +118,11 @@ void fBmPerlinNoise::Evaluate(const void *pp){
     BaseSurfaceNode1 *pnode = dynamic_cast<BaseSurfaceNode1*>(pnodes[IfBmPerlinNoise::INPUT_SURFACE]);
     //BaseSurfaceNode1 *pgridn = dynamic_cast<BaseSurfaceNode1*>(pnodes[IfBmPerlinNoise::INPUT_GRID]); //could be just using input_surface
 
-    //Temp: get max displacement distance. This won't work with non-constant node input values.
-    //BaseValueNode<float>::EvaluateAll(0,level+1);
-    //EvaluateValueGroup(level+1);
-    //NodeTree::nts[0]->EvaluateLNodes(0,level+1);
     pntree->EvaluateNodes0(0,level+1,emask);
     float amp = fBm::GetAmplitudeMax(poctn->result,pampn->result,pgainn->result);
 
     openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);//openvdb::math::Transform::createLinearTransform(s);
     openvdb::FloatGrid::Ptr psgrid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,pnode->vl,pnode->tl,pnode->ql,ceilf(amp/pgridtr->voxelSize().x()+lff),lff);
-    //openvdb::FloatGrid::Ptr pgrid = openvdb::tools::meshToLevelSet<openvdb::FloatGrid>(*pgridtr,points,tris,4.0f);
-    //openvdb::FloatGrid::Ptr pgrid = openvdb::tools::meshToLevelSet<openvdb::FloatGrid>(*pgridtr,points,tris,quads,4.0f);
-    //DebugPrintf("Volume conversion face count = %u+0 (initial)\n",(uint)tris.size());
 
     DebugPrintf("Allocated disp. exterior narrow band for amp = %f+%f (%u voxels)\n",amp,pgridtr->voxelSize().x()*lff,(uint)ceilf(amp/pgridtr->voxelSize().x()+lff));
 

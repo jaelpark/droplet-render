@@ -169,26 +169,14 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
         pntree->SortNodes();
         pntree->ApplyBranchMask();
 
-        //TODO: FieldOutput node, separate tree
-
-        //levelset distance node:
-        //inputs: surface
-        //outputs: value
-        //-node1-group
-        //-input surface is converted to sfd (internally) and remains as one (not temp sdf)
-
         //coordinate node:
         //outputs: vector
         //-node0-group
         //-internal node1 loop coordinate is given as a parameter to level-0 evaluation
 
-        //Alternatively use a field generator node, which internally uses a temp sdf. Input parameters much
-        //like with the fbm-node.
-
         Py_hash_t h = PyObject_Hash(pnt1);
         ntm.insert(std::pair<Py_hash_t, Node::NodeTree *>(h,pntree));
-
-        //Py_DECREF(proot);
+		
         Py_DECREF(pns1);
         //Py_DECREF(pnt1); //borrowed ref
     }
