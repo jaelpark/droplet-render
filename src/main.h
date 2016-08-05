@@ -13,6 +13,14 @@ __attribute__ ((aligned(16)))
 #include <vector>
 #include <atomic>
 
+#include <tbb/tbb.h>
+
+/*
+MTNodeEvaluation:
+-remove atomic flags, replace with tbb
+-deprecate the fbm node with displacement
+*/
+
 typedef unsigned int uint;
 
 #define DebugPrintf printf

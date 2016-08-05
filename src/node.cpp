@@ -72,9 +72,9 @@ AddNode<T>::~AddNode(){
 
 template<class T>
 void AddNode<T>::Evaluate(const void *pp){
-    T a = ((BaseValueNode<T>*)this->pnodes[0])->result;
-    T b = ((BaseValueNode<T>*)this->pnodes[1])->result;
-    this->result = a+b;
+    T a = ((BaseValueNode<T>*)this->pnodes[0])->result.local();
+    T b = ((BaseValueNode<T>*)this->pnodes[1])->result.local();
+    this->result.local() = a+b;
     //DebugPrintf("---AddNode<float>::Evaluate(), result = %f\n",this->result);
 }
 
@@ -90,9 +90,9 @@ SubNode<T>::~SubNode(){
 
 template<class T>
 void SubNode<T>::Evaluate(const void *pp){
-    T a = ((BaseValueNode<T>*)this->pnodes[0])->result;
-    T b = ((BaseValueNode<T>*)this->pnodes[1])->result;
-    this->result = a-b;
+    T a = ((BaseValueNode<T>*)this->pnodes[0])->result.local();
+    T b = ((BaseValueNode<T>*)this->pnodes[1])->result.local();
+    this->result.local() = a-b;
 }
 
 template<class T>
@@ -107,9 +107,9 @@ MulNode<T>::~MulNode(){
 
 template<class T>
 void MulNode<T>::Evaluate(const void *pp){
-    T a = ((BaseValueNode<T>*)this->pnodes[0])->result;
-    T b = ((BaseValueNode<T>*)this->pnodes[1])->result;
-    this->result = a*b;
+    T a = ((BaseValueNode<T>*)this->pnodes[0])->result.local();
+    T b = ((BaseValueNode<T>*)this->pnodes[1])->result.local();
+    this->result.local() = a*b;
 }
 
 template<class T>
@@ -124,9 +124,9 @@ DivNode<T>::~DivNode(){
 
 template<class T>
 void DivNode<T>::Evaluate(const void *pp){
-    T a = ((BaseValueNode<T>*)this->pnodes[0])->result;
-    T b = ((BaseValueNode<T>*)this->pnodes[1])->result;
-    this->result = a/b;
+    T a = ((BaseValueNode<T>*)this->pnodes[0])->result.local();
+    T b = ((BaseValueNode<T>*)this->pnodes[1])->result.local();
+    this->result.local() = a/b;
 }
 
 template<class T>
@@ -141,9 +141,9 @@ PowNode<T>::~PowNode(){
 
 template<class T>
 void PowNode<T>::Evaluate(const void *pp){
-    T a = ((BaseValueNode<T>*)this->pnodes[0])->result;
-    T b = ((BaseValueNode<T>*)this->pnodes[1])->result;
-    this->result = powf(a,b);
+    T a = ((BaseValueNode<T>*)this->pnodes[0])->result.local();
+    T b = ((BaseValueNode<T>*)this->pnodes[1])->result.local();
+    this->result.local() = powf(a,b);
 }
 
 BaseFogNode::BaseFogNode(uint level, NodeTree *pnt) : BaseNode(level,pnt){

@@ -10,7 +10,6 @@
 #include "SceneSurface.h"
 #include "SceneDensity.h"
 
-#include <tbb/tbb.h>
 #include <tbb/parallel_for.h>
 
 namespace Node{

@@ -38,7 +38,8 @@ public:
     virtual ~BaseValueNode();
     virtual void Evaluate(const void *);
     //BaseNode * NewNode(void *, uint) const;
-    T result;
+    //T result;
+	tbb::enumerable_thread_specific<T> result;
     /*static void EvaluateAll(const void *, uint);
     static void SortNodes();
     static std::vector<BaseValueNode<T> *> nodes;*/
