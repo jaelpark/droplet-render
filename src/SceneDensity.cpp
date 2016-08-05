@@ -126,7 +126,73 @@ Advection::~Advection(){
 }
 
 void Advection::Evaluate(const void *pp){
-	//
+	InputNodeParams<SceneObject> *pd = (InputNodeParams<SceneObject>*)pp;
+
+	BaseValueNode<float> *pthrs = dynamic_cast<BaseValueNode<float>*>(pnodes[IAdvection::INPUT_THRESHOLD]);
+	BaseValueNode<float> *pdist = dynamic_cast<BaseValueNode<float>*>(pnodes[IAdvection::INPUT_DISTANCE]);
+	BaseValueNode<int> *piters = dynamic_cast<BaseValueNode<int>*>(pnodes[IAdvection::INPUT_ITERATIONS]);
+	BaseVectorFieldNode1 *pvfn = dynamic_cast<BaseVectorFieldNode1*>(pnodes[IAdvection::INPUT_VELOCITY]);
+	BaseFogNode1 *pnode = dynamic_cast<BaseFogNode1*>(pnodes[IAdvection::INPUT_FOG]);
+
+	openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
+
+	openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler> samplerd(*pnode->pdgrid);
+	openvdb::tools::GridSampler<openvdb::Vec3SGrid, openvdb::tools::StaggeredBoxSampler> samplerv(*pvfn->pvgrid);
+
+	DebugPrintf("> Advecting fog volume...\n");
+
+	typedef std::tuple<openvdb::FloatGrid::Ptr, openvdb::FloatGrid::Accessor> FloatGridT;
+    tbb::enumerable_thread_specific<FloatGridT> tgrida([&]()->FloatGridT{
+        openvdb::FloatGrid::Ptr ptgrid = openvdb::FloatGrid::create();
+        ptgrid->setTransform(pgridtr);
+        ptgrid->setGridClass(openvdb::GRID_FOG_VOLUME);
+        return FloatGridT(ptgrid,ptgrid->getAccessor());
+    });
+    tbb::parallel_for(openvdb::tree::IteratorRange<openvdb::FloatGrid::ValueOnIter>(pnode->pdgrid->beginValueOn()),[&](openvdb::tree::IteratorRange<openvdb::FloatGrid::ValueOnIter> &r){
+        FloatGridT &fgt = tgrida.local();
+        for(; r; ++r){
+            const openvdb::FloatGrid::ValueOnIter &m = r.iterator();
+
+			float f = m.getValue();
+			if(f > pthrs->result)
+				continue;
+
+			openvdb::Coord c = m.getCoord();
+			openvdb::math::Vec3s posw = pnode->pdgrid->transform().indexToWorld(c);
+
+			float s = pdist->result/(float)piters->result;
+
+			float4 rc = float4::load(posw.asPointer());
+			for(uint i = 0; i < piters->result; ++i){
+				openvdb::math::Vec3s v = samplerv.wsSample(posw);
+				rc += s*float4::load((dfloat3*)v.asPointer());
+				//
+				//float4::store((dfloat3*)posw.asPointer(),rc);
+				//float p = samplerd.wsSample(posw); //TODO: do actual integration instead of sampling the last value?
+
+				//-when sampling noise velocity, do it directly somehow, not by first rendering it to a grid
+				//-use virtual Sample() for the BaseVectorField nodes, to either sample grid or return noise
+				//-just need to figure out how the actual sampler is created and stored
+				//Calling Sample() will evaluate the nodes. Need multithreading support.
+			}
+
+			float4::store((dfloat3*)posw.asPointer(),rc);
+			float p = samplerd.wsSample(posw);
+
+			std::get<1>(fgt).setValue(c,f+p);
+        }
+    });
+
+	//TODO: try compSum
+	openvdb::FloatGrid::Accessor dgrida = pdgrid->getAccessor();
+    for(tbb::enumerable_thread_specific<FloatGridT>::const_iterator q = tgrida.begin(); q != tgrida.end(); ++q){
+        //
+        for(openvdb::FloatGrid::ValueOnIter m = std::get<0>(*q)->beginValueOn(); m.test(); ++m){
+			openvdb::Coord c = m.getCoord();
+            float f = m.getValue();
+            dgrida.setValue(c,f);
+        }
+    }
 }
 
 Node::IAdvection * IAdvection::Create(uint level, NodeTree *pnt){

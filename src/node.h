@@ -95,7 +95,6 @@ public:
     static BaseFogNode * Create(uint, NodeTree *);
     static void SortNodes();
     static void EvaluateAll(const void *, uint);
-    //static std::vector<BaseFogNode *> nodes;
 };
 
 class BaseSurfaceNode : public BaseNode{
@@ -106,13 +105,6 @@ protected:
 public:
     virtual void Evaluate(const void *);
     static BaseSurfaceNode * Create(uint, NodeTree *);
-    //BaseNode * NewNode(void *, uint) const;
-    /*std::vector<dfloat3> vl;
-    std::vector<duint3> tl;
-    std::vector<duint4> ql;*/
-    /*static void SortNodes();
-    static void EvaluateAll(const void *, uint);
-    static std::vector<BaseSurfaceNode *> nodes;*/
 };
 
 class BaseVectorFieldNode : public BaseNode{
@@ -139,7 +131,6 @@ protected:
     ~ISurfaceInput();
 public:
     virtual void Evaluate(const void *) = 0;
-    //virtual void CommitSurface(std::vector<dfloat3>, std::vector<uint>) = 0;
     static ISurfaceInput * Create(uint, NodeTree *);
 };
 
@@ -165,8 +156,11 @@ public:
 	virtual void Evaluate(const void *) = 0;
 	static IAdvection * Create(uint, NodeTree *);
 	enum INPUT{
+		INPUT_THRESHOLD,
 		INPUT_DISTANCE,
 		INPUT_ITERATIONS,
+		INPUT_VELOCITY,
+		INPUT_FOG,
 		INPUT_COUNT
 	};
 };

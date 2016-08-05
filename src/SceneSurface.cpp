@@ -108,13 +108,11 @@ void fBmPerlinNoise::Evaluate(const void *pp){
     const float lff = 4.0f;
 
     BaseValueNode<int> *poctn = dynamic_cast<BaseValueNode<int>*>(pnodes[IfBmPerlinNoise::INPUT_OCTAVES]);
-
     BaseValueNode<float> *pfreqn = dynamic_cast<BaseValueNode<float>*>(pnodes[IfBmPerlinNoise::INPUT_FREQ]);
     BaseValueNode<float> *pampn = dynamic_cast<BaseValueNode<float>*>(pnodes[IfBmPerlinNoise::INPUT_AMP]);
     BaseValueNode<float> *pfjumpn = dynamic_cast<BaseValueNode<float>*>(pnodes[IfBmPerlinNoise::INPUT_FJUMP]);
     BaseValueNode<float> *pgainn = dynamic_cast<BaseValueNode<float>*>(pnodes[IfBmPerlinNoise::INPUT_GAIN]);
     BaseValueNode<float> *pbilln = dynamic_cast<BaseValueNode<float>*>(pnodes[IfBmPerlinNoise::INPUT_BILLOW]);
-
     BaseSurfaceNode1 *pnode = dynamic_cast<BaseSurfaceNode1*>(pnodes[IfBmPerlinNoise::INPUT_SURFACE]);
     //BaseSurfaceNode1 *pgridn = dynamic_cast<BaseSurfaceNode1*>(pnodes[IfBmPerlinNoise::INPUT_GRID]); //could be just using input_surface
 
@@ -125,7 +123,6 @@ void fBmPerlinNoise::Evaluate(const void *pp){
     openvdb::FloatGrid::Ptr psgrid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,pnode->vl,pnode->tl,pnode->ql,ceilf(amp/pgridtr->voxelSize().x()+lff),lff);
 
     DebugPrintf("Allocated disp. exterior narrow band for amp = %f+%f (%u voxels)\n",amp,pgridtr->voxelSize().x()*lff,(uint)ceilf(amp/pgridtr->voxelSize().x()+lff));
-
     DebugPrintf("> Displacing SDF...\n");
 
     /*openvdb::FloatGrid::Ptr pdgrid = openvdb::FloatGrid::create();
@@ -169,10 +166,9 @@ void fBmPerlinNoise::Evaluate(const void *pp){
         return FloatGridT(ptgrid,ptgrid->getAccessor(),psgrid->getConstAccessor());
     });
     openvdb::math::CPT_RANGE<openvdb::math::UniformScaleMap,openvdb::math::CD_2ND> cptr;
-    tbb::parallel_for(openvdb::tree::IteratorRange<openvdb::FloatGrid::ValueOnIter>(psgrid->beginValueOn()),
-        [&](openvdb::tree::IteratorRange<openvdb::FloatGrid::ValueOnIter> &r){
+    tbb::parallel_for(openvdb::tree::IteratorRange<openvdb::FloatGrid::ValueOnIter>(psgrid->beginValueOn()),[&](openvdb::tree::IteratorRange<openvdb::FloatGrid::ValueOnIter> &r){
         FloatGridT &fgt = tgrida.local();
-        for(; r; ++r){
+        for(; r; ++r){ //++fi
             //TODO: need a thread-safe node evaluation
             //EvaluateValueGroup(level+1);
             const openvdb::FloatGrid::ValueOnIter &m = r.iterator();
@@ -182,11 +178,10 @@ void fBmPerlinNoise::Evaluate(const void *pp){
             sfloat4 sposw = sfloat1(posw.x(),posw.y(),posw.z(),0.0f); //TODO: utilize vectorization
 
             float f = fabsf(fBm::noise(sposw,poctn->result,pfreqn->result,pampn->result,pfjumpn->result,pgainn->result).get<0>());
-            //f *= powf(std::min(dgridap.getValue(c),1.0f),pbilln->result);
-            //TODO: normalize the previous layer displacement (f/amp when writing) so that qscale isn't needed at all.
-            //if(i > 0)
-                //f *= powf(std::min(aa.second.getValue(c)/(*pdls)[i].qscale,1.0f),(*pdls)[i].billow);
-            std::get<1>(fgt).setValue(c,f);
+			/*if(fi == 0)
+				fn = dfloatN(fBm::noise(sposw+offset,poctn->result,pfreqn->result,pampn->result,pfjumpn->result,pgainn->result)); //dfloatN fn
+			float f = fn.v[fi];*/
+            std::get<1>(fgt).setValue(c,f); //set only the displacement, so that billowing can be done
         }
     });
 

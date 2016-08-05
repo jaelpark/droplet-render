@@ -250,6 +250,7 @@ class ClNodeAdvection(bpy.types.Node):
 	bl_label = "Advection";
 
 	def init(self, context):
+		self.inputs.new("ClNodeFloatSocket","Threshold");
 		self.inputs.new("ClNodeFloatSocket","Distance");
 		self.inputs.new("ClNodeIntSocket","Iterations");
 		self.inputs.new("ClNodeVectorFieldSocket","Velocity");
