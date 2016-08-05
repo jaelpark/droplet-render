@@ -185,7 +185,7 @@ void BaseSurfaceNode::Evaluate(const void *pp){
     //
 }
 
-/*BaseVectorFieldNode::BaseVectorFieldNode(uint level, NodeTree *pnt) : BaseNode(level,pnt){
+BaseVectorFieldNode::BaseVectorFieldNode(uint level, NodeTree *pnt) : BaseNode(level,pnt){
 	pnt->nodes1.push_back(this);
 }
 
@@ -195,7 +195,7 @@ BaseVectorFieldNode::~BaseVectorFieldNode(){
 
 void BaseVectorFieldNode::Evaluate(const void *pp){
 	//
-}*/
+}
 
 /*void BaseSurfaceNode::SortNodes(){
     std::sort(nodes.begin(),nodes.end(),[&](BaseSurfaceNode *pa, BaseSurfaceNode *pb)->bool{
@@ -293,13 +293,6 @@ void NodeTree::EvaluateNodes1(const void *pp, uint max, uint mask){
             nodes1[i]->Evaluate(pp);
 }
 
-/*void NodeTree::ApplyBranchMask(BaseNode *pnode, uint mask){
-    pnode->emask |= mask;
-    for(uint i = 0; i < sizeof(pnode->pnodes)/sizeof(pnode->pnodes[0]); ++i)
-        if(pnode->pnodes[i])
-            ApplyBranchMask(pnode->pnodes[i],mask);
-}*/
-
 void NodeTree::ApplyBranchMask(){
     BaseNode *proot = GetRoot();
     proot->emask = ~0u;
@@ -381,8 +374,8 @@ BaseNode * CreateNodeBySocket(const char *pname, const void *pvalue, uint level,
         return BaseFogNode::Create(level,pnt);
     else if(strcmp(pname,"ClNodeSurfaceSocket") == 0)
         return BaseSurfaceNode::Create(level,pnt);//return new BaseSurfaceNode(level);
-	//else if(strcmp(pname,"ClNodeVectorFieldSocket") == 0)
-		//return BaseVectorFieldNode::Create(level,pnt);
+	else if(strcmp(pname,"ClNodeVectorFieldSocket") == 0)
+		return BaseVectorFieldNode::Create(level,pnt);
     return 0;
 
 }

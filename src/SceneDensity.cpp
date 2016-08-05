@@ -32,6 +32,19 @@ BaseFogNode * BaseFogNode::Create(uint level, NodeTree *pnt){
     return new BaseFogNode1(level,pnt);
 }
 
+BaseVectorFieldNode1::BaseVectorFieldNode1(uint _level, NodeTree *pnt) : BaseVectorFieldNode(_level,pnt){
+	pvgrid = openvdb::Vec3SGrid::create();
+	pvgrid->setGridClass(openvdb::GRID_FOG_VOLUME); //this probably doesn't matter here
+}
+
+BaseVectorFieldNode1::~BaseVectorFieldNode1(){
+	//
+}
+
+BaseVectorFieldNode * BaseVectorFieldNode::Create(uint level, NodeTree *pnt){
+	return new BaseVectorFieldNode1(level,pnt);
+}
+
 ParticleInput::ParticleInput(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), IParticleInput(_level,pnt){
     //
     //DebugPrintf(">> ParticleInput()\n");

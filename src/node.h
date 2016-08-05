@@ -115,14 +115,14 @@ public:
     static std::vector<BaseSurfaceNode *> nodes;*/
 };
 
-/*class BaseVectorFieldNode : public BaseNode{
+class BaseVectorFieldNode : public BaseNode{
 protected:
 	BaseVectorFieldNode(uint, NodeTree *);
 	virtual ~BaseVectorFieldNode();
 public:
 	virtual void Evaluate(const void *);
 	static BaseVectorFieldNode * Create(uint, NodeTree *);
-};*/
+};
 
 /*class fBmPerlinNoise : public BaseSurfaceNode{
 public:
@@ -165,8 +165,8 @@ public:
 	virtual void Evaluate(const void *) = 0;
 	static IAdvection * Create(uint, NodeTree *);
 	enum INPUT{
+		INPUT_DISTANCE,
 		INPUT_ITERATIONS,
-		INPUT_STEPSIZE,
 		INPUT_COUNT
 	};
 };

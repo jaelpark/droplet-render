@@ -9,7 +9,14 @@ public:
     BaseFogNode1(uint, NodeTree *);
     ~BaseFogNode1();
     openvdb::FloatGrid::Ptr pdgrid;
-	openvdb::Vec3SGrid::Ptr pvgrid; //sadly, there's no 4d vector grid
+	//openvdb::Vec3SGrid::Ptr pvgrid; //sadly, there's no 4d vector grid
+};
+
+class BaseVectorFieldNode1 : public virtual BaseVectorFieldNode{
+public:
+	BaseVectorFieldNode1(uint, NodeTree *);
+	~BaseVectorFieldNode1();
+	openvdb::Vec3SGrid::Ptr pvgrid;
 };
 
 class ParticleInput : public BaseFogNode1, public IParticleInput{
