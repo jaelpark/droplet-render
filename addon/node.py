@@ -55,6 +55,19 @@ class ClNodeFloatSocket(bpy.types.NodeSocket):
 	def draw_color(self, context, node):
 		return (0.5,0.5,0.5,1);
 
+class ClNodeVectorSocket(bpy.types.NodeSocket):
+	bl_idname = "ClNodeVectorSocket";
+	bl_label = "Vector socket";
+
+	value = FloatProperty(name="",default=0); #TODO: vector property
+	type = 'VALUE';
+
+	def draw(self, context, layout, node, x):
+		layout.label(self.name);
+
+	def draw_color(self, context, node):
+		return (1.0,0.2,0.2,1);
+
 class ClNodeShaderSocket(bpy.types.NodeSocket):
 	bl_idname = "ClNodeShaderSocket";
 	bl_label = "Shader socket";
@@ -205,6 +218,20 @@ class ClNodeFloatPow(bpy.types.Node):
 #class ClPropertyEmpty(bpy.types.PropertyGroup):
 	#pass
 
+class ClNodeScalarFbmNoise(bpy.types.Node):
+	bl_idname = "ClNodeScalarFbmNoise";
+	bl_label = "ScalarNoise";
+
+	def init(self, context):
+		self.inputs.new("ClNodeIntSocket","octaves");
+		self.inputs.new("ClNodeFloatSocket","freq");
+		self.inputs.new("ClNodeFloatSocket","amp");
+		self.inputs.new("ClNodeFloatSocket","fjump");
+		self.inputs.new("ClNodeFloatSocket","gain");
+		self.inputs.new("ClNodeFloatSocket","billow");
+		self.inputs.new("ClNodeVectorSocket","World");
+		self.outputs.new("ClNodeFloatSocket","Out");
+
 class ClNodeSurfaceOutput(bpy.types.Node):
 	bl_idname = "ClNodeSurfaceOutput";
 	bl_label = "Surface Output";
@@ -320,10 +347,7 @@ class ClNodefBmPerlinNoise(bpy.types.Node):
 		self.inputs.new("ClNodeFloatSocket","fjump");
 		self.inputs.new("ClNodeFloatSocket","gain");
 		self.inputs.new("ClNodeFloatSocket","billow");
-		#self.inputs.new("ClNodeFloatSocket","qscale");
 		self.inputs.new("ClNodeSurfaceSocket","Surface");
-		#self.inputs.new("ClNodeGridSocket","Billowing");
-
 		self.outputs.new("ClNodeSurfaceSocket","Surface");
 		#self.outputs.new("ClNodeGridSocket","Distance");
 
@@ -350,6 +374,9 @@ categories = [
 		NodeItem("ClNodeFloatMul"),
 		NodeItem("ClNodeFloatDiv"),
 		NodeItem("ClNodeFloatPow"),
+	]),
+	ClNodeCategory("NOISE_CATEGORY","Noise",items = [
+		NodeItem("ClNodeScalarFbmNoise"),
 	]),
 	ClNodeCategory("DENSITY_CATEGORY","Fog",items = [
 		NodeItem("ClNodeAdvection"),

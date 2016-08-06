@@ -146,6 +146,30 @@ void PowNode<T>::Evaluate(const void *pp){
     this->result.local() = powf(a,b);
 }
 
+/*ScalarFbmNoise::ScalarFbmNoise(uint _level, NodeTree *pnt) : BaseValueNode(_level,pnt){
+	//
+}
+
+SalarFbmNoise::~ScalarFbmNoise(){
+	//
+}
+
+void SalarFbmNoise::Evaluate(const void *){
+	result = 0.0f; //fBm::noise
+}*/
+
+IScalarFbmNoise::IScalarFbmNoise(uint _level, NodeTree *pnt) : BaseValueNode<float>(_level,pnt){
+	//
+}
+
+IScalarFbmNoise::~IScalarFbmNoise(){
+	//
+}
+
+void IScalarFbmNoise::Evaluate(const void *pp){
+	//
+}
+
 BaseFogNode::BaseFogNode(uint level, NodeTree *pnt) : BaseNode(level,pnt){
     //DebugPrintf(">> BaseSurfaceNode(level)\n");
     //nodes.push_back(this);
@@ -340,6 +364,9 @@ BaseNode * CreateNodeByType(const char *pname, uint level, NodeTree *pnt){
     }else if(strcmp(pname,"ClNodeFloatPow") == 0){
         return new PowNode<float>(level,pnt);
 
+	}else if(strcmp(pname,"ClNodeScalarFbmNoise") == 0){
+		return IScalarFbmNoise::Create(level,pnt);
+
     }else if(strcmp(pname,"ClNodeSurfaceInput") == 0){
         return ISurfaceInput::Create(level,pnt);
 	}else if(strcmp(pname,"ClNodeParticleInput") == 0){
@@ -366,7 +393,9 @@ BaseNode * CreateNodeBySocket(const char *pname, const void *pvalue, uint level,
     }else if(strcmp(pname,"ClNodeIntSocket") == 0){
         int v = PyLong_AsLong((PyObject*)pvalue);
         return new BaseValueNode<int>(v,level,pnt);
-    }else if(strcmp(pname,"ClNodeShaderSocket") == 0)
+	}else if(strcmp(pname,"ClNodeVectorSocket") == 0)
+		return new BaseValueNode<dfloat3>(dfloat3(0.0f),level,pnt);
+    else if(strcmp(pname,"ClNodeShaderSocket") == 0)
         return BaseSurfaceNode::Create(level,pnt);//return new BaseSurfaceNode(level);//BaseNode(level);
     //else if(strcmp(pname,"ClNodeGridSocket") == 0)
         //return BaseSurfaceNode::Create(level);//return new BaseSurfaceNode(level);
@@ -418,6 +447,8 @@ template class SubNode<int>;
 template class MulNode<int>;
 template class DivNode<int>;
 template class PowNode<int>;
+
+template class BaseValueNode<dfloat3>;
 
 std::vector<NodeTree *> NodeTree::ntrees;
 

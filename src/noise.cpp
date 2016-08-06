@@ -1,4 +1,5 @@
 #include "main.h"
+#include "node.h"
 #include "noise.h"
 
 //http://mrl.nyu.edu/~perlin/noise/
@@ -99,6 +100,36 @@ float GetAmplitudeMax(uint octaves, float amp, float gain){
         amp *= gain;
     }
     return s;
+}
+
+}
+
+namespace Node{
+
+ScalarFbmNoise::ScalarFbmNoise(uint _level, NodeTree *pnt) : BaseValueNode<float>(_level,pnt), IScalarFbmNoise(_level,pnt){
+	//
+}
+
+ScalarFbmNoise::~ScalarFbmNoise(){
+	//
+}
+
+void ScalarFbmNoise::Evaluate(const void *pp){
+	BaseValueNode<int> *poctn = dynamic_cast<BaseValueNode<int>*>(pnodes[IScalarFbmNoise::INPUT_OCTAVES]);
+    BaseValueNode<float> *pfreqn = dynamic_cast<BaseValueNode<float>*>(pnodes[IScalarFbmNoise::INPUT_FREQ]);
+    BaseValueNode<float> *pampn = dynamic_cast<BaseValueNode<float>*>(pnodes[IScalarFbmNoise::INPUT_AMP]);
+    BaseValueNode<float> *pfjumpn = dynamic_cast<BaseValueNode<float>*>(pnodes[IScalarFbmNoise::INPUT_FJUMP]);
+    BaseValueNode<float> *pgainn = dynamic_cast<BaseValueNode<float>*>(pnodes[IScalarFbmNoise::INPUT_GAIN]);
+    BaseValueNode<float> *pbilln = dynamic_cast<BaseValueNode<float>*>(pnodes[IScalarFbmNoise::INPUT_BILLOW]);
+    BaseValueNode<dfloat3> *pnode = dynamic_cast<BaseValueNode<dfloat3>*>(pnodes[IScalarFbmNoise::INPUT_POSITION]);
+
+	dfloat3 &dposw = pnode->result.local();
+	sfloat4 sposw = sfloat1(dposw.x,dposw.y,dposw.z,0.0f);
+	result.local() = fabsf(fBm::noise(sposw,poctn->result.local(),pfreqn->result.local(),pampn->result.local(),pfjumpn->result.local(),pgainn->result.local()).get<0>());
+}
+
+IScalarFbmNoise * IScalarFbmNoise::Create(uint level, NodeTree *pnt){
+	return new ScalarFbmNoise(level,pnt);
 }
 
 }

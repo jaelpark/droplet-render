@@ -12,4 +12,15 @@ sfloat1 noise(const sfloat4 &, uint, float, float, float, float);
 float GetAmplitudeMax(uint, float, float);
 }
 
+namespace Node{
+
+class ScalarFbmNoise : public IScalarFbmNoise{
+public:
+	ScalarFbmNoise(uint, NodeTree *);
+	~ScalarFbmNoise();
+	void Evaluate(const void *);
+};
+
+}
+
 #endif // NOISE_H

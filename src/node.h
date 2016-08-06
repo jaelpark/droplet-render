@@ -87,6 +87,25 @@ public:
     void Evaluate(const void *);
 };
 
+class IScalarFbmNoise : public virtual BaseValueNode<float>{
+protected:
+	IScalarFbmNoise(uint, NodeTree *);
+	~IScalarFbmNoise();
+public:
+	virtual void Evaluate(const void *);
+	static IScalarFbmNoise * Create(uint, NodeTree *);
+	enum INPUT{
+        INPUT_OCTAVES,
+        INPUT_FREQ,
+        INPUT_AMP,
+        INPUT_FJUMP,
+        INPUT_GAIN,
+        INPUT_BILLOW,
+        INPUT_POSITION,
+        INPUT_COUNT
+    };
+};
+
 class BaseFogNode : public BaseNode{
 protected:
     BaseFogNode(uint, NodeTree *);
@@ -194,9 +213,7 @@ public:
         INPUT_FJUMP,
         INPUT_GAIN,
         INPUT_BILLOW,
-        //INPUT_QSCALE,
         INPUT_SURFACE,
-        //INPUT_GRID,
         INPUT_COUNT
     };
     /*enum OUTPUT{
