@@ -19,6 +19,10 @@ public:
 	ScalarFbmNoise(uint, NodeTree *);
 	~ScalarFbmNoise();
 	void Evaluate(const void *);
+	enum OUTPUT{
+		OUTPUT_NOISE,
+		OUTPUT_MAXIMUM
+	};
 };
 
 }

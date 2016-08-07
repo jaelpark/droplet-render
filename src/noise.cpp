@@ -120,13 +120,16 @@ void ScalarFbmNoise::Evaluate(const void *pp){
     BaseValueNode<float> *pampn = dynamic_cast<BaseValueNode<float>*>(pnodes[IScalarFbmNoise::INPUT_AMP]);
     BaseValueNode<float> *pfjumpn = dynamic_cast<BaseValueNode<float>*>(pnodes[IScalarFbmNoise::INPUT_FJUMP]);
     BaseValueNode<float> *pgainn = dynamic_cast<BaseValueNode<float>*>(pnodes[IScalarFbmNoise::INPUT_GAIN]);
-    BaseValueNode<float> *pbilln = dynamic_cast<BaseValueNode<float>*>(pnodes[IScalarFbmNoise::INPUT_BILLOW]);
     BaseValueNode<dfloat3> *pnode = dynamic_cast<BaseValueNode<dfloat3>*>(pnodes[IScalarFbmNoise::INPUT_POSITION]);
 
 	dfloat3 &dposw = pnode->result.local().value[0];
 	sfloat4 sposw = sfloat1(dposw.x,dposw.y,dposw.z,0.0f);
-	result.local().value[0] = fabsf(fBm::noise(sposw,poctn->locr(indices[IScalarFbmNoise::INPUT_OCTAVES]),pfreqn->locr(indices[IScalarFbmNoise::INPUT_FREQ]),
+
+	BaseValueResult<float> &r = this->BaseValueNode<float>::result.local();
+	r.value[OUTPUT_NOISE] = fabsf(fBm::noise(sposw,poctn->locr(indices[IScalarFbmNoise::INPUT_OCTAVES]),pfreqn->locr(indices[IScalarFbmNoise::INPUT_FREQ]),
 		pampn->locr(indices[IScalarFbmNoise::INPUT_AMP]),pfjumpn->locr(indices[IScalarFbmNoise::INPUT_FJUMP]),pgainn->locr(indices[IScalarFbmNoise::INPUT_GAIN])).get<0>());
+	r.value[OUTPUT_MAXIMUM] = fBm::GetAmplitudeMax(poctn->locr(indices[IScalarFbmNoise::INPUT_OCTAVES]),pampn->locr(indices[IScalarFbmNoise::INPUT_AMP]),
+		pgainn->locr(indices[IScalarFbmNoise::INPUT_GAIN]));
 }
 
 IScalarFbmNoise * IScalarFbmNoise::Create(uint level, NodeTree *pnt){

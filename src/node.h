@@ -5,9 +5,10 @@
 
 namespace Node{
 
-using ValueNodeParams = std::tuple<dfloat3, float, float>; //posw, dist, density
+using ValueNodeParams = std::tuple<dfloat3 *, dfloat3 *, float, float>;
 enum VNP{
-	VNP_POSW,
+	VNP_VOXPOSW,
+	VNP_CPTPOSW,
 	VNP_DISTANCE,
 	VNP_DENSITY
 };
@@ -108,7 +109,6 @@ public:
         INPUT_AMP,
         INPUT_FJUMP,
         INPUT_GAIN,
-        INPUT_BILLOW,
         INPUT_POSITION,
         INPUT_COUNT
     };
@@ -150,7 +150,8 @@ public:
 	~VoxelInfo();
 	void Evaluate(const void *);
 	enum OUTPUT{
-		OUTPUT_POSW,
+		OUTPUT_VOXPOSW,
+		OUTPUT_CPTPOSW,
 		OUTPUT_DISTANCE,
 		OUTPUT_DENSITY,
 		OUTPUT_COUNT
@@ -206,6 +207,8 @@ public:
     static IDisplacement * Create(uint, NodeTree *);
     enum INPUT{
         INPUT_DISTANCE,
+		INPUT_BILLOW,
+		INPUT_MAXIMUM,
         INPUT_SURFACE,
         INPUT_COUNT
     };

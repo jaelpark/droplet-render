@@ -157,7 +157,8 @@ class ClNodeVoxelInfo(bpy.types.Node):
 	bl_label = "Voxel Info";
 
 	def init(self, context):
-		self.outputs.new("ClNodeVectorSocket","World");
+		self.outputs.new("ClNodeVectorSocket","Vox.world");
+		self.outputs.new("ClNodeVectorSocket","CPT.world");
 		self.outputs.new("ClNodeFloatSocket","Distance");
 		self.outputs.new("ClNodeFloatSocket","Density");
 
@@ -237,9 +238,9 @@ class ClNodeScalarFbmNoise(bpy.types.Node):
 		self.inputs.new("ClNodeFloatSocket","amp");
 		self.inputs.new("ClNodeFloatSocket","fjump");
 		self.inputs.new("ClNodeFloatSocket","gain");
-		self.inputs.new("ClNodeFloatSocket","billow");
 		self.inputs.new("ClNodeVectorSocket","World");
 		self.outputs.new("ClNodeFloatSocket","Out");
+		self.outputs.new("ClNodeFloatSocket","Max");
 
 class ClNodeSurfaceOutput(bpy.types.Node):
 	bl_idname = "ClNodeSurfaceOutput";
@@ -305,6 +306,8 @@ class ClNodeDisplacement(bpy.types.Node):
 
 	def init(self, context):
 		self.inputs.new("ClNodeFloatSocket","Distance");
+		self.inputs.new("ClNodeFloatSocket","Billow");
+		self.inputs.new("ClNodeFloatSocket","Max");
 		self.inputs.new("ClNodeSurfaceSocket","Surface");
 		self.outputs.new("ClNodeSurfaceSocket","Surface");
 

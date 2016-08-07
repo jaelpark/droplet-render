@@ -239,7 +239,8 @@ void VoxelInfo::Evaluate(const void *pp){
 	ValueNodeParams *pd = (ValueNodeParams*)pp;
 
 	BaseValueResult<dfloat3> &rv = this->BaseValueNode<dfloat3>::result.local();
-	rv.value[OUTPUT_POSW] = std::get<VNP_POSW>(*pd);
+	rv.value[OUTPUT_VOXPOSW] = *std::get<VNP_VOXPOSW>(*pd);
+	rv.value[OUTPUT_CPTPOSW] = *std::get<VNP_CPTPOSW>(*pd);
 
 	BaseValueResult<float> &rs = this->BaseValueNode<float>::result.local();
 	rs.value[OUTPUT_DISTANCE] = std::get<VNP_DISTANCE>(*pd);
@@ -374,7 +375,7 @@ BaseNode * CreateNodeByType(const char *pname, uint level, NodeTree *pnt){
 		return IScalarFbmNoise::Create(level,pnt);
 
 	}else if(strcmp(pname,"ClNodeVoxelInfo") == 0){
-		return 0;
+		return new VoxelInfo(level,pnt);
     }else if(strcmp(pname,"ClNodeSurfaceInput") == 0){
         return ISurfaceInput::Create(level,pnt);
 	}else if(strcmp(pname,"ClNodeParticleInput") == 0){
