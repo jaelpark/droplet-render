@@ -17,6 +17,8 @@ __attribute__ ((aligned(16)))
 
 /*
 MTNodeEvaluation:
++add scalar fbm noise
+-add voxel info node
 -remove atomic flags, replace with tbb
 -deprecate the fbm node with displacement
 */

@@ -102,7 +102,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
             PyObject *pnoutv = PyObject_GetIter(pnouts);
             //
             uint nx = 0;
-            for(PyObject *pnout1 = PyIter_Next(pnoutv); pnout1; Py_DecRef(pnout1), pnout1 = PyIter_Next(pnoutv)){
+            for(PyObject *pnout1 = PyIter_Next(pnoutv); pnout1; Py_DecRef(pnout1), pnout1 = PyIter_Next(pnoutv), ++nx){
                 //
                 PyObject *plnks = PyObject_GetAttrString(pnout1,"links");
                 if(PyTuple_Size(plnks) > 0)
@@ -127,9 +127,12 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
                 Py_DECREF(plnks);
                 Py_DECREF(plnkv);
 
+				pidn = PyObject_GetAttrString(pnin1,"bl_idname");
+				pn = PyUnicode_AsUTF8(pidn);
+
                 if(!plnk1){
-                    pidn = PyObject_GetAttrString(pnin1,"bl_idname");
-                    pn = PyUnicode_AsUTF8(pidn);
+                    //pidn = PyObject_GetAttrString(pnin1,"bl_idname");
+                    //pn = PyUnicode_AsUTF8(pidn);
 
                     PyObject *pvalue = PyObject_GetAttrString(pnin1,"value"); //note: every node class should have this property, even if not used
                     pbn->pnodes[nx] = Node::CreateNodeBySocket(pn,pvalue,l+1,pnt);
@@ -141,6 +144,29 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 
                 PyObject *pnode = PyObject_GetAttrString(plnk1,"from_node");
                 Py_hash_t h = PyObject_Hash(pnode);
+
+				//get the child node output index
+				PyObject *psock = PyObject_GetAttrString(plnk1,"from_socket");
+				Py_hash_t t = PyObject_Hash(psock);
+				//
+				PyObject *pcouts = PyObject_GetAttrString(pnode,"outputs");
+				PyObject *pcoutv = PyObject_GetIter(pcouts);
+	            uint sx = 0;
+	            for(PyObject *pcout1 = PyIter_Next(pcoutv); pcout1; Py_DecRef(pcout1), pcout1 = PyIter_Next(pcoutv)){
+					Py_hash_t q = PyObject_Hash(pcout1);
+	                if(t == q)
+						break;
+					PyObject *pidn1 = PyObject_GetAttrString(pcout1,"bl_idname");
+                    const char *pn1 = PyUnicode_AsUTF8(pidn1);
+					if(strcmp(pn,pn1) == 0)
+						++sx;
+				}
+				//pbn->indices[nx] = sx
+				DebugPrintf("output index = %u\n",sx);
+	            Py_DECREF(pcoutv);
+				Py_DECREF(pcouts);
+				//
+				Py_DECREF(psock);
 
                 std::unordered_map<Py_hash_t, Node::BaseNode *>::const_iterator m = nodem.find(h);
                 if(m != nodem.end()){
@@ -176,7 +202,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 
         Py_hash_t h = PyObject_Hash(pnt1);
         ntm.insert(std::pair<Py_hash_t, Node::NodeTree *>(h,pntree));
-		
+
         Py_DECREF(pns1);
         //Py_DECREF(pnt1); //borrowed ref
     }
