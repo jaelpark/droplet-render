@@ -15,6 +15,10 @@ BaseNode::BaseNode(uint _level, NodeTree *_pntree) : omask(0), emask(0), level(_
     memset(pnodes,0,sizeof(pnodes));
 }
 
+/*BaseNode::BaseNode() : omask(0), emask(0), level(0), pntree(0){
+	memset(pnodes,0,sizeof(pnodes));
+}*/
+
 BaseNode::~BaseNode(){
     //
 }
@@ -31,12 +35,19 @@ BaseValueResult<T>::BaseValueResult(){
 
 template<class T>
 BaseValueNode<T>::BaseValueNode(T r, uint level, NodeTree *pnt) : BaseNode(level,pnt){
+	for(uint i = 0; i < pnt->nodes0.size(); ++i) //HACK: prevent double listing caused by multiple inheritance
+		if(pnt->nodes0[i] == this)
+			return;
+	//TODO: fix: in case of multiple inheritance (several different BaseValueNode types), do not add multiple instances of the same node
     result = r; //set the default value for every thread
     pnt->nodes0.push_back(this);
 }
 
 template<class T>
 BaseValueNode<T>::BaseValueNode(uint level, NodeTree *pnt) : BaseNode(level,pnt){
+	for(uint i = 0; i < pnt->nodes0.size(); ++i)
+		if(pnt->nodes0[i] == this)
+			return;
     pnt->nodes0.push_back(this);
 }
 
@@ -47,9 +58,7 @@ BaseValueNode<T>::~BaseValueNode(){
 
 template<class T>
 void BaseValueNode<T>::Evaluate(const void *pp){
-    //result.local().value[0] = defval;
-	//printf("default()\n");
-	//never called
+    //
 }
 
 /*template<class T>
@@ -67,7 +76,7 @@ void BaseValueNode<T>::EvaluateAll(const void *pp, uint max){
 }*/
 
 template<class T>
-AddNode<T>::AddNode(uint level, NodeTree *pnt) : BaseValueNode<T>(level,pnt){
+AddNode<T>::AddNode(uint level, NodeTree *pnt) : BaseValueNode<T>(level,pnt), BaseNode(level,pnt){
     //
 }
 
@@ -85,7 +94,7 @@ void AddNode<T>::Evaluate(const void *pp){
 }
 
 template<class T>
-SubNode<T>::SubNode(uint level, NodeTree *pnt) : BaseValueNode<T>(level,pnt){
+SubNode<T>::SubNode(uint level, NodeTree *pnt) : BaseValueNode<T>(level,pnt), BaseNode(level,pnt){
     //
 }
 
@@ -102,7 +111,7 @@ void SubNode<T>::Evaluate(const void *pp){
 }
 
 template<class T>
-MulNode<T>::MulNode(uint level, NodeTree *pnt) : BaseValueNode<T>(level,pnt){
+MulNode<T>::MulNode(uint level, NodeTree *pnt) : BaseValueNode<T>(level,pnt), BaseNode(level,pnt){
     //
 }
 
@@ -119,7 +128,7 @@ void MulNode<T>::Evaluate(const void *pp){
 }
 
 template<class T>
-DivNode<T>::DivNode(uint level, NodeTree *pnt) : BaseValueNode<T>(level,pnt){
+DivNode<T>::DivNode(uint level, NodeTree *pnt) : BaseValueNode<T>(level,pnt), BaseNode(level,pnt){
     //
 }
 
@@ -136,7 +145,7 @@ void DivNode<T>::Evaluate(const void *pp){
 }
 
 template<class T>
-PowNode<T>::PowNode(uint level, NodeTree *pnt) : BaseValueNode<T>(level,pnt){
+PowNode<T>::PowNode(uint level, NodeTree *pnt) : BaseValueNode<T>(level,pnt), BaseNode(level,pnt){
     //
 }
 
@@ -164,7 +173,7 @@ void SalarFbmNoise::Evaluate(const void *){
 	result = 0.0f; //fBm::noise
 }*/
 
-IScalarFbmNoise::IScalarFbmNoise(uint _level, NodeTree *pnt) : BaseValueNode<float>(_level,pnt){
+IScalarFbmNoise::IScalarFbmNoise(uint _level, NodeTree *pnt) : BaseValueNode<float>(_level,pnt), BaseNode(_level,pnt){
 	//
 }
 
@@ -227,7 +236,7 @@ void BaseVectorFieldNode::Evaluate(const void *pp){
 	//
 }
 
-VoxelInfo::VoxelInfo(uint _level, NodeTree *pnt) : BaseValueNode<float>(_level,pnt), BaseValueNode<dfloat3>(_level,pnt){
+VoxelInfo::VoxelInfo(uint _level, NodeTree *pnt) : BaseValueNode<float>(_level,pnt), BaseValueNode<dfloat3>(_level,pnt), BaseNode(_level,pnt){
 	//
 }
 
@@ -239,12 +248,12 @@ void VoxelInfo::Evaluate(const void *pp){
 	ValueNodeParams *pd = (ValueNodeParams*)pp;
 
 	BaseValueResult<dfloat3> &rv = this->BaseValueNode<dfloat3>::result.local();
-	rv.value[OUTPUT_VOXPOSW] = *std::get<VNP_VOXPOSW>(*pd);
-	rv.value[OUTPUT_CPTPOSW] = *std::get<VNP_CPTPOSW>(*pd);
+	rv.value[OUTPUT_VECTOR_VOXPOSW] = *std::get<VNP_VOXPOSW>(*pd);
+	rv.value[OUTPUT_VECTOR_CPTPOSW] = *std::get<VNP_CPTPOSW>(*pd);
 
 	BaseValueResult<float> &rs = this->BaseValueNode<float>::result.local();
-	rs.value[OUTPUT_DISTANCE] = std::get<VNP_DISTANCE>(*pd);
-	rs.value[OUTPUT_DENSITY] = std::get<VNP_DENSITY>(*pd);
+	rs.value[OUTPUT_FLOAT_DISTANCE] = std::get<VNP_DISTANCE>(*pd);
+	rs.value[OUTPUT_FLOAT_DENSITY] = std::get<VNP_DENSITY>(*pd);
 }
 
 ISurfaceInput::ISurfaceInput(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt){
@@ -313,13 +322,13 @@ NodeTree::~NodeTree(){
 }
 
 void NodeTree::EvaluateNodes0(const void *pp, uint max, uint mask){
-    for(uint i = 0; i < nodes0.size() && nodes0[i]->level > max; ++i)
+    for(uint i = 0; i < nodes0.size() && nodes0[i]->level >= max; ++i)
         if(nodes0[i]->emask & mask)
             nodes0[i]->Evaluate(pp);
 }
 
 void NodeTree::EvaluateNodes1(const void *pp, uint max, uint mask){
-    for(uint i = 0; i < nodes1.size() && nodes1[i]->level > max; ++i)
+    for(uint i = 0; i < nodes1.size() && nodes1[i]->level >= max; ++i)
         if(nodes1[i]->emask & mask)
             nodes1[i]->Evaluate(pp);
 }

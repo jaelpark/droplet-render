@@ -85,7 +85,6 @@ Displacement::~Displacement(){
 
 void Displacement::Evaluate(const void *pp){
     InputNodeParams<SceneObject> *pd = (InputNodeParams<SceneObject>*)pp;
-    //DebugPrintf("---PerlinNoise::Evaluate()\n");
 
     const float lff = 4.0f;
 
@@ -122,8 +121,8 @@ void Displacement::Evaluate(const void *pp){
 			openvdb::Vec3s posw = pgridtr->indexToWorld(c.asVec3d());
             openvdb::Vec3s cptw = cptr.result(*pgridtr->map<openvdb::math::UniformScaleMap>(),std::get<2>(fgt),c);
 
-			new(&np) ValueNodeParams((dfloat3*)posw.asPointer(),(dfloat3*)cptw.asPointer(),0.0f,0.0f);
-			pntree->EvaluateNodes0(&np,level+1,emask);
+			ValueNodeParams np1((dfloat3*)posw.asPointer(),(dfloat3*)cptw.asPointer(),0.0f,0.0f);
+			pntree->EvaluateNodes0(&np1,level+1,emask);
 
             float f = pnoisen->locr(indices[IDisplacement::INPUT_DISTANCE]);
             std::get<1>(fgt).setValue(c,f); //set only the displacement, so that billowing can be done

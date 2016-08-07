@@ -131,11 +131,9 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 				pn = PyUnicode_AsUTF8(pidn);
 
                 if(!plnk1){
-                    //pidn = PyObject_GetAttrString(pnin1,"bl_idname");
-                    //pn = PyUnicode_AsUTF8(pidn);
-
-                    PyObject *pvalue = PyObject_GetAttrString(pnin1,"value"); //note: every node class should have this property, even if not used
+                    PyObject *pvalue = PyObject_GetAttrString(pnin1,"value"); //note: every socket class should have this property, even if not used
                     pbn->pnodes[nx] = Node::CreateNodeBySocket(pn,pvalue,l+1,pnt);
+					pbn->indices[nx] = 0;
 
                     Py_DECREF(pvalue);
                     Py_DECREF(pidn);
@@ -162,7 +160,6 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 						++sx;
 				}
 				pbn->indices[nx] = sx;
-				//DebugPrintf("output index = %u\n",sx);
 
 	            Py_DECREF(pcoutv);
 				Py_DECREF(pcouts);

@@ -20,8 +20,8 @@ class BaseNode{
     //BaseNode();
 protected:
     BaseNode(uint, NodeTree *);
+	//BaseNode();
 public:
-	BaseNode(){}
     virtual ~BaseNode();
     //virtual void SetConstants(const void *);
     virtual void Evaluate(const void *) = 0;
@@ -44,6 +44,7 @@ public:
 
 template<class T>
 class BaseValueNode : public virtual BaseNode{
+//NOTE: the virtual inheritance requires an explicit constructor call at higher levels of hierarchy also whenever BaseValueNode<T>(...) is called.
 public:
     BaseValueNode(T, uint, NodeTree *);
     BaseValueNode(uint, NodeTree *);
@@ -113,6 +114,11 @@ public:
         INPUT_POSITION,
         INPUT_COUNT
     };
+	enum OUTPUT_FLOAT{
+		OUTPUT_FLOAT_NOISE,
+		OUTPUT_FLOAT_MAXIMUM,
+		OUTPUT_FLOAT_COUNT
+	};
 };
 
 class BaseFogNode : public BaseNode{
@@ -150,12 +156,15 @@ public:
 	VoxelInfo(uint, NodeTree *);
 	~VoxelInfo();
 	void Evaluate(const void *);
-	enum OUTPUT{
-		OUTPUT_VOXPOSW,
-		OUTPUT_CPTPOSW,
-		OUTPUT_DISTANCE,
-		OUTPUT_DENSITY,
-		OUTPUT_COUNT
+	enum OUTPUT_VECTOR{
+		OUTPUT_VECTOR_VOXPOSW,
+		OUTPUT_VECTOR_CPTPOSW,
+		OUTPUT_VECTOR_COUNT
+	};
+	enum OUTPUT_FLOAT{
+		OUTPUT_FLOAT_DISTANCE,
+		OUTPUT_FLOAT_DENSITY,
+		OUTPUT_FLOAT_COUNT
 	};
 };
 
