@@ -67,8 +67,8 @@ void ParticleInput::Evaluate(const void *pp){
 	pdgrid->setTransform(pgridtr);
 
 	openvdb::FloatGrid::Ptr ptgrid;
-	if(pgridtr->voxelSize().x() < prasres->result.local()){
-		openvdb::math::Transform::Ptr pgridtr1 = openvdb::math::Transform::createLinearTransform(prasres->result.local());
+	if(pgridtr->voxelSize().x() < prasres->locr(indices[IParticleInput::INPUT_RASTERIZATIONRES])){
+		openvdb::math::Transform::Ptr pgridtr1 = openvdb::math::Transform::createLinearTransform(prasres->locr(indices[IParticleInput::INPUT_RASTERIZATIONRES]));
 		ptgrid = openvdb::FloatGrid::create();
         ptgrid->setGridClass(openvdb::GRID_FOG_VOLUME);
 		ptgrid->setTransform(pgridtr1);
@@ -87,17 +87,17 @@ void ParticleInput::Evaluate(const void *pp){
 
 		//TODO: particle weight factor
 		openvdb::Coord q((int)f.x(),(int)f.y(),(int)f.z());
-		grida.modifyValue(q.offsetBy(0,0,0),[&](float &v){v += pweight->result.local()*B.x()*B.y()*B.z();});
-		grida.modifyValue(q.offsetBy(1,0,0),[&](float &v){v += pweight->result.local()*b.x()*B.y()*B.z();});
-		grida.modifyValue(q.offsetBy(0,1,0),[&](float &v){v += pweight->result.local()*B.x()*b.y()*B.z();});
-		grida.modifyValue(q.offsetBy(1,1,0),[&](float &v){v += pweight->result.local()*b.x()*b.y()*B.z();});
-		grida.modifyValue(q.offsetBy(0,0,1),[&](float &v){v += pweight->result.local()*B.x()*B.y()*b.z();});
-		grida.modifyValue(q.offsetBy(1,0,1),[&](float &v){v += pweight->result.local()*b.x()*B.y()*b.z();});
-		grida.modifyValue(q.offsetBy(0,1,1),[&](float &v){v += pweight->result.local()*B.x()*b.y()*b.z();});
-		grida.modifyValue(q.offsetBy(1,1,1),[&](float &v){v += pweight->result.local()*b.x()*b.y()*b.z();});
+		grida.modifyValue(q.offsetBy(0,0,0),[&](float &v){v += pweight->locr(indices[IParticleInput::INPUT_WEIGHT])*B.x()*B.y()*B.z();});
+		grida.modifyValue(q.offsetBy(1,0,0),[&](float &v){v += pweight->locr(indices[IParticleInput::INPUT_WEIGHT])*b.x()*B.y()*B.z();});
+		grida.modifyValue(q.offsetBy(0,1,0),[&](float &v){v += pweight->locr(indices[IParticleInput::INPUT_WEIGHT])*B.x()*b.y()*B.z();});
+		grida.modifyValue(q.offsetBy(1,1,0),[&](float &v){v += pweight->locr(indices[IParticleInput::INPUT_WEIGHT])*b.x()*b.y()*B.z();});
+		grida.modifyValue(q.offsetBy(0,0,1),[&](float &v){v += pweight->locr(indices[IParticleInput::INPUT_WEIGHT])*B.x()*B.y()*b.z();});
+		grida.modifyValue(q.offsetBy(1,0,1),[&](float &v){v += pweight->locr(indices[IParticleInput::INPUT_WEIGHT])*b.x()*B.y()*b.z();});
+		grida.modifyValue(q.offsetBy(0,1,1),[&](float &v){v += pweight->locr(indices[IParticleInput::INPUT_WEIGHT])*B.x()*b.y()*b.z();});
+		grida.modifyValue(q.offsetBy(1,1,1),[&](float &v){v += pweight->locr(indices[IParticleInput::INPUT_WEIGHT])*b.x()*b.y()*b.z();});
 	}
 
-	if(pgridtr->voxelSize().x() < prasres->result.local()){
+	if(pgridtr->voxelSize().x() < prasres->locr(indices[IParticleInput::INPUT_RASTERIZATIONRES])){
 		DebugPrintf("> Upsampling particle fog...\n");
 		openvdb::tools::resampleToMatch<openvdb::tools::BoxSampler>(*ptgrid,*pdgrid);
 	}else DebugPrintf("Used native grid resolution for particle rasterization.\n");
@@ -157,20 +157,20 @@ void Advection::Evaluate(const void *pp){
         FloatGridT &fgt = tgrida.local();
         for(; r; ++r){
 			pntree->EvaluateNodes0(0,level+1,emask);
-			
+
             const openvdb::FloatGrid::ValueOnIter &m = r.iterator();
 
 			float f = m.getValue();
-			if(f > pthrs->result.local())
+			if(f > pthrs->locr(indices[IAdvection::INPUT_THRESHOLD]))
 				continue;
 
 			openvdb::Coord c = m.getCoord();
 			openvdb::math::Vec3s posw = pnode->pdgrid->transform().indexToWorld(c);
 
-			float s = pdist->result.local()/(float)piters->result.local();
+			float s = pdist->locr(indices[IAdvection::INPUT_DISTANCE])/(float)piters->locr(indices[IAdvection::INPUT_ITERATIONS]);
 
 			float4 rc = float4::load(posw.asPointer());
-			for(uint i = 0; i < piters->result.local(); ++i){
+			for(uint i = 0; i < piters->locr(indices[IAdvection::INPUT_ITERATIONS]); ++i){
 				openvdb::math::Vec3s v = samplerv.wsSample(posw);
 				rc += s*float4::load((dfloat3*)v.asPointer());
 				//

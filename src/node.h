@@ -25,9 +25,18 @@ public:
     //virtual BaseNode * NewNode(void *, uint) const = 0;
     BaseNode *pnodes[12];
     NodeTree *pntree; //can be null
+	uint indices[12]; //index to the input node (pnodes[x]) output socket, per-socket-type basis
     uint omask; //output mask to help optimize storage in some cases
     uint emask; //ouput root node branch mask (e.g. 0x1 if required for the 1st input, 0x2 for the second, 0x1|0x2 for both, etc.)
     uint level;
+};
+
+template<class T>
+class BaseValueResult{
+public:
+	BaseValueResult(const T &); //used by tbb to set the default when constructing BaseValueNode
+	BaseValueResult();
+	T value[4]; //values for the different output sockets
 };
 
 template<class T>
@@ -37,12 +46,10 @@ public:
     BaseValueNode(uint, NodeTree *);
     virtual ~BaseValueNode();
     virtual void Evaluate(const void *);
-    //BaseNode * NewNode(void *, uint) const;
-    //T result;
-	tbb::enumerable_thread_specific<T> result;
-    /*static void EvaluateAll(const void *, uint);
-    static void SortNodes();
-    static std::vector<BaseValueNode<T> *> nodes;*/
+	inline T locr(uint outx){
+		return this->BaseValueNode<T>::result.local().value[outx];
+	}
+	tbb::enumerable_thread_specific<BaseValueResult<T>> result;
 };
 
 template<class T>
@@ -136,13 +143,11 @@ public:
 	static BaseVectorFieldNode * Create(uint, NodeTree *);
 };
 
-/*class fBmPerlinNoise : public BaseSurfaceNode{
+/*class VoxelInfo : public BaseValueNode<float>, public BaseValueNode<dfloat3>{
 public:
-    fBmPerlinNoise(uint);
-    ~fBmPerlinNoise();
-    void Evaluate();
-    //static Create() declaration in scene.h?
-    //TODO: global static openvdb::FloatGrid member to save memory - currently only linear surface node trees are supported anyway
+	VoxelInfo(uint, NodeTree *);
+	~VoxelInfo();
+	void Evaluate(const void *);
 };*/
 
 class ISurfaceInput : public virtual BaseSurfaceNode{

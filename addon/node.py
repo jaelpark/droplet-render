@@ -66,7 +66,7 @@ class ClNodeVectorSocket(bpy.types.NodeSocket):
 		layout.label(self.name);
 
 	def draw_color(self, context, node):
-		return (1.0,0.2,0.2,1);
+		return (0.3,0.3,0.3,1);
 
 class ClNodeShaderSocket(bpy.types.NodeSocket):
 	bl_idname = "ClNodeShaderSocket";
@@ -151,6 +151,15 @@ class ClNodeFieldSocket(bpy.types.NodeSocket):
 #class ClNodeFloatInput(bpy.types.Node):
 #	bl_idname = "ClNodeFloatInput";
 #	bl_label = "Float";
+
+class ClNodeVoxelInfo(bpy.types.Node):
+	bl_idname = "ClNodeVoxelInfo";
+	bl_label = "Voxel Info";
+
+	def init(self, context):
+		self.outputs.new("ClNodeVectorSocket","World");
+		self.outputs.new("ClNodeFloatSocket","Distance");
+		self.outputs.new("ClNodeFloatSocket","Density");
 
 class ClNodeSurfaceInput(bpy.types.Node):
 	bl_idname = "ClNodeSurfaceInput";
@@ -363,6 +372,7 @@ categories = [
 	ClNodeCategory("INPUT_CATEGORY","Input",items = [
 		NodeItem("ClNodeSurfaceInput"),
 		NodeItem("ClNodeParticleInput"),
+		NodeItem("ClNodeVoxelInfo"),
 	]),
 	ClNodeCategory("OUTPUT_CATEGORY","Output",items = [
 		NodeItem("ClNodeSurfaceOutput"),

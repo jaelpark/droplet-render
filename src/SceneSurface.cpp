@@ -117,7 +117,8 @@ void fBmPerlinNoise::Evaluate(const void *pp){
     //BaseSurfaceNode1 *pgridn = dynamic_cast<BaseSurfaceNode1*>(pnodes[IfBmPerlinNoise::INPUT_GRID]); //could be just using input_surface
 
     pntree->EvaluateNodes0(0,level+1,emask);
-    float amp = fBm::GetAmplitudeMax(poctn->result.local(),pampn->result.local(),pgainn->result.local());
+    float amp = fBm::GetAmplitudeMax(poctn->locr(indices[IfBmPerlinNoise::INPUT_OCTAVES]),
+		pampn->locr(indices[IfBmPerlinNoise::INPUT_AMP]),pgainn->locr(indices[IfBmPerlinNoise::INPUT_GAIN]));
 
     openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);//openvdb::math::Transform::createLinearTransform(s);
     openvdb::FloatGrid::Ptr psgrid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,pnode->vl,pnode->tl,pnode->ql,ceilf(amp/pgridtr->voxelSize().x()+lff),lff);
@@ -177,7 +178,8 @@ void fBmPerlinNoise::Evaluate(const void *pp){
             openvdb::math::Vec3s posw = cptr.result(*pgridtr->map<openvdb::math::UniformScaleMap>(),std::get<2>(fgt),c);
             sfloat4 sposw = sfloat1(posw.x(),posw.y(),posw.z(),0.0f); //TODO: utilize vectorization
 
-            float f = fabsf(fBm::noise(sposw,poctn->result.local(),pfreqn->result.local(),pampn->result.local(),pfjumpn->result.local(),pgainn->result.local()).get<0>());
+            float f = fabsf(fBm::noise(sposw,poctn->locr(indices[IfBmPerlinNoise::INPUT_OCTAVES]),pfreqn->locr(indices[IfBmPerlinNoise::INPUT_FREQ]),
+				pampn->locr(indices[IfBmPerlinNoise::INPUT_AMP]),pfjumpn->locr(indices[IfBmPerlinNoise::INPUT_FJUMP]),pgainn->locr(indices[IfBmPerlinNoise::INPUT_GAIN])).get<0>());
 			/*if(fi == 0)
 				fn = dfloatN(fBm::noise(sposw+offset,poctn->result,pfreqn->result,pampn->result,pfjumpn->result,pgainn->result)); //dfloatN fn
 			float f = fn.v[fi];*/
@@ -200,7 +202,7 @@ void fBmPerlinNoise::Evaluate(const void *pp){
             float f = m.getValue();
 
             dgrida.setValue(c,f/amp);
-            f *= powf(std::min(dgrida0.getValue(c),1.0f),pbilln->result.local()); //this is here because of the normalization
+            f *= powf(std::min(dgrida0.getValue(c),1.0f),pbilln->locr(indices[IfBmPerlinNoise::INPUT_BILLOW])); //this is here because of the normalization
 
             sgrida.setValue(c,d-f);
 

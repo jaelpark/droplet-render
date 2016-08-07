@@ -145,10 +145,10 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
                 PyObject *pnode = PyObject_GetAttrString(plnk1,"from_node");
                 Py_hash_t h = PyObject_Hash(pnode);
 
-				//get the child node output index
 				PyObject *psock = PyObject_GetAttrString(plnk1,"from_socket");
 				Py_hash_t t = PyObject_Hash(psock);
-				//
+
+				//get the child node output index
 				PyObject *pcouts = PyObject_GetAttrString(pnode,"outputs");
 				PyObject *pcoutv = PyObject_GetIter(pcouts);
 	            uint sx = 0;
@@ -161,8 +161,9 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 					if(strcmp(pn,pn1) == 0)
 						++sx;
 				}
-				//pbn->indices[nx] = sx
-				DebugPrintf("output index = %u\n",sx);
+				pbn->indices[nx] = sx;
+				//DebugPrintf("output index = %u\n",sx);
+
 	            Py_DECREF(pcoutv);
 				Py_DECREF(pcouts);
 				//

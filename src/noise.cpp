@@ -123,9 +123,10 @@ void ScalarFbmNoise::Evaluate(const void *pp){
     BaseValueNode<float> *pbilln = dynamic_cast<BaseValueNode<float>*>(pnodes[IScalarFbmNoise::INPUT_BILLOW]);
     BaseValueNode<dfloat3> *pnode = dynamic_cast<BaseValueNode<dfloat3>*>(pnodes[IScalarFbmNoise::INPUT_POSITION]);
 
-	dfloat3 &dposw = pnode->result.local();
+	dfloat3 &dposw = pnode->result.local().value[0];
 	sfloat4 sposw = sfloat1(dposw.x,dposw.y,dposw.z,0.0f);
-	result.local() = fabsf(fBm::noise(sposw,poctn->result.local(),pfreqn->result.local(),pampn->result.local(),pfjumpn->result.local(),pgainn->result.local()).get<0>());
+	result.local().value[0] = fabsf(fBm::noise(sposw,poctn->locr(indices[IScalarFbmNoise::INPUT_OCTAVES]),pfreqn->locr(indices[IScalarFbmNoise::INPUT_FREQ]),
+		pampn->locr(indices[IScalarFbmNoise::INPUT_AMP]),pfjumpn->locr(indices[IScalarFbmNoise::INPUT_FJUMP]),pgainn->locr(indices[IScalarFbmNoise::INPUT_GAIN])).get<0>());
 }
 
 IScalarFbmNoise * IScalarFbmNoise::Create(uint level, NodeTree *pnt){

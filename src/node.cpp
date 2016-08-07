@@ -19,20 +19,24 @@ BaseNode::~BaseNode(){
     //
 }
 
-/*void BaseNode::SetConstants(const void *_pps){
-    //
-}*/
+template<class T>
+BaseValueResult<T>::BaseValueResult(const T &r){
+	value[0] = r;
+}
+
+template<class T>
+BaseValueResult<T>::BaseValueResult(){
+	//
+}
 
 template<class T>
 BaseValueNode<T>::BaseValueNode(T r, uint level, NodeTree *pnt) : BaseNode(level,pnt){
-    result = r;
+    result = r; //set the default value for every thread
     pnt->nodes0.push_back(this);
-    //nodes.push_back(this);
 }
 
 template<class T>
 BaseValueNode<T>::BaseValueNode(uint level, NodeTree *pnt) : BaseNode(level,pnt){
-    //nodes.push_back(this);
     pnt->nodes0.push_back(this);
 }
 
@@ -43,7 +47,9 @@ BaseValueNode<T>::~BaseValueNode(){
 
 template<class T>
 void BaseValueNode<T>::Evaluate(const void *pp){
-    //
+    //result.local().value[0] = defval;
+	//printf("default()\n");
+	//never called
 }
 
 /*template<class T>
@@ -72,9 +78,9 @@ AddNode<T>::~AddNode(){
 
 template<class T>
 void AddNode<T>::Evaluate(const void *pp){
-    T a = ((BaseValueNode<T>*)this->pnodes[0])->result.local();
-    T b = ((BaseValueNode<T>*)this->pnodes[1])->result.local();
-    this->result.local() = a+b;
+    T a = ((BaseValueNode<T>*)this->pnodes[0])->BaseValueNode<T>::result.local().value[this->indices[0]];
+    T b = ((BaseValueNode<T>*)this->pnodes[1])->BaseValueNode<T>::result.local().value[this->indices[1]];
+    this->result.local().value[0] = a+b;
     //DebugPrintf("---AddNode<float>::Evaluate(), result = %f\n",this->result);
 }
 
@@ -90,9 +96,9 @@ SubNode<T>::~SubNode(){
 
 template<class T>
 void SubNode<T>::Evaluate(const void *pp){
-    T a = ((BaseValueNode<T>*)this->pnodes[0])->result.local();
-    T b = ((BaseValueNode<T>*)this->pnodes[1])->result.local();
-    this->result.local() = a-b;
+    T a = ((BaseValueNode<T>*)this->pnodes[0])->BaseValueNode<T>::result.local().value[this->indices[0]];
+    T b = ((BaseValueNode<T>*)this->pnodes[1])->BaseValueNode<T>::result.local().value[this->indices[1]];
+    this->result.local().value[0] = a-b;
 }
 
 template<class T>
@@ -107,9 +113,9 @@ MulNode<T>::~MulNode(){
 
 template<class T>
 void MulNode<T>::Evaluate(const void *pp){
-    T a = ((BaseValueNode<T>*)this->pnodes[0])->result.local();
-    T b = ((BaseValueNode<T>*)this->pnodes[1])->result.local();
-    this->result.local() = a*b;
+    T a = ((BaseValueNode<T>*)this->pnodes[0])->BaseValueNode<T>::result.local().value[this->indices[0]];
+    T b = ((BaseValueNode<T>*)this->pnodes[1])->BaseValueNode<T>::result.local().value[this->indices[1]];
+    this->result.local().value[0] = a*b;
 }
 
 template<class T>
@@ -124,9 +130,9 @@ DivNode<T>::~DivNode(){
 
 template<class T>
 void DivNode<T>::Evaluate(const void *pp){
-    T a = ((BaseValueNode<T>*)this->pnodes[0])->result.local();
-    T b = ((BaseValueNode<T>*)this->pnodes[1])->result.local();
-    this->result.local() = a/b;
+    T a = ((BaseValueNode<T>*)this->pnodes[0])->BaseValueNode<T>::result.local().value[this->indices[0]];
+    T b = ((BaseValueNode<T>*)this->pnodes[1])->BaseValueNode<T>::result.local().value[this->indices[1]];
+    this->result.local().value[0] = a/b;
 }
 
 template<class T>
@@ -141,9 +147,9 @@ PowNode<T>::~PowNode(){
 
 template<class T>
 void PowNode<T>::Evaluate(const void *pp){
-    T a = ((BaseValueNode<T>*)this->pnodes[0])->result.local();
-    T b = ((BaseValueNode<T>*)this->pnodes[1])->result.local();
-    this->result.local() = powf(a,b);
+    T a = ((BaseValueNode<T>*)this->pnodes[0])->BaseValueNode<T>::result.local().value[this->indices[0]];
+    T b = ((BaseValueNode<T>*)this->pnodes[1])->BaseValueNode<T>::result.local().value[this->indices[1]];
+    this->result.local().value[0] = powf(a,b);
 }
 
 /*ScalarFbmNoise::ScalarFbmNoise(uint _level, NodeTree *pnt) : BaseValueNode(_level,pnt){
@@ -273,14 +279,6 @@ IfBmPerlinNoise::~IfBmPerlinNoise(){
     //
 }
 
-/*void IfBmPerlinNoise::SetConstants(const void *_pps){
-    PyObject *pps = (PyObject*)_pps;
-    PyObject *poc = PyObject_GetAttrString(pps,"octaves");
-    octaves = PyLong_AsLong(poc);
-    printf("octaves = %u\n",octaves);
-    Py_DECREF(poc);
-}*/
-
 OutputNode::OutputNode(NodeTree *pnt) : BaseNode(0,pnt){
     pnt->nodes1.push_back(this);
     //proot = this; //hack
@@ -367,6 +365,8 @@ BaseNode * CreateNodeByType(const char *pname, uint level, NodeTree *pnt){
 	}else if(strcmp(pname,"ClNodeScalarFbmNoise") == 0){
 		return IScalarFbmNoise::Create(level,pnt);
 
+	}else if(strcmp(pname,"ClNodeVoxelInfo") == 0){
+		return 0;
     }else if(strcmp(pname,"ClNodeSurfaceInput") == 0){
         return ISurfaceInput::Create(level,pnt);
 	}else if(strcmp(pname,"ClNodeParticleInput") == 0){
