@@ -5,11 +5,12 @@
 
 namespace Node{
 
-/*template<class T>
-struct PropertyDef{
-    const char *pname;
-    T *pp;
-};*/
+using ValueNodeParams = std::tuple<dfloat3, float, float>; //posw, dist, density
+enum VNP{
+	VNP_POSW,
+	VNP_DISTANCE,
+	VNP_DENSITY
+};
 
 class NodeTree;
 
@@ -143,12 +144,18 @@ public:
 	static BaseVectorFieldNode * Create(uint, NodeTree *);
 };
 
-/*class VoxelInfo : public BaseValueNode<float>, public BaseValueNode<dfloat3>{
+class VoxelInfo : public BaseValueNode<float>, public BaseValueNode<dfloat3>{
 public:
 	VoxelInfo(uint, NodeTree *);
 	~VoxelInfo();
 	void Evaluate(const void *);
-};*/
+	enum OUTPUT{
+		OUTPUT_POSW,
+		OUTPUT_DISTANCE,
+		OUTPUT_DENSITY,
+		OUTPUT_COUNT
+	};
+};
 
 class ISurfaceInput : public virtual BaseSurfaceNode{
 protected:

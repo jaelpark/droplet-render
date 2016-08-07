@@ -227,16 +227,24 @@ void BaseVectorFieldNode::Evaluate(const void *pp){
 	//
 }
 
-/*void BaseSurfaceNode::SortNodes(){
-    std::sort(nodes.begin(),nodes.end(),[&](BaseSurfaceNode *pa, BaseSurfaceNode *pb)->bool{
-        return pa->level > pb->level;
-    });
+VoxelInfo::VoxelInfo(uint _level, NodeTree *pnt) : BaseValueNode<float>(_level,pnt), BaseValueNode<dfloat3>(_level,pnt){
+	//
 }
 
-void BaseSurfaceNode::EvaluateAll(const void *pp, uint max){
-    for(uint i = 0; i < nodes.size() && nodes[i]->level > max; ++i)
-        nodes[i]->Evaluate(pp);
-}*/
+VoxelInfo::~VoxelInfo(){
+	//
+}
+
+void VoxelInfo::Evaluate(const void *pp){
+	ValueNodeParams *pd = (ValueNodeParams*)pp;
+
+	BaseValueResult<dfloat3> &rv = this->BaseValueNode<dfloat3>::result.local();
+	rv.value[OUTPUT_POSW] = std::get<VNP_POSW>(*pd);
+
+	BaseValueResult<float> &rs = this->BaseValueNode<float>::result.local();
+	rs.value[OUTPUT_DISTANCE] = std::get<VNP_DISTANCE>(*pd);
+	rs.value[OUTPUT_DENSITY] = std::get<VNP_DENSITY>(*pd);
+}
 
 ISurfaceInput::ISurfaceInput(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt){
     //
