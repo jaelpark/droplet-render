@@ -78,8 +78,8 @@ AddNode<T>::~AddNode(){
 
 template<class T>
 void AddNode<T>::Evaluate(const void *pp){
-    T a = ((BaseValueNode<T>*)this->pnodes[0])->BaseValueNode<T>::result.local().value[this->indices[0]];
-    T b = ((BaseValueNode<T>*)this->pnodes[1])->BaseValueNode<T>::result.local().value[this->indices[1]];
+    T a = dynamic_cast<BaseValueNode<T>*>(this->pnodes[0])->BaseValueNode<T>::result.local().value[this->indices[0]];
+    T b = dynamic_cast<BaseValueNode<T>*>(this->pnodes[1])->BaseValueNode<T>::result.local().value[this->indices[1]];
     this->result.local().value[0] = a+b;
     //DebugPrintf("---AddNode<float>::Evaluate(), result = %f\n",this->result);
 }
@@ -96,8 +96,8 @@ SubNode<T>::~SubNode(){
 
 template<class T>
 void SubNode<T>::Evaluate(const void *pp){
-    T a = ((BaseValueNode<T>*)this->pnodes[0])->BaseValueNode<T>::result.local().value[this->indices[0]];
-    T b = ((BaseValueNode<T>*)this->pnodes[1])->BaseValueNode<T>::result.local().value[this->indices[1]];
+    T a = dynamic_cast<BaseValueNode<T>*>(this->pnodes[0])->BaseValueNode<T>::result.local().value[this->indices[0]];
+    T b = dynamic_cast<BaseValueNode<T>*>(this->pnodes[1])->BaseValueNode<T>::result.local().value[this->indices[1]];
     this->result.local().value[0] = a-b;
 }
 
@@ -113,8 +113,8 @@ MulNode<T>::~MulNode(){
 
 template<class T>
 void MulNode<T>::Evaluate(const void *pp){
-    T a = ((BaseValueNode<T>*)this->pnodes[0])->BaseValueNode<T>::result.local().value[this->indices[0]];
-    T b = ((BaseValueNode<T>*)this->pnodes[1])->BaseValueNode<T>::result.local().value[this->indices[1]];
+    T a = dynamic_cast<BaseValueNode<T>*>(this->pnodes[0])->BaseValueNode<T>::result.local().value[this->indices[0]];
+    T b = dynamic_cast<BaseValueNode<T>*>(this->pnodes[1])->BaseValueNode<T>::result.local().value[this->indices[1]];
     this->result.local().value[0] = a*b;
 }
 
@@ -130,8 +130,8 @@ DivNode<T>::~DivNode(){
 
 template<class T>
 void DivNode<T>::Evaluate(const void *pp){
-    T a = ((BaseValueNode<T>*)this->pnodes[0])->BaseValueNode<T>::result.local().value[this->indices[0]];
-    T b = ((BaseValueNode<T>*)this->pnodes[1])->BaseValueNode<T>::result.local().value[this->indices[1]];
+    T a = dynamic_cast<BaseValueNode<T>*>(this->pnodes[0])->BaseValueNode<T>::result.local().value[this->indices[0]];
+    T b = dynamic_cast<BaseValueNode<T>*>(this->pnodes[1])->BaseValueNode<T>::result.local().value[this->indices[1]];
     this->result.local().value[0] = a/b;
 }
 
@@ -147,8 +147,8 @@ PowNode<T>::~PowNode(){
 
 template<class T>
 void PowNode<T>::Evaluate(const void *pp){
-    T a = ((BaseValueNode<T>*)this->pnodes[0])->BaseValueNode<T>::result.local().value[this->indices[0]];
-    T b = ((BaseValueNode<T>*)this->pnodes[1])->BaseValueNode<T>::result.local().value[this->indices[1]];
+    T a = dynamic_cast<BaseValueNode<T>*>(this->pnodes[0])->BaseValueNode<T>::result.local().value[this->indices[0]];
+    T b = dynamic_cast<BaseValueNode<T>*>(this->pnodes[1])->BaseValueNode<T>::result.local().value[this->indices[1]];
     this->result.local().value[0] = powf(a,b);
 }
 

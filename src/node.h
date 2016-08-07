@@ -21,6 +21,7 @@ class BaseNode{
 protected:
     BaseNode(uint, NodeTree *);
 public:
+	BaseNode(){}
     virtual ~BaseNode();
     //virtual void SetConstants(const void *);
     virtual void Evaluate(const void *) = 0;
@@ -42,7 +43,7 @@ public:
 };
 
 template<class T>
-class BaseValueNode : public BaseNode{
+class BaseValueNode : public virtual BaseNode{
 public:
     BaseValueNode(T, uint, NodeTree *);
     BaseValueNode(uint, NodeTree *);
