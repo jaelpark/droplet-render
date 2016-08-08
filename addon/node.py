@@ -228,9 +228,9 @@ class ClNodeFloatPow(bpy.types.Node):
 #class ClPropertyEmpty(bpy.types.PropertyGroup):
 	#pass
 
-class ClNodeScalarFbmNoise(bpy.types.Node):
-	bl_idname = "ClNodeScalarFbmNoise";
-	bl_label = "ScalarNoise";
+class ClNodeFbmNoise(bpy.types.Node):
+	bl_idname = "ClNodeFbmNoise";
+	bl_label = "FbmNoise";
 
 	def init(self, context):
 		self.inputs.new("ClNodeIntSocket","octaves");
@@ -239,7 +239,8 @@ class ClNodeScalarFbmNoise(bpy.types.Node):
 		self.inputs.new("ClNodeFloatSocket","fjump");
 		self.inputs.new("ClNodeFloatSocket","gain");
 		self.inputs.new("ClNodeVectorSocket","World");
-		self.outputs.new("ClNodeFloatSocket","Out");
+		self.outputs.new("ClNodeFloatSocket","Out.Scalar");
+		self.outputs.new("ClNodeVectorSocket","Out.Vector");
 		self.outputs.new("ClNodeFloatSocket","Max");
 
 class ClNodeSurfaceOutput(bpy.types.Node):
@@ -306,43 +307,13 @@ class ClNodeDisplacement(bpy.types.Node):
 
 	def init(self, context):
 		self.inputs.new("ClNodeFloatSocket","Distance");
-		self.inputs.new("ClNodeFloatSocket","Billow");
 		self.inputs.new("ClNodeFloatSocket","Max");
+		self.inputs.new("ClNodeFloatSocket","Billow");
 		self.inputs.new("ClNodeSurfaceSocket","Surface");
 		self.outputs.new("ClNodeSurfaceSocket","Surface");
 
 	#def draw_buttons(self, context, layout):
 		#self.props.draw(context,layout);
-
-#class ClPropertyfBmPerlinNoise(bpy.types.PropertyGroup):
-#	#TODO: allow node-driven inputs
-#	octaves = IntProperty(name="Octaves",default=2,min=1,max=12);
-#	freq = FloatProperty(name="Frequency",default=1.0,min=0.0,max=10.0);
-#	amp = FloatProperty(name="Amplitude",default=1.0,min=0.0);
-#	fjump = FloatProperty(name="FJump",default=1.5,min=0.0);
-#	gain = FloatProperty(name="Gain",default=0.5,min=0.0);
-#	billow = FloatProperty(name="Billow",default=0.0,min=0.0,max=1.0);
-#	qscale = FloatProperty(name="QScale",default=1.0,min=0.0);
-#
-#	def draw(self, context, layout):
-#		layout.row().prop(self,"octaves");
-#		layout.row().prop(self,"freq");
-#		layout.row().prop(self,"amp");
-#		layout.row().prop(self,"fjump");
-#		layout.row().prop(self,"gain");
-#		layout.row().prop(self,"billow");
-#		layout.row().prop(self,"qscale");
-
-#class ClPropertyfBmPerlinNoise(bpy.types.PropertyGroup):
-#	#maxd = FloatProperty(name="Max",default=1.0,min=0,description="Maximum displacement value. Inputs exceeding this will be clamped");
-#	#lckd = BoolProperty(name="",default=True); #ICON=LINKED/UNLINKED, LOCKED/UNLOCKED
-#	octaves = IntProperty(name="Octaves",default=2,min=1,max=12);
-#
-#	def draw(self, context, layout):
-#		#r = layout.row();
-#		#r.prop(self,"maxd");
-#		#r.prop(self,"lckd");
-#		layout.row().prop(self,"octaves");
 
 #TODO: deprecate this in favor of displacement + separate value perlin noise?
 #^^this alternative is still unoptimal, as all (noise) nodes of the tree would be evaluated (above level+1), even if only was was needed for current displacement node.
@@ -389,7 +360,7 @@ categories = [
 		NodeItem("ClNodeFloatPow"),
 	]),
 	ClNodeCategory("NOISE_CATEGORY","Noise",items = [
-		NodeItem("ClNodeScalarFbmNoise"),
+		NodeItem("ClNodeFbmNoise"),
 	]),
 	ClNodeCategory("DENSITY_CATEGORY","Fog",items = [
 		NodeItem("ClNodeAdvection"),

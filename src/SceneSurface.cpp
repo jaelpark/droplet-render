@@ -117,11 +117,11 @@ void Displacement::Evaluate(const void *pp){
         for(; r; ++r){ //++fi
             const openvdb::FloatGrid::ValueOnIter &m = r.iterator();
 
-            openvdb::Coord c = m.getCoord(); //, m.getValue()
+            openvdb::Coord c = m.getCoord();
 			openvdb::Vec3s posw = pgridtr->indexToWorld(c.asVec3d());
             openvdb::Vec3s cptw = cptr.result(*pgridtr->map<openvdb::math::UniformScaleMap>(),std::get<2>(fgt),c);
 
-			ValueNodeParams np1((dfloat3*)posw.asPointer(),(dfloat3*)cptw.asPointer(),0.0f,0.0f);
+			ValueNodeParams np1((dfloat3*)posw.asPointer(),(dfloat3*)cptw.asPointer(),m.getValue(),0.0f);
 			pntree->EvaluateNodes0(&np1,level+1,emask);
 
             float f = pnoisen->locr(indices[IDisplacement::INPUT_DISTANCE]);
@@ -183,7 +183,6 @@ void fBmPerlinNoise::Evaluate(const void *pp){
     BaseValueNode<float> *pgainn = dynamic_cast<BaseValueNode<float>*>(pnodes[IfBmPerlinNoise::INPUT_GAIN]);
     BaseValueNode<float> *pbilln = dynamic_cast<BaseValueNode<float>*>(pnodes[IfBmPerlinNoise::INPUT_BILLOW]);
     BaseSurfaceNode1 *pnode = dynamic_cast<BaseSurfaceNode1*>(pnodes[IfBmPerlinNoise::INPUT_SURFACE]);
-    //BaseSurfaceNode1 *pgridn = dynamic_cast<BaseSurfaceNode1*>(pnodes[IfBmPerlinNoise::INPUT_GRID]); //could be just using input_surface
 
     pntree->EvaluateNodes0(0,level+1,emask);
     float amp = fBm::GetAmplitudeMax(poctn->locr(indices[IfBmPerlinNoise::INPUT_OCTAVES]),
@@ -194,39 +193,6 @@ void fBmPerlinNoise::Evaluate(const void *pp){
 
     DebugPrintf("Allocated disp. exterior narrow band for amp = %f+%f (%u voxels)\n",amp,pgridtr->voxelSize().x()*lff,(uint)ceilf(amp/pgridtr->voxelSize().x()+lff));
     DebugPrintf("> Displacing SDF...\n");
-
-    /*openvdb::FloatGrid::Ptr pdgrid = openvdb::FloatGrid::create();
-    pdgrid->setTransform(pgridtr);
-    pdgrid->setGridClass(openvdb::GRID_FOG_VOLUME);*/
-
-    /*openvdb::FloatGrid::Accessor grida = psgrid->getAccessor();
-    openvdb::FloatGrid::Accessor gridd = pdgrid->getAccessor();
-    openvdb::FloatGrid::ConstAccessor gridac = psgrid->getConstAccessor();
-    openvdb::FloatGrid::ConstAccessor griddc = pdgrid->getConstAccessor();
-
-    openvdb::math::CPT_RANGE<openvdb::math::UniformScaleMap,openvdb::math::CD_2ND> cptr;
-    for(openvdb::FloatGrid::ValueOnIter m = psgrid->beginValueOn(); m.test(); ++m){
-        //BaseValueNode<float>::EvaluateAll(0,level+1);
-        EvaluateValueGroup(level+1);
-
-        openvdb::Coord c = m.getCoord();
-        openvdb::math::Vec3s posw = cptr.result(*pgridtr->map<openvdb::math::UniformScaleMap>(),gridac,c);
-        sfloat4 sposw = sfloat1(posw.x(),posw.y(),posw.z(),0.0f); //TODO: utilize vectorization
-
-        float f = fabsf(fBm::noise(sposw,poctn->result,pfreqn->result,pampn->result,pfjumpn->result,pgainn->result).get<0>());
-        //if(i > 0)
-            //f *= powf(std::min(gridd.getValue(c)/(*pdls)[i].qscale,1.0f),(*pdls)[i].billow);
-        gridd.setValue(c,f);
-    }
-
-    for(openvdb::FloatGrid::ValueOnIter m = psgrid->beginValueOn(); m.test(); ++m){
-        openvdb::Coord c = m.getCoord();
-        float d = m.getValue();
-        float f = griddc.getValue(c);
-
-        //grida.setValue(c,d-f);
-        m.setValue(d-f);
-    }*/
 
     typedef std::tuple<openvdb::FloatGrid::Ptr, openvdb::FloatGrid::Accessor, openvdb::FloatGrid::ConstAccessor> FloatGridT;
     tbb::enumerable_thread_specific<FloatGridT> tgrida([&]()->FloatGridT{

@@ -161,11 +161,11 @@ void PowNode<T>::Evaluate(const void *pp){
     this->result.local().value[0] = powf(a,b);
 }
 
-/*ScalarFbmNoise::ScalarFbmNoise(uint _level, NodeTree *pnt) : BaseValueNode(_level,pnt){
+/*FbmNoise::FbmNoise(uint _level, NodeTree *pnt) : BaseValueNode(_level,pnt){
 	//
 }
 
-SalarFbmNoise::~ScalarFbmNoise(){
+SalarFbmNoise::~FbmNoise(){
 	//
 }
 
@@ -173,15 +173,15 @@ void SalarFbmNoise::Evaluate(const void *){
 	result = 0.0f; //fBm::noise
 }*/
 
-IScalarFbmNoise::IScalarFbmNoise(uint _level, NodeTree *pnt) : BaseValueNode<float>(_level,pnt), BaseNode(_level,pnt){
+IFbmNoise::IFbmNoise(uint _level, NodeTree *pnt) : BaseValueNode<float>(_level,pnt), BaseValueNode<dfloat3>(_level,pnt), BaseNode(_level,pnt){
 	//
 }
 
-IScalarFbmNoise::~IScalarFbmNoise(){
+IFbmNoise::~IFbmNoise(){
 	//
 }
 
-void IScalarFbmNoise::Evaluate(const void *pp){
+void IFbmNoise::Evaluate(const void *pp){
 	//
 }
 
@@ -380,8 +380,8 @@ BaseNode * CreateNodeByType(const char *pname, uint level, NodeTree *pnt){
     }else if(strcmp(pname,"ClNodeFloatPow") == 0){
         return new PowNode<float>(level,pnt);
 
-	}else if(strcmp(pname,"ClNodeScalarFbmNoise") == 0){
-		return IScalarFbmNoise::Create(level,pnt);
+	}else if(strcmp(pname,"ClNodeFbmNoise") == 0){
+		return IFbmNoise::Create(level,pnt);
 
 	}else if(strcmp(pname,"ClNodeVoxelInfo") == 0){
 		return new VoxelInfo(level,pnt);

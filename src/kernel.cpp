@@ -404,6 +404,8 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
     //sfloat1 msigmaa = sfloat1(0.02f); //absorption (macroscopic cross section)
     //sfloat1 msigmas = sfloat1(2.9f); //scattering
+	//approximate very high orders of scattering by lowering the cross section for high orders
+	//TODO: try also making the phase function more isotropic for high r?
     sfloat1 msigmaa = sfloat1(2.3f)*expf(-2.0f*(float)r)+sfloat1(0.02f);
     sfloat1 msigmas = sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(2.9f);
     sfloat1 msigmae = msigmaa+msigmas;

@@ -98,13 +98,13 @@ public:
     void Evaluate(const void *);
 };
 
-class IScalarFbmNoise : public virtual BaseValueNode<float>{
+class IFbmNoise : public virtual BaseValueNode<float>, public virtual BaseValueNode<dfloat3>{
 protected:
-	IScalarFbmNoise(uint, NodeTree *);
-	~IScalarFbmNoise();
+	IFbmNoise(uint, NodeTree *);
+	~IFbmNoise();
 public:
 	virtual void Evaluate(const void *);
-	static IScalarFbmNoise * Create(uint, NodeTree *);
+	static IFbmNoise * Create(uint, NodeTree *);
 	enum INPUT{
         INPUT_OCTAVES,
         INPUT_FREQ,
@@ -118,6 +118,10 @@ public:
 		OUTPUT_FLOAT_NOISE,
 		OUTPUT_FLOAT_MAXIMUM,
 		OUTPUT_FLOAT_COUNT
+	};
+	enum OUTPUT_VECTOR{
+		OUTPUT_VECTOR_NOISE,
+		OUTPUT_VECTOR_COUNT
 	};
 };
 
@@ -217,8 +221,8 @@ public:
     static IDisplacement * Create(uint, NodeTree *);
     enum INPUT{
         INPUT_DISTANCE,
-		INPUT_BILLOW,
 		INPUT_MAXIMUM,
+		INPUT_BILLOW,
         INPUT_SURFACE,
         INPUT_COUNT
     };

@@ -14,10 +14,10 @@ float GetAmplitudeMax(uint, float, float);
 
 namespace Node{
 
-class ScalarFbmNoise : public IScalarFbmNoise{
+class FbmNoise : public IFbmNoise{
 public:
-	ScalarFbmNoise(uint, NodeTree *);
-	~ScalarFbmNoise();
+	FbmNoise(uint, NodeTree *);
+	~FbmNoise();
 	void Evaluate(const void *);
 };
 
