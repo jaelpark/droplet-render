@@ -57,7 +57,7 @@ bool BoundingBox::Intersects(const float4 &v0, const float4 &v1, const float4 &v
 
     float4 dj = float4::Or(float4::Greater(tmin,bmax),float4::Greater(bmin,tmax));
     //if(float4::AnyTrue(float4::EqualR(float4::swizzle(dj,0,1,2,0),float4::trueI())))
-    if(float4::AnyTrue(float4::EqualR(dj.swizzle<0,1,2,0>(),float4::trueI())))
+    if(float4::AnyTrue(float4::EqualR(dj.swizzle<0,1,2,0>(),sint1::trueI())))
         return false;
 
     float4 n = float4::cross(v1-v0,v2-v0);
@@ -171,7 +171,7 @@ bool BoundingBox::Intersects(const float4 &v0, const float4 &v1, const float4 &v
     ni = float4::Or(ni,float4::Less(max,-r));
 
     //AnyFalse (EqualR(ni,true))
-    return float4::AnyFalse(float4::EqualR(ni,float4::trueI()));
+    return float4::AnyFalse(float4::EqualR(ni,sint1::trueI()));
 }
 
 bool BoundingBox::Intersects(const BoundingBox &bb) const{
@@ -187,10 +187,10 @@ bool BoundingBox::Intersects(const BoundingBox &bb) const{
 
     float4 dj = float4::Or(float4::Greater(bmina,bmaxb),float4::Greater(bminb,bmaxa));
     //return !float4::AnyTrue(float4::EqualR(float4::swizzle(dj,0,1,2,0),float4::trueI()));
-    return !float4::AnyTrue(float4::EqualR(dj.swizzle<0,1,2,0>(),float4::trueI()));
+    return !float4::AnyTrue(float4::EqualR(dj.swizzle<0,1,2,0>(),sint1::trueI()));
 }
 
-Octree::Octree(uint _x) : x(_x), lock(ATOMIC_FLAG_INIT){
+Octree::Octree(uint _x) : x(_x){//, lock(ATOMIC_FLAG_INIT){
 	memset(pch,0,sizeof(pch));
 }
 
@@ -204,10 +204,10 @@ void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &c1, const
     memset(pob[x].qval,0,sizeof(pob[x].qval)); //these are set during the resampling phase
 
     if(level >= mlevel-1){
-        for(; lock.test_and_set(std::memory_order_acquire););
+        m.lock();//for(; lock.test_and_set(std::memory_order_acquire););
         if(pob[x].volx[bx] == ~0u)
             pob[x].volx[bx] = pleafx->fetch_add(1);
-        lock.clear(std::memory_order_release);
+        m.unlock();//lock.clear(std::memory_order_release);
         return;
     }//else pob[x].volx = ~0;
 
@@ -221,13 +221,13 @@ void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &c1, const
 
         //aabb.Intersects
         if(aabb.Intersects(aabb1)){
-            for(; lock.test_and_set(std::memory_order_acquire););
+            m.lock();//for(; lock.test_and_set(std::memory_order_acquire););
             if(!pch[i]){
                 uint index = pindex->fetch_add(1)+1;
                 pch[i] = new(proot+index) Octree(index);
                 pob[x].chn[i] = index;
             }
-            lock.clear(std::memory_order_release);
+            m.unlock();//lock.clear(std::memory_order_release);
 
             pch[i]->BuildPath(cc,ee,c1,e1,level+1,mlevel,pindex,pleafx,proot,pob,bx);
         }
@@ -239,10 +239,10 @@ void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &v0, const
     memset(pob[x].qval,0,sizeof(pob[x].qval)); //these are set during the resampling phase
 
     if(level >= mlevel-1){
-        for(; lock.test_and_set(std::memory_order_acquire););
+        m.lock();//for(; lock.test_and_set(std::memory_order_acquire););
         if(pob[x].volx[bx] == ~0u)
             pob[x].volx[bx] = pleafx->fetch_add(1);
-        lock.clear(std::memory_order_release);
+        m.unlock();//lock.clear(std::memory_order_release);
         return;
     }//else pob[x].volx = ~0;
 
@@ -253,13 +253,13 @@ void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &v0, const
         BoundingBox aabb(cc,ee);
 
         if(aabb.Intersects(v0,v1,v2)){
-            for(; lock.test_and_set(std::memory_order_acquire););
+            m.lock();//for(; lock.test_and_set(std::memory_order_acquire););
             if(!pch[i]){
                 uint index = pindex->fetch_add(1)+1;
                 pch[i] = new(proot+index) Octree(index);
                 pob[x].chn[i] = index;
             }
-            lock.clear(std::memory_order_release);
+            m.unlock();//lock.clear(std::memory_order_release);
 
             pch[i]->BuildPath(cc,ee,v0,v1,v2,level+1,mlevel,pindex,pleafx,proot,pob,bx);
         }

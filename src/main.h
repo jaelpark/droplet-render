@@ -15,14 +15,6 @@ __attribute__ ((aligned(16)))
 
 #include <tbb/tbb.h>
 
-/*
-MTNodeEvaluation:
-+add scalar fbm noise
--add voxel info node
--remove atomic flags, replace with tbb
--deprecate the fbm node with displacement
-*/
-
 typedef unsigned int uint;
 
 #define DebugPrintf printf

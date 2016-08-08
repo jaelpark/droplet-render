@@ -47,20 +47,20 @@ sfloat1 noise(const sfloat4 &_pos){
     sfloat4 fad = fade(pos);
 
     sint4 I = sint4::And(sint4::convert(F),sint4(sint1(255)));
-    int AA[BLCLOUD_VSIZE], AB[BLCLOUD_VSIZE], BA[BLCLOUD_VSIZE], BB[BLCLOUD_VSIZE];
-    int X[BLCLOUD_VSIZE], Y[BLCLOUD_VSIZE], Z[BLCLOUD_VSIZE];
-    sint1::store(X,I.v[0]);
-    sint1::store(Y,I.v[1]);
-    sint1::store(Z,I.v[2]);
+	dintN AA, AB, BA, BB;
+	dintN X, Y, Z;
+    sint1::store(&X,I.v[0]);
+    sint1::store(&Y,I.v[1]);
+    sint1::store(&Z,I.v[2]);
     for(uint i = 0; i < BLCLOUD_VSIZE; ++i){
-        int A = p[(X[i]+0)%256]+Y[i];
-        AA[i] = p[(A+0)%256]+Z[i];
-        AB[i] = p[(A+1)%256]+Z[i];
-        int B = p[(X[i]+1)%256]+Y[i];
-        BA[i] = p[(B+0)%256]+Z[i];
-        BB[i] = p[(B+1)%256]+Z[i];
+        int A = p[(X.v[i]+0)%256]+Y.v[i];
+        AA.v[i] = p[(A+0)%256]+Z.v[i];
+        AB.v[i] = p[(A+1)%256]+Z.v[i];
+        int B = p[(X.v[i]+1)%256]+Y.v[i];
+        BA.v[i] = p[(B+0)%256]+Z.v[i];
+        BB.v[i] = p[(B+1)%256]+Z.v[i];
     }
-    sint1 aa = sint1::load(AA), ab = sint1::load(AB), ba = sint1::load(BA), bb = sint1::load(BB);
+    sint1 aa = sint1::load(&AA), ab = sint1::load(&AB), ba = sint1::load(&BA), bb = sint1::load(&BB);
     return sfloat1::lerp(sfloat1::lerp(sfloat1::lerp(grad(aa,pos),
                                                      grad(ba,pos+sfloat1(-1,0,0,0)),fad.v[0]),
                                        sfloat1::lerp(grad(ab,pos+sfloat1(0,-1,0,0)),

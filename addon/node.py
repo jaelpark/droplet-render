@@ -12,10 +12,8 @@ from . import config
 
 class ClNodeTree(bpy.types.NodeTree):
 	bl_idname = "ClNodeTree";
-	#bl_label = dre_name+" nodes";
 	bl_label = "Droplet Render nodes";
 	bl_icon = "MATSPHERE"; #MATERIAL_DATA
-	#bl_description = dre_name+" nodes";
 	bl_description = bl_label;
 
 	@classmethod
@@ -94,20 +92,6 @@ class ClNodeFogSocket(bpy.types.NodeSocket):
 
 	def draw_color(self, context, node):
 		return (0.9,0.9,0.2,1);
-
-#class ClNodeGridSocket(bpy.types.NodeSocket):
-#	bl_idname = "ClNodeGridSocket";
-#	bl_label = "Grid socket";
-#
-#	value = FloatProperty(name="",default=0);
-#	type = 'CUSTOM';
-#
-#	def draw(self, context, layout, node, x):
-#		layout.label(self.name);
-#
-#	def draw_color(self, context, node):
-#		#return (0.9,0.9,0.2,1);
-#		return (1.0,0.8,0.8,1);
 
 class ClNodeSurfaceSocket(bpy.types.NodeSocket):
 	bl_idname = "ClNodeSurfaceSocket";
@@ -261,27 +245,6 @@ class ClNodeSurfaceOutput(bpy.types.Node):
 
 	#def draw_buttons(self, context, layout):
 		#layout.row().label("wefwefwef",icon="LOCKED");
-
-#class ClPropertyDisplacement(bpy.types.PropertyGroup):
-#	maxd = FloatProperty(name="Max",default=1.0,min=0,description="Maximum displacement value. Inputs exceeding this will be clamped");
-#
-#	def draw(self, context, layout):
-#		layout.row().prop(self,"maxd");
-
-#class ClNodeFieldOutput(bpy.types.Node):
-#	bl_idname = "ClNodeFieldOutput";
-#	bl_label = "Field Output";
-#
-#	def init(self, context):
-#		self.inputs.new("ClNodeFieldSocket","Field");
-
-#class ClNodeFogVolume(bpy.types.Node):
-#	bl_idname = "ClNodeFogVolume";
-#	bl_label = "SDF to Fog";
-#
-#	def init(self, context):
-#		self.inputs.new("ClNodeSurfaceSocket","Surface");
-#		self.outputs.new("ClNodeFogSocket","Fog");
 
 class ClNodeAdvection(bpy.types.Node):
 	bl_idname = "ClNodeAdvection";

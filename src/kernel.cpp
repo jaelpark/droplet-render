@@ -412,8 +412,8 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
     for(uint s = 0; s < samples; ++s){
         sfloat1 qm = gm;
-        sfloat1 rm = sfloat1::trueI();
-        sfloat1 zr = sfloat1::falseI();
+        sfloat1 rm = sint1::trueI();
+        sfloat1 zr = sint1::falseI();
 
 		sfloat4 rc = ro;
 		for(uint i = 0;; ++i){
@@ -492,7 +492,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
                 rc.v[2] = sfloat1::Or(sfloat1::And(sm,lo.v[2]+rd.v[2]*sc),sfloat1::AndNot(sm,rc.v[2]));
 
                 sm = sfloat1::And(sm,sfloat1::Less(sc,tr1)); //check if out of extents
-                sh = sfloat1::Or(sm,sfloat1::AndNot(rm,sfloat1::trueI())); //prevent modifications if rm == false
+                sh = sfloat1::Or(sm,sfloat1::AndNot(rm,sint1::trueI())); //prevent modifications if rm == false
 
                 rc.v[0] = sfloat1::Or(sfloat1::AndNot(sh,r1.v[0]),sfloat1::And(sh,rc.v[0])); //rc = tr1[i]
                 rc.v[1] = sfloat1::Or(sfloat1::AndNot(sh,r1.v[1]),sfloat1::And(sh,rc.v[1]));
@@ -636,7 +636,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 #else
             //phase function sampling
             sfloat4 srd = HG_Sample(rd,prs);
-            sfloat4 cm = SampleVolume(rc,srd,sfloat1::AndNot(rm,sfloat1::trueI()),pkernel,prs,ls,r+1,1)*msigmas/msigmae;
+            sfloat4 cm = SampleVolume(rc,srd,sfloat1::AndNot(rm,sint1::trueI()),pkernel,prs,ls,r+1,1)*msigmas/msigmae;
             //phase/pdf(=phase)=1
 
             //light sampling, obviously won't alone result in any sky lighting

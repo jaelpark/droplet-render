@@ -294,14 +294,14 @@ public:
         return _mm_set1_ps(1.0f);
     }
 
-    static inline sfloat1 trueI(){ //TODO: sint1 class for this
+    /*static inline sfloat1 trueI(){
         __m128i t = _mm_set1_epi32(-1);
         return _mm_castsi128_ps(t);
     }
 
     static inline sfloat1 falseI(){
         return zero();
-    }
+    }*/
 
     static inline sfloat1 selectctrl(uint a, uint b, uint c, uint d){
         __m128i t = _mm_set_epi32(d,c,b,a);
@@ -391,7 +391,6 @@ public:
     }
 
     static inline sfloat1 pow(const sfloat1 &s, const sfloat1 &p){
-        //TODO: remove this unvectorized scourge, use minimax for known ranges and constant exponents
         /*dfloat4 a, b;
         float4::store(&a,s);
         float4::store(&b,p);
@@ -419,31 +418,6 @@ public:
         r.v = _mm_max_ps(r.v,s.v);
         return r;
     }
-
-    /*static inline sfloat1 acos(const sfloat1 &s){
-        __attribute__((aligned(16))) float a[4];
-        //dfloat4 a;
-        _mm_store_ps(a,s.v);
-        sfloat1 r = sfloat1(
-            acosf(a[0]),
-            acosf(a[1]),
-            acosf(a[2]),
-            acosf(a[3]));
-        return r;
-    }
-
-    static inline sfloat1 atan2(const sfloat1 &y, const sfloat1 &x){
-        __attribute__((aligned(16))) float a[4];
-        __attribute__((aligned(16))) float b[4];
-        _mm_store_ps(a,y.v);
-        _mm_store_ps(b,x.v);
-        sfloat1 r = sfloat1(
-            atan2f(a[0],b[0]),
-            atan2f(a[1],b[1]),
-            atan2f(a[2],b[2]),
-            atan2f(a[3],b[3]));
-        return r;
-    }*/
 
     static inline sfloat1 Greater(const sfloat1 &a, const sfloat1 &b){
         return _mm_cmpgt_ps(a.v,b.v);
@@ -486,22 +460,19 @@ public:
     static inline uint EqualR(const sfloat1 &a, const sfloat1 &b){
         __m128i v =_mm_cmpeq_epi32(_mm_castps_si128(a.v),_mm_castps_si128(b.v));
         int t = _mm_movemask_ps(_mm_castsi128_ps(v));
-        return (t == 0xf?0x00000080:0x00000020);
+        return (t == 0xf?0x80:0x20);
     }
 
     static inline bool AllTrue(uint m){
-        //return (((CR) & XM_CRMASK_CR6TRUE) == XM_CRMASK_CR6TRUE);
-        return ((m & 0x00000080) == 0x00000080);
+        return ((m & 0x80) == 0x80);
     }
 
     static inline bool AnyTrue(uint m){
-        //return (((CR) & XM_CRMASK_CR6FALSE) != XM_CRMASK_CR6FALSE);
-        return ((m & 0x00000020) != 0x00000020);
+        return ((m & 0x20) != 0x20);
     }
 
     static inline bool AnyFalse(uint m){
-        //return (((CR) & XM_CRMASK_CR6TRUE) != XM_CRMASK_CR6TRUE);
-        return ((m & 0x00000080) != 0x00000080);
+        return ((m & 0x80) != 0x80);
     }
 
     static inline sfloat1 And(const sfloat1 &a, const sfloat1 &b){
@@ -535,7 +506,6 @@ public:
     __m128 v;
 };
 
-//TODO: typedef __m128 to something, and use above operators -> sfloat1(a)/b
 inline __m128 operator*(const __m128 &a, const sfloat1 &b){
     return _mm_mul_ps(a,b.v);
 }
@@ -564,7 +534,6 @@ inline dfloatN::dfloatN(const sfloat1 &s){
 	sfloat1::store(v,s);
 }
 
-//typedef sfloat1 float4;
 class float4 : public sfloat1{
 public:
     float4(){}
@@ -681,8 +650,8 @@ public:
 
     sfloat4(const sfloat1 &n){
         //replicate
-        v[0].v = FL_PERMUTE(n.v,_MM_SHUFFLE(0,0,0,0));//XMVectorSplat(n);
-        v[1].v = FL_PERMUTE(n.v,_MM_SHUFFLE(1,1,1,1));//XMVectorSplatY(n);
+        v[0].v = FL_PERMUTE(n.v,_MM_SHUFFLE(0,0,0,0));
+        v[1].v = FL_PERMUTE(n.v,_MM_SHUFFLE(1,1,1,1));
         v[2].v = FL_PERMUTE(n.v,_MM_SHUFFLE(2,2,2,2));
         v[3].v = FL_PERMUTE(n.v,_MM_SHUFFLE(3,3,3,3));
     }
@@ -818,7 +787,8 @@ public:
     }
 
     inline void set(uint x, const float4 &s){
-        sfloat1 c = sfloat1::selectctrl(x == 0,x == 1,x == 2,x == 3);
+		__m128 c1 = _mm_castsi128_ps(_mm_cmpeq_epi32(_mm_set1_epi32(x),_mm_set_epi32(3,2,1,0)));
+		sfloat1 c = sfloat1(c1);
         v[0] = sfloat1::select(v[0],s.splat<0>(),c);
         v[1] = sfloat1::select(v[1],s.splat<1>(),c);
         v[2] = sfloat1::select(v[2],s.splat<2>(),c);
@@ -932,11 +902,6 @@ public:
         //
     }
 
-    /*inline sint1& operator=(const __m128i &r){
-        v = r;
-        return *this;
-    }*/
-
     inline operator __m128i() const{
         return v;
     }
@@ -966,11 +931,22 @@ public:
     }
 
 	static inline sint1 mask(int m){
-		return _mm_set_epi32(
-			m & (1<<3)?-1:0,
-			m & (1<<2)?-1:0,
-			m & (1<<1)?-1:0,
-			m & (1<<0)?-1:0);
+		/*m & (1<<3)?-1:0,
+		m & (1<<2)?-1:0,
+		m & (1<<1)?-1:0,
+		m & (1<<0)?-1:0*/
+		__m128i m1 = _mm_set1_epi32(m);
+		__m128i v1 = _mm_set1_epi32(1);
+		__m128i q = _mm_sll_epi32(v1,_mm_set_epi32(3,2,1,0));
+		return _mm_cmpgt_epi32(q,_mm_setzero_si128());
+	}
+
+	static inline sint1 falseI(){
+		return _mm_setzero_si128();
+	}
+
+	static inline sint1 trueI(){
+		return _mm_set1_epi32(-1);
 	}
 
     static inline sint1 Equal(const sint1 &a, const sint1 &b){
@@ -1036,8 +1012,8 @@ public:
 
     sint4(const sint1 &n){
         //replicate
-        v[0].v = IL_PERMUTE(n.v,_MM_SHUFFLE(0,0,0,0));//XMVectorSplatX(n);
-        v[1].v = IL_PERMUTE(n.v,_MM_SHUFFLE(1,1,1,1));//XMVectorSplatY(n);
+        v[0].v = IL_PERMUTE(n.v,_MM_SHUFFLE(0,0,0,0));
+        v[1].v = IL_PERMUTE(n.v,_MM_SHUFFLE(1,1,1,1));
         v[2].v = IL_PERMUTE(n.v,_MM_SHUFFLE(2,2,2,2));
         v[3].v = IL_PERMUTE(n.v,_MM_SHUFFLE(3,3,3,3));
     }
@@ -1150,4 +1126,4 @@ public:
     float4 r[4];
 };
 
-#endif // SMMATH_INL
+#endif

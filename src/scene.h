@@ -44,7 +44,8 @@ public:
     void BuildPath(const float4 &, const float4 &, const float4 &, const float4 &, const float4 &, uint, uint, std::atomic<uint> *, std::atomic<uint> *, Octree *, OctreeStructure *, VOLUME_BUFFER);
 	Octree *pch[8];
 	uint x; //node index
-    std::atomic_flag lock; //MT node write-access
+    //std::atomic_flag lock; //MT node write-access
+	tbb::spin_mutex m;
 };
 
 //CPU version works with array of volumes
