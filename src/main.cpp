@@ -301,7 +301,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 
         else if(strcasecmp(ptype1,"MESH") == 0){
 	        std::unordered_map<Py_hash_t, Node::NodeTree *>::const_iterator m = ntm.begin();
-	        SceneObject *psobj = new SceneObject(m->second);
+	        Surface *psobj = new Surface(m->second);
 
 	        XMMATRIX wm;
 			PyObject *pwm = PyObject_GetAttrString(pobj,"matrix_world");
@@ -449,7 +449,7 @@ static PyObject * DRE_Render(PyObject *pself, PyObject *pargs){
 
 static PyObject * DRE_EndRender(PyObject *pself, PyObject *pargs){
     ParticleSystem::DeleteAll();
-    SceneObject::DeleteAll();
+    Surface::DeleteAll();
     Node::NodeTree::DeleteAll();
 
     gpkernel->Destroy();

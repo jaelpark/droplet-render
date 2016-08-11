@@ -12,8 +12,7 @@
 
 namespace Node{
 
-template<class T>
-using InputNodeParams = std::tuple<T *, openvdb::math::Transform::Ptr>;
+using InputNodeParams = std::tuple<BaseObject *, openvdb::math::Transform::Ptr>;
 enum INP{
 	INP_OBJECT,
 	INP_TRANSFORM
@@ -55,8 +54,10 @@ ParticleInput::~ParticleInput(){
 }
 
 void ParticleInput::Evaluate(const void *pp){
-	InputNodeParams<ParticleSystem> *pd = (InputNodeParams<ParticleSystem>*)pp;
-	ParticleSystem *pps = std::get<INP_OBJECT>(*pd);
+	InputNodeParams *pd = (InputNodeParams*)pp;
+	ParticleSystem *pps = dynamic_cast<ParticleSystem*>(std::get<INP_OBJECT>(*pd));
+	if(!pps)
+		return;
 
 	BaseValueNode<float> *prasres = dynamic_cast<BaseValueNode<float>*>(pnodes[IParticleInput::INPUT_RASTERIZATIONRES]);
 	BaseValueNode<float> *pweight = dynamic_cast<BaseValueNode<float>*>(pnodes[IParticleInput::INPUT_WEIGHT]);
@@ -125,6 +126,13 @@ SmokeCache::~SmokeCache(){
 }
 
 void SmokeCache::Evaluate(const void *pp){
+	InputNodeParams *pd = (InputNodeParams*)pp;
+	SmokeCache *psc = dynamic_cast<SmokeCache*>(std::get<INP_OBJECT>(*pd));
+	if(!psc)
+		return;
+
+	openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
+
 	openvdb::io::File vdbf = openvdb::io::File("̛~/Asiakirjat/3dcgi/clouds/fog_000142_00.vdb");
 	try{
 		vdbf.open(false);
@@ -132,18 +140,14 @@ void SmokeCache::Evaluate(const void *pp){
 		vdbf.close();
 
 		printf("Read OpenVDB smoke cache %s\n",pdgrid->getName().c_str());
-
 		//
-
+		
 	}catch(...){
-		InputNodeParams<ParticleSystem> *pd = (InputNodeParams<ParticleSystem>*)pp;
-		openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
-
-		printf("Could not open smoke cache.\n");
-
 		pdgrid = openvdb::FloatGrid::create();
 	    pdgrid->setGridClass(openvdb::GRID_FOG_VOLUME);
 		pdgrid->setTransform(pgridtr);
+
+		printf("Could not open smoke cache.\n");
 	}
 }
 
@@ -160,7 +164,7 @@ Advection::~Advection(){
 }
 
 void Advection::Evaluate(const void *pp){
-	InputNodeParams<SceneObject> *pd = (InputNodeParams<SceneObject>*)pp;
+	InputNodeParams *pd = (InputNodeParams*)pp;
 
 	BaseValueNode<float> *pthrs = dynamic_cast<BaseValueNode<float>*>(pnodes[IAdvection::INPUT_THRESHOLD]);
 	BaseValueNode<float> *pdist = dynamic_cast<BaseValueNode<float>*>(pnodes[IAdvection::INPUT_DISTANCE]);

@@ -14,8 +14,7 @@
 
 namespace Node{
 
-template<class T>
-using InputNodeParams = std::tuple<T *, openvdb::math::Transform::Ptr>;
+using InputNodeParams = std::tuple<BaseObject *, openvdb::math::Transform::Ptr>;
 enum INP{
 	INP_OBJECT,
 	INP_TRANSFORM
@@ -314,12 +313,12 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
 	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
 		pgrid[i] = 0;
 
-    for(uint i = 0; i < SceneObject::objs.size(); ++i){
-		Node::InputNodeParams<SceneObject> snp(SceneObject::objs[i],pgridtr);
-		SceneObject::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_SURFACE);
+    for(uint i = 0; i < Surface::objs.size(); ++i){
+		Node::InputNodeParams snp(Surface::objs[i],pgridtr);
+		Surface::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_SURFACE);
 
         //dynamic cast to BaseSurfaceNode1 - getting empty
-        Node::BaseSurfaceNode1 *pdsn = dynamic_cast<Node::BaseSurfaceNode1*>(SceneObject::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_SURFACE]);
+        Node::BaseSurfaceNode1 *pdsn = dynamic_cast<Node::BaseSurfaceNode1*>(Surface::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_SURFACE]);
         if(pdsn->vl.size() > 0){
             //openvdb::FloatGrid::Ptr ptgrid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,pdsn->vl,pdsn->tl,pdsn->ql,lff,lff);
 			openvdb::FloatGrid::Ptr ptgrid = pdsn->ComputeLevelSet(pgridtr,lff);
@@ -363,7 +362,7 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
 
 	//Particle systems probably need their own material reference and node tree.
 	for(uint i = 0; i < ParticleSystem::prss.size(); ++i){
-		Node::InputNodeParams<ParticleSystem> snp(ParticleSystem::prss[i],pgridtr);
+		Node::InputNodeParams snp(ParticleSystem::prss[i],pgridtr);
         ParticleSystem::prss[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOG);
 
 		Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(ParticleSystem::prss[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOG]);
@@ -484,7 +483,15 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
 	pscene->leafx[VOLUME_BUFFER_FOG] = leafxb;
 }
 
-ParticleSystem::ParticleSystem(Node::NodeTree *_pnt) : pnt(_pnt){
+BaseObject::BaseObject(Node::NodeTree *_pnt) : pnt(_pnt){
+    //
+}
+
+BaseObject::~BaseObject(){
+    //
+}
+
+ParticleSystem::ParticleSystem(Node::NodeTree *_pnt) : BaseObject(_pnt){
     ParticleSystem::prss.push_back(this);
 }
 
@@ -500,21 +507,37 @@ void ParticleSystem::DeleteAll(){
 
 std::vector<ParticleSystem *> ParticleSystem::prss;
 
-SceneObject::SceneObject(Node::NodeTree *_pnt) : pnt(_pnt){
-    SceneObject::objs.push_back(this);
+SmokeCache::SmokeCache(Node::NodeTree *_pnt) : BaseObject(_pnt){
+	SmokeCache::objs.push_back(this);
 }
 
-SceneObject::~SceneObject(){
-    //
+SmokeCache::~SmokeCache(){
+	//
 }
 
-void SceneObject::DeleteAll(){
+void SmokeCache::DeleteAll(){
     for(uint i = 0; i < objs.size(); ++i)
         delete objs[i];
     objs.clear();
 }
 
-std::vector<SceneObject *> SceneObject::objs;
+std::vector<SmokeCache *> SmokeCache::objs;
+
+Surface::Surface(Node::NodeTree *_pnt) : BaseObject(_pnt){
+    Surface::objs.push_back(this);
+}
+
+Surface::~Surface(){
+    //
+}
+
+void Surface::DeleteAll(){
+    for(uint i = 0; i < objs.size(); ++i)
+        delete objs[i];
+    objs.clear();
+}
+
+std::vector<Surface *> Surface::objs;
 
 Scene::Scene(){
 	//

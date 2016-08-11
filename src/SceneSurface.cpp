@@ -12,8 +12,7 @@
 
 namespace Node{
 
-template<class T>
-using InputNodeParams = std::tuple<T *, openvdb::math::Transform::Ptr>;
+using InputNodeParams = std::tuple<BaseObject *, openvdb::math::Transform::Ptr>;
 enum INP{
 	INP_OBJECT,
 	INP_TRANSFORM
@@ -50,13 +49,16 @@ SurfaceInput::~SurfaceInput(){
 
 void SurfaceInput::Evaluate(const void *pp){
     //DebugPrintf("---Surface::Evaluate()\n");
-    InputNodeParams<SceneObject> *pd = (InputNodeParams<SceneObject>*)pp;
-    SceneObject *pobj = std::get<INP_OBJECT>(*pd);
+    InputNodeParams *pd = (InputNodeParams*)pp;
+    Surface *pobj = dynamic_cast<Surface*>(std::get<INP_OBJECT>(*pd));
 
     //clear possible data from previous evaluation
     vl.clear();
     tl.clear();
     ql.clear();
+
+	if(!pobj)
+		return;
 
     vl.reserve(pobj->vl.size());
     for(uint i = 0; i < pobj->vl.size(); ++i){
@@ -84,7 +86,7 @@ Displacement::~Displacement(){
 }
 
 void Displacement::Evaluate(const void *pp){
-    InputNodeParams<SceneObject> *pd = (InputNodeParams<SceneObject>*)pp;
+    InputNodeParams *pd = (InputNodeParams*)pp;
 
     const float lff = 4.0f;
 
@@ -172,7 +174,7 @@ fBmPerlinNoise::~fBmPerlinNoise(){
 }
 
 void fBmPerlinNoise::Evaluate(const void *pp){
-    InputNodeParams<SceneObject> *pd = (InputNodeParams<SceneObject>*)pp;
+    InputNodeParams *pd = (InputNodeParams*)pp;
     //DebugPrintf("---PerlinNoise::Evaluate()\n");
 
     const float lff = 4.0f;

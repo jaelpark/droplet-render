@@ -56,25 +56,38 @@ namespace Node{
 class NodeTree;
 }
 
-class ParticleSystem{
+class BaseObject{
+public:
+    BaseObject(Node::NodeTree *);
+    virtual ~BaseObject();
+    class Node::NodeTree *pnt;
+};
+
+class ParticleSystem : public BaseObject{
 public:
     ParticleSystem(Node::NodeTree *);
     ~ParticleSystem();
     static void DeleteAll();
-	class Node::NodeTree *pnt;
     std::vector<dfloat3> vl;
     static std::vector<ParticleSystem *> prss;
 };
 
-class SceneObject{
+class SmokeCache : public BaseObject{
 public:
-    SceneObject(Node::NodeTree *);
-    ~SceneObject();
+	SmokeCache(Node::NodeTree *);
+	~SmokeCache();
+	static void DeleteAll();
+	static std::vector<SmokeCache *> objs;
+};
+
+class Surface : public BaseObject{
+public:
+    Surface(Node::NodeTree *);
+    ~Surface();
     static void DeleteAll();
-    class Node::NodeTree *pnt;
     std::vector<dfloat3> vl;
     std::vector<uint> tl;
-    static std::vector<SceneObject *> objs;
+    static std::vector<Surface *> objs;
 };
 
 //scene builder
