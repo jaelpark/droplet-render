@@ -228,6 +228,7 @@ public:
     };
 };
 
+#ifdef BLCLOUD_DEPRECATED
 class IfBmPerlinNoise : public virtual BaseSurfaceNode{
 protected:
     IfBmPerlinNoise(uint, NodeTree *);
@@ -245,15 +246,20 @@ public:
         INPUT_SURFACE,
         INPUT_COUNT
     };
-    /*enum OUTPUT{
-        OUTPUT_SURFACE,
-        OUTPUT_GRID
-    };*/
-    /*uint octaves;
-    const PropertyDef<uint> cl[1] = {
-        {"octaves",&octaves},
-        {0,0}
-    };*/
+};
+#endif
+
+class IVectorFieldSampler : public virtual BaseValueNode<dfloat3>{
+protected:
+	IVectorFieldSampler(uint, NodeTree *);
+	~IVectorFieldSampler();
+public:
+	virtual void Evaluate(const void *) = 0;
+	static IVectorFieldSampler * Create(uint, NodeTree *);
+	enum INPUT{
+		INPUT_FIELD,
+		INPUT_POSITION
+	};
 };
 
 //fake proxy nodes to split material output tree into subtrees

@@ -579,8 +579,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 
 	//openvdb::FloatGrid::ConstAccessor
 	//openvdb::tools::GridSampler<openvdb::FloatGrid::ConstAccessor, openvdb::tools::BoxSampler> fsampler(pgrid->getConstAccessor(),pgrid->transform());
-
-	//TODO: fix: in case where the grid is unused and null, no sampler should be created
+	
 	openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler> *psampler[VOLUME_BUFFER_COUNT];
 	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i){
 		if(pgrid[i]){

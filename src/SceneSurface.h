@@ -9,7 +9,7 @@ public:
     BaseSurfaceNode1(uint, NodeTree *);
     ~BaseSurfaceNode1();
 	openvdb::FloatGrid::Ptr ComputeLevelSet(openvdb::math::Transform::Ptr, float) const;
-    openvdb::FloatGrid::Ptr pdgrid; //billowing grid
+    openvdb::FloatGrid::Ptr pbgrid; //billowing grid
     std::vector<openvdb::Vec3s> vl;
     std::vector<openvdb::Vec3I> tl;
     std::vector<openvdb::Vec4I> ql;
@@ -29,12 +29,14 @@ public:
     void Evaluate(const void *);
 };
 
+#ifdef BLCLOUD_DEPRECATED
 class fBmPerlinNoise : public BaseSurfaceNode1, public IfBmPerlinNoise{
 public:
     fBmPerlinNoise(uint, NodeTree *);
     ~fBmPerlinNoise();
     void Evaluate(const void *);
 };
+#endif
 
 }
 

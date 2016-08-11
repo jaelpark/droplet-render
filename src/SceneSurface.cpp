@@ -21,8 +21,8 @@ enum INP{
 
 BaseSurfaceNode1::BaseSurfaceNode1(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt){
     //
-    pdgrid = openvdb::FloatGrid::create();
-    pdgrid->setGridClass(openvdb::GRID_FOG_VOLUME);
+    pbgrid = openvdb::FloatGrid::create();
+    pbgrid->setGridClass(openvdb::GRID_FOG_VOLUME);
     //transform shouldn't matter here, only index coordinates are used
 }
 
@@ -132,8 +132,8 @@ void Displacement::Evaluate(const void *pp){
     //This could probably be faster with parallel reduction
     //openvdb::tools::compSum(*psgrid,*std::get<0>(*m));
     openvdb::FloatGrid::Accessor sgrida = psgrid->getAccessor();
-    openvdb::FloatGrid::Accessor dgrida = pdgrid->getAccessor();
-    openvdb::FloatGrid::ConstAccessor dgrida0 = pnode->pdgrid->getConstAccessor();
+    openvdb::FloatGrid::Accessor dgrida = pbgrid->getAccessor();
+    openvdb::FloatGrid::ConstAccessor dgrida0 = pnode->pbgrid->getConstAccessor();
     for(tbb::enumerable_thread_specific<FloatGridT>::const_iterator q = tgrida.begin(); q != tgrida.end(); ++q){
         //
         for(openvdb::FloatGrid::ValueOnIter m = std::get<0>(*q)->beginValueOn(); m.test(); ++m){
@@ -161,6 +161,7 @@ Node::IDisplacement * IDisplacement::Create(uint level, NodeTree *pnt){
     return new Displacement(level,pnt);
 }
 
+#ifdef BLCLOUD_DEPRECATED
 fBmPerlinNoise::fBmPerlinNoise(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt), BaseSurfaceNode1(_level,pnt), IfBmPerlinNoise(_level,pnt){
     //
     //DebugPrintf(">> fBmPerlinNoise()\n");
@@ -254,5 +255,6 @@ void fBmPerlinNoise::Evaluate(const void *pp){
 IfBmPerlinNoise * IfBmPerlinNoise::Create(uint level, NodeTree *pnt){
     return new fBmPerlinNoise(level,pnt);
 }
+#endif
 
 }

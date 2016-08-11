@@ -33,6 +33,13 @@ public:
 	void Evaluate(const void *);
 };
 
+class VectorFieldSampler : public IVectorFieldSampler{
+public:
+	VectorFieldSampler(uint, NodeTree *);
+	~VectorFieldSampler();
+	void Evaluate(const void *);
+};
+
 }
 
 #endif

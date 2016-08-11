@@ -117,7 +117,7 @@ class ClNodeVectorFieldSocket(bpy.types.NodeSocket):
 		layout.label(self.name);
 
 	def draw_color(self, context, node):
-		return (0.6,0,1,1);
+		return (0.9,0.5,0.2,1);
 
 class ClNodeFieldSocket(bpy.types.NodeSocket):
 	bl_idname = "ClNodeFieldSocket";
@@ -157,12 +157,18 @@ class ClNodeParticleInput(bpy.types.Node):
 	bl_idname = "ClNodeParticleInput";
 	bl_label = "ParticleSystem";
 
-	#bool: velocity
-
 	def init(self, context):
 		self.inputs.new("ClNodeFloatSocket","Raster.res");
 		self.inputs.new("ClNodeFloatSocket","Weight");
 		self.outputs.new("ClNodeFogSocket","Fog");
+		#self.outputs.new("ClNodeVectorFieldSocket","Velocity");
+
+# class ClNodeSmokeCache(bpy.types.Node):
+# 	bl_idname = "ClNodeSmokeCache";
+# 	bl_label = "SmokeCache";
+#
+# 	def init(self, context):
+# 		self.outputs.new("ClNodeFogSocket","Fog");
 
 class ClNodeFloatAdd(bpy.types.Node):
 	bl_idname = "ClNodeFloatAdd";
@@ -254,7 +260,8 @@ class ClNodeAdvection(bpy.types.Node):
 		self.inputs.new("ClNodeFloatSocket","Threshold");
 		self.inputs.new("ClNodeFloatSocket","Distance");
 		self.inputs.new("ClNodeIntSocket","Iterations");
-		self.inputs.new("ClNodeVectorFieldSocket","Velocity");
+		#self.inputs.new("ClNodeVectorFieldSocket","Velocity");
+		self.inputs.new("ClNodeVectorSocket","Velocity");
 		self.inputs.new("ClNodeFogSocket","Fog");
 		self.outputs.new("ClNodeFogSocket","Fog");
 
@@ -280,25 +287,34 @@ class ClNodeDisplacement(bpy.types.Node):
 
 #TODO: deprecate this in favor of displacement + separate value perlin noise?
 #^^this alternative is still unoptimal, as all (noise) nodes of the tree would be evaluated (above level+1), even if only was was needed for current displacement node.
-class ClNodefBmPerlinNoise(bpy.types.Node):
-	bl_idname = "ClNodefBmPerlinNoise";
-	bl_label = "fBm Perlin";
+# class ClNodefBmPerlinNoise(bpy.types.Node):
+# 	bl_idname = "ClNodefBmPerlinNoise";
+# 	bl_label = "fBm Perlin";
+#
+# 	#props = PointerProperty(type=ClPropertyfBmPerlinNoise);
+#
+# 	def init(self, context):
+# 		self.inputs.new("ClNodeIntSocket","octaves");
+# 		self.inputs.new("ClNodeFloatSocket","freq");
+# 		self.inputs.new("ClNodeFloatSocket","amp");
+# 		self.inputs.new("ClNodeFloatSocket","fjump");
+# 		self.inputs.new("ClNodeFloatSocket","gain");
+# 		self.inputs.new("ClNodeFloatSocket","billow");
+# 		self.inputs.new("ClNodeSurfaceSocket","Surface");
+# 		self.outputs.new("ClNodeSurfaceSocket","Surface");
+# 		#self.outputs.new("ClNodeGridSocket","Distance");
+#
+# 	#def draw_buttons(self, context, layout):
+# 		#self.props.draw(context,layout);
 
-	#props = PointerProperty(type=ClPropertyfBmPerlinNoise);
+class ClNodeVectorFieldSampler(bpy.types.Node):
+	bl_idname = "ClNodeVectorFieldSampler";
+	bl_label = "VectorField sampler";
 
 	def init(self, context):
-		self.inputs.new("ClNodeIntSocket","octaves");
-		self.inputs.new("ClNodeFloatSocket","freq");
-		self.inputs.new("ClNodeFloatSocket","amp");
-		self.inputs.new("ClNodeFloatSocket","fjump");
-		self.inputs.new("ClNodeFloatSocket","gain");
-		self.inputs.new("ClNodeFloatSocket","billow");
-		self.inputs.new("ClNodeSurfaceSocket","Surface");
-		self.outputs.new("ClNodeSurfaceSocket","Surface");
-		#self.outputs.new("ClNodeGridSocket","Distance");
-
-	#def draw_buttons(self, context, layout):
-		#self.props.draw(context,layout);
+		self.inputs.new("ClNodeVectorFieldSocket","Field");
+		self.inputs.new("ClNodeVectorSocket","World");
+		self.outputs.new("ClNodeVectorSocket","Out");
 
 class ClNodeCategory(NodeCategory):
 	@classmethod
@@ -322,6 +338,9 @@ categories = [
 		NodeItem("ClNodeFloatDiv"),
 		NodeItem("ClNodeFloatPow"),
 	]),
+	ClNodeCategory("CONVERSION_CATEGORY","Conversion",items = [
+		NodeItem("ClNodeVectorFieldSampler"),
+	]),
 	ClNodeCategory("NOISE_CATEGORY","Noise",items = [
 		NodeItem("ClNodeFbmNoise"),
 	]),
@@ -330,6 +349,6 @@ categories = [
 	]),
 	ClNodeCategory("SURFACE_CATEGORY","Surface",items = [
 		NodeItem("ClNodeDisplacement"),
-		NodeItem("ClNodefBmPerlinNoise"),
+		#NodeItem("ClNodefBmPerlinNoise"),
 	]),
 ];

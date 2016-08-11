@@ -48,10 +48,8 @@ public:
 	tbb::spin_mutex m;
 };
 
-//CPU version works with array of volumes
 struct LeafVolume{
     float pvol[BLCLOUD_uN*BLCLOUD_uN*BLCLOUD_uN]; //pdst
-	//float max; //should probably go to the OctreeStructure, to let this correspond more to the actual 3d volume texture
 };
 
 namespace Node{

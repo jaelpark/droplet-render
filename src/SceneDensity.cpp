@@ -61,7 +61,9 @@ void ParticleInput::Evaluate(const void *pp){
 	BaseValueNode<float> *prasres = dynamic_cast<BaseValueNode<float>*>(pnodes[IParticleInput::INPUT_RASTERIZATIONRES]);
 	BaseValueNode<float> *pweight = dynamic_cast<BaseValueNode<float>*>(pnodes[IParticleInput::INPUT_WEIGHT]);
 
-	pntree->EvaluateNodes0(0,level+1,emask);
+	dfloat3 zr(0.0f);
+	ValueNodeParams np(&zr,&zr,0.0f,0.0f);
+	pntree->EvaluateNodes0(&np,level+1,emask);
 
 	openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
 	pdgrid->setTransform(pgridtr);
@@ -79,13 +81,15 @@ void ParticleInput::Evaluate(const void *pp){
 	openvdb::FloatGrid::Accessor grida = ptgrid->getAccessor();
 	for(uint i = 0; i < pps->vl.size(); ++i){
 		//pntree->EvaluateNodes0(0,level+1,emask);
-		openvdb::Vec3d t(pps->vl[i].x,pps->vl[i].y,pps->vl[i].z);
-		openvdb::Vec3d c = ptgrid->transform().worldToIndex(t); //assume cell-centered indices
+		openvdb::Vec3s posw(pps->vl[i].x,pps->vl[i].y,pps->vl[i].z);
+		openvdb::Vec3s c = ptgrid->transform().worldToIndex(posw); //assume cell-centered indices
 		openvdb::Vec3f f = openvdb::Vec3f(floorf(c.x()-0.5f),floorf(c.y()-0.5f),floorf(c.z()-0.5f));
 		openvdb::Vec3f b = c-f;
 		openvdb::Vec3f B = openvdb::Vec3f(1.0f)-b;
 
-		//TODO: particle weight factor
+		ValueNodeParams np1((dfloat3*)posw.asPointer(),&zr,0.0f,0.0f);
+		pntree->EvaluateNodes0(&np1,level+1,emask);
+
 		openvdb::Coord q((int)f.x(),(int)f.y(),(int)f.z());
 		grida.modifyValue(q.offsetBy(0,0,0),[&](float &v){v += pweight->locr(indices[IParticleInput::INPUT_WEIGHT])*B.x()*B.y()*B.z();});
 		grida.modifyValue(q.offsetBy(1,0,0),[&](float &v){v += pweight->locr(indices[IParticleInput::INPUT_WEIGHT])*b.x()*B.y()*B.z();});
@@ -103,15 +107,6 @@ void ParticleInput::Evaluate(const void *pp){
 	}else DebugPrintf("Used native grid resolution for particle rasterization.\n");
 
 	//advection: trace voxel if density < threshold
-
-	/*
-	options:
-	-include the velocity with the fog:
-		-need bool input to enable computation
-		-hard to separate fog/velocity - e.g. for need to use different velocity field than the fog provides
-	-separate ParticleInput (ParticleVelocity) node
-		-use the VectorField base class
-	*/
 
 	pdgrid->tree().prune();
 }
@@ -134,15 +129,17 @@ void Advection::Evaluate(const void *pp){
 	BaseValueNode<float> *pthrs = dynamic_cast<BaseValueNode<float>*>(pnodes[IAdvection::INPUT_THRESHOLD]);
 	BaseValueNode<float> *pdist = dynamic_cast<BaseValueNode<float>*>(pnodes[IAdvection::INPUT_DISTANCE]);
 	BaseValueNode<int> *piters = dynamic_cast<BaseValueNode<int>*>(pnodes[IAdvection::INPUT_ITERATIONS]);
-	BaseVectorFieldNode1 *pvfn = dynamic_cast<BaseVectorFieldNode1*>(pnodes[IAdvection::INPUT_VELOCITY]);
+	BaseValueNode<dfloat3> *pvn = dynamic_cast<BaseValueNode<dfloat3>*>(pnodes[IAdvection::INPUT_VELOCITY]);
 	BaseFogNode1 *pnode = dynamic_cast<BaseFogNode1*>(pnodes[IAdvection::INPUT_FOG]);
 
-	pntree->EvaluateNodes0(0,level+1,emask);
+	dfloat3 zr(0.0f);
+	ValueNodeParams np(&zr,&zr,0.0f,0.0f);
+	pntree->EvaluateNodes0(&np,level+1,emask);
 
 	openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
 
 	openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler> samplerd(*pnode->pdgrid);
-	openvdb::tools::GridSampler<openvdb::Vec3SGrid, openvdb::tools::StaggeredBoxSampler> samplerv(*pvfn->pvgrid);
+	//openvdb::tools::GridSampler<openvdb::Vec3SGrid, openvdb::tools::StaggeredBoxSampler> samplerv(*pvfn->pvgrid);
 
 	DebugPrintf("> Advecting fog volume...\n");
 
@@ -156,32 +153,28 @@ void Advection::Evaluate(const void *pp){
     tbb::parallel_for(openvdb::tree::IteratorRange<openvdb::FloatGrid::ValueOnIter>(pnode->pdgrid->beginValueOn()),[&](openvdb::tree::IteratorRange<openvdb::FloatGrid::ValueOnIter> &r){
         FloatGridT &fgt = tgrida.local();
         for(; r; ++r){
-			pntree->EvaluateNodes0(0,level+1,emask);
-
             const openvdb::FloatGrid::ValueOnIter &m = r.iterator();
+
+			openvdb::Coord c = m.getCoord();
+			openvdb::math::Vec3s posw = pnode->pdgrid->transform().indexToWorld(c);
+
+			ValueNodeParams np1((dfloat3*)posw.asPointer(),&zr,0.0f,m.getValue());
+			pntree->EvaluateNodes0(&np1,level+1,emask);
 
 			float f = m.getValue();
 			if(f > pthrs->locr(indices[IAdvection::INPUT_THRESHOLD]))
 				continue;
 
-			openvdb::Coord c = m.getCoord();
-			openvdb::math::Vec3s posw = pnode->pdgrid->transform().indexToWorld(c);
-
 			float s = pdist->locr(indices[IAdvection::INPUT_DISTANCE])/(float)piters->locr(indices[IAdvection::INPUT_ITERATIONS]);
 
-			float4 rc = float4::load(posw.asPointer());
+			/*float4 rc = float4::load(posw.asPointer());
 			for(uint i = 0; i < piters->locr(indices[IAdvection::INPUT_ITERATIONS]); ++i){
-				openvdb::math::Vec3s v = samplerv.wsSample(posw);
-				rc += s*float4::load((dfloat3*)v.asPointer());
+				//openvdb::math::Vec3s v = samplerv.wsSample(posw);
+				//rc += s*float4::load((dfloat3*)v.asPointer());
 				//
 				//float4::store((dfloat3*)posw.asPointer(),rc);
 				//float p = samplerd.wsSample(posw); //TODO: do actual integration instead of sampling the last value?
-
-				//-when sampling noise velocity, do it directly somehow, not by first rendering it to a grid
-				//-use virtual Sample() for the BaseVectorField nodes, to either sample grid or return noise
-				//-just need to figure out how the actual sampler is created and stored
-				//Calling Sample() will evaluate the nodes. Need multithreading support.
-			}
+			}*/
 
 			float4::store((dfloat3*)posw.asPointer(),rc);
 			float p = samplerd.wsSample(posw);
@@ -202,8 +195,31 @@ void Advection::Evaluate(const void *pp){
     }
 }
 
-Node::IAdvection * IAdvection::Create(uint level, NodeTree *pnt){
+IAdvection * IAdvection::Create(uint level, NodeTree *pnt){
 	return new Advection(level,pnt);
+}
+
+VectorFieldSampler::VectorFieldSampler(uint level, NodeTree *pnt) : BaseValueNode<dfloat3>(level,pnt), BaseNode(level,pnt), IVectorFieldSampler(level,pnt){
+	//
+}
+
+VectorFieldSampler::~VectorFieldSampler(){
+	//
+}
+
+void VectorFieldSampler::Evaluate(const void *pp){
+	BaseVectorFieldNode1 *pfieldn = dynamic_cast<BaseVectorFieldNode1*>(pnodes[IVectorFieldSampler::INPUT_FIELD]);
+	BaseValueNode<dfloat3> *pnode = dynamic_cast<BaseValueNode<dfloat3>*>(pnodes[IVectorFieldSampler::INPUT_POSITION]);
+
+	openvdb::tools::GridSampler<openvdb::Vec3SGrid, openvdb::tools::BoxSampler> sampler1(*pfieldn->pvgrid);
+	dfloat3 dposw = pnode->locr(indices[IFbmNoise::INPUT_POSITION]);
+
+	openvdb::Vec3s v = sampler1.wsSample(*(openvdb::Vec3s*)&dposw);
+	this->BaseValueNode<dfloat3>::result.local().value[0] = *(dfloat3*)&v;
+}
+
+IVectorFieldSampler * IVectorFieldSampler::Create(uint level, NodeTree *pnt){
+	return new VectorFieldSampler(level,pnt);
 }
 
 }

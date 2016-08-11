@@ -7,17 +7,9 @@
 
 namespace Node{
 
-/*BaseNode::BaseNode(){
-    //
-}*/
-
 BaseNode::BaseNode(uint _level, NodeTree *_pntree) : omask(0), emask(0), level(_level), pntree(_pntree){
     memset(pnodes,0,sizeof(pnodes));
 }
-
-/*BaseNode::BaseNode() : omask(0), emask(0), level(0), pntree(0){
-	memset(pnodes,0,sizeof(pnodes));
-}*/
 
 BaseNode::~BaseNode(){
     //
@@ -60,20 +52,6 @@ template<class T>
 void BaseValueNode<T>::Evaluate(const void *pp){
     //
 }
-
-/*template<class T>
-void BaseValueNode<T>::SortNodes(){
-    std::sort(nodes.begin(),nodes.end(),[&](BaseValueNode<T> *pa, BaseValueNode<T> *pb)->bool{
-        return pa->level > pb->level;
-    });
-}
-
-template<class T>
-void BaseValueNode<T>::EvaluateAll(const void *pp, uint max){
-    //TODO: value nodes of all types should be evaluated simultanously. Need per-level evaluation.
-    for(uint i = 0; i < nodes.size() && nodes[i]->level > max; ++i)
-        nodes[i]->Evaluate(pp);
-}*/
 
 template<class T>
 AddNode<T>::AddNode(uint level, NodeTree *pnt) : BaseValueNode<T>(level,pnt), BaseNode(level,pnt){
@@ -289,12 +267,22 @@ IDisplacement::~IDisplacement(){
     //
 }
 
+#ifdef BLCLOUD_DEPRECATED
 IfBmPerlinNoise::IfBmPerlinNoise(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt){
     //
 }
 
 IfBmPerlinNoise::~IfBmPerlinNoise(){
     //
+}
+#endif
+
+IVectorFieldSampler::IVectorFieldSampler(uint _level, NodeTree *pnt) : BaseValueNode<dfloat3>(_level,pnt), BaseNode(_level,pnt){
+	//
+}
+
+IVectorFieldSampler::~IVectorFieldSampler(){
+	//
 }
 
 OutputNode::OutputNode(NodeTree *pnt) : BaseNode(0,pnt){
@@ -393,11 +381,12 @@ BaseNode * CreateNodeByType(const char *pname, uint level, NodeTree *pnt){
 		return IAdvection::Create(level,pnt);
     }else if(strcmp(pname,"ClNodeDisplacement") == 0){
         return IDisplacement::Create(level,pnt);
+#ifdef BLCLOUD_DEPRECATED
     }else if(strcmp(pname,"ClNodefBmPerlinNoise") == 0){
         return IfBmPerlinNoise::Create(level,pnt);
-        //return new fBmPerlinNoise(level);
-        //ClNodeSurface
-        //
+#endif
+	}else if(strcmp(pname,"ClNodeVectorFieldSampler") == 0){
+		return IVectorFieldSampler::Create(level,pnt);
     }else if(strcmp(pname,"ClNodeSurfaceOutput") == 0){
         return new OutputNode(pnt);
     }
@@ -427,28 +416,6 @@ BaseNode * CreateNodeBySocket(const char *pname, const void *pvalue, uint level,
 
 }
 
-/*void EvaluateValueGroup(uint max){
-    //TODO: nodes should be mixed and grouped by their levels
-    BaseValueNode<float>::EvaluateAll(0,max);
-    BaseValueNode<int>::EvaluateAll(0,max);
-}
-
-void SortNodes(){
-    BaseValueNode<float>::SortNodes();
-    BaseSurfaceNode::SortNodes();
-}
-
-void DeleteNodes(){
-    for(uint i = 0; i < BaseValueNode<float>::nodes.size(); ++i)
-        delete BaseValueNode<float>::nodes[i];
-    BaseValueNode<float>::nodes.clear();
-    for(uint i = 0; i < BaseSurfaceNode::nodes.size(); ++i)
-        delete BaseSurfaceNode::nodes[i];
-    BaseSurfaceNode::nodes.clear();
-
-    //delete OutputNode::proot;
-}*/
-
 //force compile
 template class BaseValueNode<float>;
 //template<> std::vector<BaseValueNode<float> *> BaseValueNode<float>::nodes = std::vector<BaseValueNode<float> *>();
@@ -469,11 +436,5 @@ template class PowNode<int>;
 template class BaseValueNode<dfloat3>;
 
 std::vector<NodeTree *> NodeTree::ntrees;
-
-/*std::vector<BaseFogNode *> BaseFogNode::nodes;
-
-std::vector<BaseSurfaceNode *> BaseSurfaceNode::nodes;*/
-
-//OutputNode * OutputNode::proot = 0;
 
 }

@@ -132,8 +132,7 @@ inline sfloat1 IntersectCube(const sfloat4 &p, const sfloat4 &r, const sfloat4 &
 
 inline float SampleVoxelSpace(const float4 &p, LeafVolume *pvol, const float4 &ce){
     float4 nv = float4((float)BLCLOUD_uN);
-    float4 hh = float4(0.5f);
-    float4 ni = -hh*(ce-ce.splat<3>()-p)*(nv-float4::one())/ce.splat<3>();
+    float4 ni = -0.5f*(ce-ce.splat<3>()-p)*(nv-float4::one())/ce.splat<3>();
     float4 nf = float4::max(float4::floor(ni),float4::zero()); //max() shouldn't be necessary?
     float4 nc = float4::min(float4::ceil(ni),nv-float4::one());
     float4 nl = ni-nf;
@@ -275,7 +274,6 @@ inline sfloat1 HG_Phase(const sfloat1 &ct){
     return (1.0f-g*g)/(4.0f*XM_PI*sfloat1::pow(1.0f+g*g-t*g*ct,e));
 }
 
-//inline sfloat4 HG_Sample(sfloat4 &iv, XMUINT4 *ps){
 inline sfloat4 HG_Sample(const sfloat4 &iv, sint4 *prs){
     sfloat1 t = sfloat1(2.0f);
     sfloat1 g = sfloat1(PHASE_G);
@@ -315,7 +313,6 @@ inline sfloat4 L_Sample(const sfloat4 &iv, const sfloat1 &la, sint4 *prs){
 
 static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pkernel, sint4 *prs, ParallelLeafList &ls, uint r, uint samples){
 	OctreeStructure *pob = pkernel->pscene->pob;
-    //LeafVolume *pvol = pkernel->pscene->pbuf[VOLUME_BUFFER_SDF];
 
 	dintN sgm = dintN(gm);
 	for(uint i = 0; i < BLCLOUD_VSIZE; ++i){
@@ -402,10 +399,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
     //finally, sample with given density and position
 	sample();*/
 
-    //sfloat1 msigmaa = sfloat1(0.02f); //absorption (macroscopic cross section)
-    //sfloat1 msigmas = sfloat1(2.9f); //scattering
-	//approximate very high orders of scattering by lowering the cross section for high orders
-	//TODO: try also making the phase function more isotropic for high r?
+	//approximate very high orders of scattering by lowering the cross section as r gets higher
     sfloat1 msigmaa = sfloat1(2.3f)*expf(-2.0f*(float)r)+sfloat1(0.02f);
     sfloat1 msigmas = sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(2.9f);
     sfloat1 msigmae = msigmaa+msigmas;
@@ -679,8 +673,8 @@ static void K_Render(dmatrix44 *pviewi, dmatrix44 *pproji, RenderKernel *pkernel
 				sfloat4 posh;
                 /*posh.v[0] = -(sfloat1(2.0f)*(sfloat1((float)(BLCLOUD_VSIZE*(x-x0)+x0)+0.5f)+sfloat1(0,1,2,3))/sfloat1((float)w)-sfloat1::one());
                 posh.v[1] = -sfloat1(2.0f*((float)y+0.5f)/(float)h-1.0f);*/
-                posh.v[0] = -(sfloat1(2.0f)*(sfloat1((float)(BLCLOUD_VX*(x-x0)+x0)+0.5f)+sfloat1(0,1,0,1))/sfloat1((float)w)-sfloat1::one());
-                posh.v[1] = -(sfloat1(2.0f)*(sfloat1((float)(BLCLOUD_VY*(y-y0)+y0)+0.5f)+sfloat1(0,0,1,1))/sfloat1((float)h)-sfloat1::one());
+                posh.v[0] = -(2.0f*(sfloat1((float)(BLCLOUD_VX*(x-x0)+x0)+0.5f)+sfloat1(0,1,0,1))/sfloat1((float)w)-sfloat1::one());
+                posh.v[1] = -(2.0f*(sfloat1((float)(BLCLOUD_VY*(y-y0)+y0)+0.5f)+sfloat1(0,0,1,1))/sfloat1((float)h)-sfloat1::one());
                 posh.v[2] = sfloat1::zero();
                 posh.v[3] = sfloat1::one();
 
