@@ -163,12 +163,12 @@ class ClNodeParticleInput(bpy.types.Node):
 		self.outputs.new("ClNodeFogSocket","Fog");
 		#self.outputs.new("ClNodeVectorFieldSocket","Velocity");
 
-# class ClNodeSmokeCache(bpy.types.Node):
-# 	bl_idname = "ClNodeSmokeCache";
-# 	bl_label = "SmokeCache";
-#
-# 	def init(self, context):
-# 		self.outputs.new("ClNodeFogSocket","Fog");
+class ClNodeSmokeCache(bpy.types.Node):
+	bl_idname = "ClNodeSmokeCache";
+	bl_label = "SmokeCache";
+
+	def init(self, context):
+		self.outputs.new("ClNodeFogSocket","Fog");
 
 class ClNodeFloatAdd(bpy.types.Node):
 	bl_idname = "ClNodeFloatAdd";
@@ -325,6 +325,7 @@ categories = [
 	ClNodeCategory("INPUT_CATEGORY","Input",items = [
 		NodeItem("ClNodeSurfaceInput"),
 		NodeItem("ClNodeParticleInput"),
+		NodeItem("ClNodeSmokeCache"),
 		NodeItem("ClNodeVoxelInfo"),
 	]),
 	ClNodeCategory("OUTPUT_CATEGORY","Output",items = [

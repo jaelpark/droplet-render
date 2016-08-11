@@ -357,6 +357,8 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
         }*/
 
         //TODO: get also the field sdf here, if available.
+
+		//TODO: evaluate FOG for the smoke cache, if it exists
     }
 
 	//Particle systems probably need their own material reference and node tree.
@@ -579,7 +581,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 
 	//openvdb::FloatGrid::ConstAccessor
 	//openvdb::tools::GridSampler<openvdb::FloatGrid::ConstAccessor, openvdb::tools::BoxSampler> fsampler(pgrid->getConstAccessor(),pgrid->transform());
-	
+
 	openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler> *psampler[VOLUME_BUFFER_COUNT];
 	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i){
 		if(pgrid[i]){

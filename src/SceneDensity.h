@@ -26,6 +26,13 @@ public:
     void Evaluate(const void *);
 };
 
+class SmokeCache : public BaseFogNode1, public ISmokeCache{
+public:
+	SmokeCache(uint, NodeTree *);
+	~SmokeCache();
+	void Evaluate(const void *);
+};
+
 class Advection : public BaseFogNode1, public IAdvection{
 public:
 	Advection(uint, NodeTree *);

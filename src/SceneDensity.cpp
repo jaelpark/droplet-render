@@ -111,8 +111,44 @@ void ParticleInput::Evaluate(const void *pp){
 	pdgrid->tree().prune();
 }
 
-Node::IParticleInput * IParticleInput::Create(uint level, NodeTree *pnt){
+IParticleInput * IParticleInput::Create(uint level, NodeTree *pnt){
 	return new ParticleInput(level,pnt);
+}
+
+SmokeCache::SmokeCache(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), ISmokeCache(_level,pnt){
+    //
+    //DebugPrintf(">> ParticleInput()\n");
+}
+
+SmokeCache::~SmokeCache(){
+    //
+}
+
+void SmokeCache::Evaluate(const void *pp){
+	openvdb::io::File vdbf = openvdb::io::File("̛~/Asiakirjat/3dcgi/clouds/fog_000142_00.vdb");
+	try{
+		vdbf.open(false);
+		pdgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(vdbf.readGrid("density"));
+		vdbf.close();
+
+		printf("Read OpenVDB smoke cache %s\n",pdgrid->getName().c_str());
+
+		//
+
+	}catch(...){
+		InputNodeParams<ParticleSystem> *pd = (InputNodeParams<ParticleSystem>*)pp;
+		openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
+
+		printf("Could not open smoke cache.\n");
+
+		pdgrid = openvdb::FloatGrid::create();
+	    pdgrid->setGridClass(openvdb::GRID_FOG_VOLUME);
+		pdgrid->setTransform(pgridtr);
+	}
+}
+
+ISmokeCache * ISmokeCache::Create(uint level, NodeTree *pnt){
+	return new SmokeCache(level,pnt);
 }
 
 Advection::Advection(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), IAdvection(_level,pnt){
@@ -167,8 +203,8 @@ void Advection::Evaluate(const void *pp){
 
 			float s = pdist->locr(indices[IAdvection::INPUT_DISTANCE])/(float)piters->locr(indices[IAdvection::INPUT_ITERATIONS]);
 
-			/*float4 rc = float4::load(posw.asPointer());
-			for(uint i = 0; i < piters->locr(indices[IAdvection::INPUT_ITERATIONS]); ++i){
+			float4 rc = float4::load(posw.asPointer());
+			/*for(uint i = 0; i < piters->locr(indices[IAdvection::INPUT_ITERATIONS]); ++i){
 				//openvdb::math::Vec3s v = samplerv.wsSample(posw);
 				//rc += s*float4::load((dfloat3*)v.asPointer());
 				//

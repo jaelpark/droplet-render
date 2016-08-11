@@ -251,6 +251,14 @@ IParticleInput::~IParticleInput(){
 	//
 }
 
+ISmokeCache::ISmokeCache(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt){
+	//
+}
+
+ISmokeCache::~ISmokeCache(){
+	//
+}
+
 IAdvection::IAdvection(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt){
 	//
 }
@@ -377,6 +385,8 @@ BaseNode * CreateNodeByType(const char *pname, uint level, NodeTree *pnt){
         return ISurfaceInput::Create(level,pnt);
 	}else if(strcmp(pname,"ClNodeParticleInput") == 0){
 		return IParticleInput::Create(level,pnt);
+	}else if(strcmp(pname,"ClNodeSmokeCache") == 0){
+		return ISmokeCache::Create(level,pnt);
 	}else if(strcmp(pname,"ClNodeAdvection") == 0){
 		return IAdvection::Create(level,pnt);
     }else if(strcmp(pname,"ClNodeDisplacement") == 0){

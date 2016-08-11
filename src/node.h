@@ -195,6 +195,15 @@ public:
 	};
 };
 
+class ISmokeCache : public virtual BaseFogNode{
+protected:
+	ISmokeCache(uint, NodeTree *);
+	~ISmokeCache();
+public:
+	virtual void Evaluate(const void *) = 0;
+	static ISmokeCache * Create(uint, NodeTree *);
+};
+
 class IAdvection : public virtual BaseFogNode{
 protected:
 	IAdvection(uint, NodeTree *);
