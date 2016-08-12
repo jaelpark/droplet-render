@@ -220,13 +220,44 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	for(uint i = 0; i < objc; ++i){
 		PyObject *pobj = PyList_GetItem(pobl,i);
 
-        //get particle systems here
+		//get smoke domain modifiers
+		PyObject *pmfs = PyObject_GetAttrString(pobj,"modifiers");
+		PyObject *pmfl = PyObject_CallMethod(pmfs,"values","");
+		uint mfc = PyList_Size(pmfl);
+		for(uint j = 0; j < mfc; ++j){
+			PyObject *pmf = PyList_GetItem(pmfl,j), *pmto;
+			const char *pmts;
+			//
+			pmto = PyObject_GetAttrString(pmf,"type");
+			pmts = PyUnicode_AsUTF8(pmto);
+			if(strcasecmp(pmts,"SMOKE") != 0){
+				Py_DECREF(pmto);
+				continue;
+			}
+			Py_DECREF(pmto);
+
+			pmto = PyObject_GetAttrString(pmf,"smoke_type");
+			pmts = PyUnicode_AsUTF8(pmto);
+			if(strcasecmp(pmts,"DOMAIN") != 0){
+				Py_DECREF(pmto);
+				continue;
+			}
+			Py_DECREF(pmto);
+
+			std::unordered_map<Py_hash_t, Node::NodeTree *>::const_iterator m = ntm.begin();
+            SceneData::SmokeCache *pprs = new SceneData::SmokeCache(m->second);
+			//TODO: get the params somehow
+			//
+		}
+		Py_DECREF(pmfs);
+
+        //get particle systems
         PyObject *ppro = PyObject_GetAttrString(pobj,"particle_systems");
         PyObject *ppsl = PyObject_CallMethod(ppro,"values","");
         uint prc = PyList_Size(ppsl);
         for(uint j = 0; j < prc; ++j){
 			std::unordered_map<Py_hash_t, Node::NodeTree *>::const_iterator m = ntm.begin();
-            ParticleSystem *pprs = new ParticleSystem(m->second); //TODO: reserve() the vector size
+            SceneData::ParticleSystem *pprs = new SceneData::ParticleSystem(m->second); //TODO: reserve() the vector size
 
             PyObject *pps = PyList_GetItem(ppsl,j);
 			//TODO: Get visibility status. There's some weird modifier class for this.
@@ -301,7 +332,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 
         else if(strcasecmp(ptype1,"MESH") == 0){
 	        std::unordered_map<Py_hash_t, Node::NodeTree *>::const_iterator m = ntm.begin();
-	        Surface *psobj = new Surface(m->second);
+	        SceneData::Surface *psobj = new SceneData::Surface(m->second);
 
 	        XMMATRIX wm;
 			PyObject *pwm = PyObject_GetAttrString(pobj,"matrix_world");
@@ -448,8 +479,9 @@ static PyObject * DRE_Render(PyObject *pself, PyObject *pargs){
 }
 
 static PyObject * DRE_EndRender(PyObject *pself, PyObject *pargs){
-    ParticleSystem::DeleteAll();
-    Surface::DeleteAll();
+	SceneData::SmokeCache::DeleteAll();
+    SceneData::ParticleSystem::DeleteAll();
+    SceneData::Surface::DeleteAll();
     Node::NodeTree::DeleteAll();
 
     gpkernel->Destroy();

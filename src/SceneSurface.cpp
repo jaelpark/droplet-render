@@ -12,7 +12,7 @@
 
 namespace Node{
 
-using InputNodeParams = std::tuple<BaseObject *, openvdb::math::Transform::Ptr>;
+using InputNodeParams = std::tuple<SceneData::BaseObject *, openvdb::math::Transform::Ptr>;
 enum INP{
 	INP_OBJECT,
 	INP_TRANSFORM
@@ -50,7 +50,7 @@ SurfaceInput::~SurfaceInput(){
 void SurfaceInput::Evaluate(const void *pp){
     //DebugPrintf("---Surface::Evaluate()\n");
     InputNodeParams *pd = (InputNodeParams*)pp;
-    Surface *pobj = dynamic_cast<Surface*>(std::get<INP_OBJECT>(*pd));
+    SceneData::Surface *pobj = dynamic_cast<SceneData::Surface*>(std::get<INP_OBJECT>(*pd));
 
     //clear possible data from previous evaluation
     vl.clear();

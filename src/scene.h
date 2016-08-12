@@ -56,6 +56,8 @@ namespace Node{
 class NodeTree;
 }
 
+namespace SceneData{
+
 class BaseObject{
 public:
     BaseObject(Node::NodeTree *);
@@ -89,6 +91,8 @@ public:
     std::vector<uint> tl;
     static std::vector<Surface *> objs;
 };
+
+}
 
 //scene builder
 class Scene{

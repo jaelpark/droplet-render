@@ -12,7 +12,7 @@
 
 namespace Node{
 
-using InputNodeParams = std::tuple<BaseObject *, openvdb::math::Transform::Ptr>;
+using InputNodeParams = std::tuple<SceneData::BaseObject *, openvdb::math::Transform::Ptr>;
 enum INP{
 	INP_OBJECT,
 	INP_TRANSFORM
@@ -55,7 +55,7 @@ ParticleInput::~ParticleInput(){
 
 void ParticleInput::Evaluate(const void *pp){
 	InputNodeParams *pd = (InputNodeParams*)pp;
-	ParticleSystem *pps = dynamic_cast<ParticleSystem*>(std::get<INP_OBJECT>(*pd));
+	SceneData::ParticleSystem *pps = dynamic_cast<SceneData::ParticleSystem*>(std::get<INP_OBJECT>(*pd));
 	if(!pps)
 		return;
 
@@ -127,27 +127,34 @@ SmokeCache::~SmokeCache(){
 
 void SmokeCache::Evaluate(const void *pp){
 	InputNodeParams *pd = (InputNodeParams*)pp;
-	SmokeCache *psc = dynamic_cast<SmokeCache*>(std::get<INP_OBJECT>(*pd));
-	if(!psc)
+	SceneData::SmokeCache *psmc = dynamic_cast<SceneData::SmokeCache*>(std::get<INP_OBJECT>(*pd));
+	if(!psmc)
 		return;
 
-	openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
-
-	openvdb::io::File vdbf = openvdb::io::File("̛~/Asiakirjat/3dcgi/clouds/fog_000142_00.vdb");
+	//openvdb::io::File vdbc = openvdb::io::File("̛/tmp/fog_000142_00.vdb");
+	openvdb::io::File vdbc("/home/jasper/Asiakirjat/3dcgi/clouds/blendcache_droplet_fluid_sim01/fog_000142_00.vdb");
 	try{
-		vdbf.open(false);
-		pdgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(vdbf.readGrid("density"));
-		vdbf.close();
+#if 0
+		vdbc.open(false);
+		pdgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(vdbc.readGrid("density"));
+		vdbc.close();
 
-		printf("Read OpenVDB smoke cache %s\n",pdgrid->getName().c_str());
-		//
-		
-	}catch(...){
-		pdgrid = openvdb::FloatGrid::create();
-	    pdgrid->setGridClass(openvdb::GRID_FOG_VOLUME);
+		DebugPrintf("Read OpenVDB smoke cache: %s\n",pdgrid->getName().c_str());
+#else
+		vdbc.open(false);
+		openvdb::FloatGrid::Ptr ptgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(vdbc.readGrid("density"));
+		vdbc.close();
+
+		DebugPrintf("Read OpenVDB smoke cache: %s\n",ptgrid->getName().c_str());
+
+		DebugPrintf("> Upsampling smoke cache...\n");
+		openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
 		pdgrid->setTransform(pgridtr);
 
-		printf("Could not open smoke cache.\n");
+		openvdb::tools::resampleToMatch<openvdb::tools::BoxSampler>(*ptgrid,*pdgrid);
+#endif
+	}catch(const openvdb::IoError &e){
+		DebugPrintf("OpenVDB: %s\n",e.what());
 	}
 }
 

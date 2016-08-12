@@ -14,7 +14,7 @@
 
 namespace Node{
 
-using InputNodeParams = std::tuple<BaseObject *, openvdb::math::Transform::Ptr>;
+using InputNodeParams = std::tuple<SceneData::BaseObject *, openvdb::math::Transform::Ptr>;
 enum INP{
 	INP_OBJECT,
 	INP_TRANSFORM
@@ -313,12 +313,12 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
 	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
 		pgrid[i] = 0;
 
-    for(uint i = 0; i < Surface::objs.size(); ++i){
-		Node::InputNodeParams snp(Surface::objs[i],pgridtr);
-		Surface::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_SURFACE);
+    for(uint i = 0; i < SceneData::Surface::objs.size(); ++i){
+		Node::InputNodeParams snp(SceneData::Surface::objs[i],pgridtr);
+		SceneData::Surface::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_SURFACE);
 
         //dynamic cast to BaseSurfaceNode1 - getting empty
-        Node::BaseSurfaceNode1 *pdsn = dynamic_cast<Node::BaseSurfaceNode1*>(Surface::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_SURFACE]);
+        Node::BaseSurfaceNode1 *pdsn = dynamic_cast<Node::BaseSurfaceNode1*>(SceneData::Surface::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_SURFACE]);
         if(pdsn->vl.size() > 0){
             //openvdb::FloatGrid::Ptr ptgrid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,pdsn->vl,pdsn->tl,pdsn->ql,lff,lff);
 			openvdb::FloatGrid::Ptr ptgrid = pdsn->ComputeLevelSet(pgridtr,lff);
@@ -347,26 +347,15 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
             else pgrid[VOLUME_BUFFER_SDF] = ptgrid;
         }
 
-        /*Node::BaseSurfaceNode1 *pdfn = dynamic_cast<Node::BaseSurfaceNode1*>(SceneObject::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FIELD]);
-        if(pdfn->vl.size() > 0){
-            openvdb::FloatGrid::Ptr ptgrid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,pdsn->vl,pdsn->tl,pdsn->ql,lff,lff);
-
-            //openvdb::tools::sdfToFogVolume
-            //combine the levelsets, then do ^^ at the end?
-        }*/
-
         //TODO: get also the field sdf here, if available.
-
-		//TODO: evaluate FOG for the smoke cache, if it exists
     }
 
-	//Particle systems probably need their own material reference and node tree.
-	for(uint i = 0; i < ParticleSystem::prss.size(); ++i){
-		Node::InputNodeParams snp(ParticleSystem::prss[i],pgridtr);
-        ParticleSystem::prss[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOG);
+	for(uint i = 0; i < SceneData::SmokeCache::objs.size(); ++i){
+		Node::InputNodeParams snp(SceneData::SmokeCache::objs[i],pgridtr);
+		SceneData::SmokeCache::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOG);
 
-		Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(ParticleSystem::prss[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOG]);
-		{ //TODO: check if not empty
+		Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(SceneData::SmokeCache::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOG]);
+		if(pdfn->pdgrid->activeVoxelCount() > 0){
 			for(openvdb::FloatGrid::TreeType::LeafCIter m = pdfn->pdgrid->tree().cbeginLeaf(); m; ++m){
 				const openvdb::FloatGrid::TreeType::LeafNodeType *pl = m.getLeaf();
 
@@ -392,10 +381,34 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
                 scaabbmax = float4::max(c+e,scaabbmax);
 			}
 
-			/*for(uint j = 0; j < ParticleSystem::prss[i]->vl.size(); ++j){
+			if(pgrid[VOLUME_BUFFER_FOG])
+				openvdb::tools::compSum(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
+			else pgrid[VOLUME_BUFFER_FOG] = pdfn->pdgrid;
+		}
+	}
+
+	for(uint i = 0; i < SceneData::ParticleSystem::prss.size(); ++i){
+		Node::InputNodeParams snp(SceneData::ParticleSystem::prss[i],pgridtr);
+        SceneData::ParticleSystem::prss[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOG);
+
+		Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOG]);
+		if(pdfn->pdgrid->activeVoxelCount() > 0){
+			for(openvdb::FloatGrid::TreeType::LeafCIter m = pdfn->pdgrid->tree().cbeginLeaf(); m; ++m){
+				const openvdb::FloatGrid::TreeType::LeafNodeType *pl = m.getLeaf();
+
+				openvdb::math::CoordBBox bbox;// = pl->getNodeBoundingBox();
+				pl->evalActiveBoundingBox(bbox);
+
+				openvdb::math::Coord bdim = bbox.dim();
+				openvdb::Vec3s dimi = bdim.asVec3s(); //index-space dimension
+				openvdb::Vec3s extw = 0.5f*dimi*s; //pgrid1->transform().indexToWorld(dimi);
+
+				openvdb::Vec3d posi = bbox.getCenter();
+				openvdb::Vec3d posw = pdfn->pdgrid->transformPtr()->indexToWorld(posi);
+
 				BoundingBox aabb;
-				aabb.sc = ParticleSystem::prss[i]->vl[j];
-				aabb.se = dfloat3(rr); //this would have to be estimated in some clever way
+				aabb.sc = dfloat3(posw.x(),posw.y(),posw.z());
+				aabb.se = dfloat3(extw.x(),extw.y(),extw.z());
 
 				fogbvs.push_back(aabb);
 
@@ -403,7 +416,7 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
 				float4 e = float4::load(&aabb.se);
 				scaabbmin = float4::min(c-e,scaabbmin);
                 scaabbmax = float4::max(c+e,scaabbmax);
-			}*/
+			}
 
 			if(pgrid[VOLUME_BUFFER_FOG])
 				openvdb::tools::compSum(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
@@ -483,6 +496,8 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
 	pscene->leafx[VOLUME_BUFFER_FOG] = leafxb;
 }
 
+namespace SceneData{
+
 BaseObject::BaseObject(Node::NodeTree *_pnt) : pnt(_pnt){
     //
 }
@@ -539,6 +554,8 @@ void Surface::DeleteAll(){
 
 std::vector<Surface *> Surface::objs;
 
+}
+
 Scene::Scene(){
 	//
 }
@@ -553,7 +570,8 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
     const float lff = 4.0f; //levelset offset (narrow band voxels counting from the surface)
 
     openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT];// = {0};
-    openvdb::io::File vdbc = openvdb::io::File("/tmp/droplet-fileid.vdb");
+    //openvdb::io::File vdbc = openvdb::io::File("/tmp/droplet-fileid.vdb");
+	openvdb::io::File vdbc("/tmp/droplet-fileid.vdb");
     try{
         if(cm != SCENE_CACHE_READ)
             throw(0);
@@ -563,7 +581,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
         vdbc.close();
 
         {
-            FILE *pf = fopen("/tmp/droplet-fileid.bin","rb");
+            FILE *pf = fopen("/tmp/droplet-fileid.bin","rb"); //TODO: use grid metadata to store this info
             if(!pf)
                 throw(0);
             fread(&index,1,4,pf);
@@ -584,7 +602,8 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 
         //S_Create(pvl,ptl,s,lff,&pgrid,&pob,&index,&leafx);
         S_Create(s,lff,pgrid,this);
-        pgrid[VOLUME_BUFFER_SDF]->setName("surface-levelset");
+		if(pgrid[VOLUME_BUFFER_SDF])
+        	pgrid[VOLUME_BUFFER_SDF]->setName("surface-levelset");
 
         if(cm == SCENE_CACHE_WRITE){
             openvdb::GridCPtrVec gvec{pgrid[VOLUME_BUFFER_SDF]}; //include the fog grid also
@@ -634,12 +653,14 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 			if(pob[i].volx[VOLUME_BUFFER_SDF] == ~0u){
 				if(pob[i].volx[VOLUME_BUFFER_FOG] == ~0u)
 					continue; //not a leaf; exit early
-				float d = psampler[VOLUME_BUFFER_SDF]->wsSample(*(openvdb::Vec3f*)&pob[i].ce);
-				if(d < 0.0f){
-					//If the fog leaf is completely inside the sdf surface (no overlapping sdf leaf -> volx == ~0u),
-					//remove it. It's useless there, and it causes incorrect space skipping.
-					pob[i].volx[VOLUME_BUFFER_FOG] = ~0u;
-					continue;
+				if(psampler[VOLUME_BUFFER_SDF]){
+					float d = psampler[VOLUME_BUFFER_SDF]->wsSample(*(openvdb::Vec3f*)&pob[i].ce);
+					if(d < 0.0f){
+						//If the fog leaf is completely inside the sdf surface (no overlapping sdf leaf -> volx == ~0u),
+						//remove it. It's useless there, and it causes incorrect space skipping.
+						pob[i].volx[VOLUME_BUFFER_FOG] = ~0u;
+						continue;
+					}
 				}
 			}
 			//
@@ -660,7 +681,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 				}
 
 				if(pob[i].volx[VOLUME_BUFFER_FOG] != ~0u){
-					pbuf[VOLUME_BUFFER_FOG][pob[i].volx[VOLUME_BUFFER_FOG]].pvol[j] = openvdb::math::Min(psampler[VOLUME_BUFFER_FOG]->wsSample(posw),1.0f);
+					pbuf[VOLUME_BUFFER_FOG][pob[i].volx[VOLUME_BUFFER_FOG]].pvol[j] = openvdb::math::Min(psampler[VOLUME_BUFFER_FOG]->wsSample(posw),0.07f);
 					pob[i].qval[VOLUME_BUFFER_FOG] = openvdb::math::Max(pob[i].qval[VOLUME_BUFFER_FOG],pbuf[VOLUME_BUFFER_FOG][pob[i].volx[VOLUME_BUFFER_FOG]].pvol[j]);
 				}
 			}

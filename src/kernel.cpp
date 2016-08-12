@@ -401,7 +401,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
 	//approximate very high orders of scattering by lowering the cross section as r gets higher
     sfloat1 msigmaa = sfloat1(2.3f)*expf(-2.0f*(float)r)+sfloat1(0.02f);
-    sfloat1 msigmas = sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(2.9f);
+    sfloat1 msigmas = sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(2.9f);//sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(2.9f);
     sfloat1 msigmae = msigmaa+msigmas;
 
     for(uint s = 0; s < samples; ++s){
@@ -636,7 +636,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
             //light sampling, obviously won't alone result in any sky lighting
             /*sfloat1 la = sfloat1(pkernel->plights[0].angle);
             sfloat4 lrd = L_Sample(sfloat1(float4::load(&pkernel->plights[0].direction)),la,prs);
-            sfloat4 cm = SampleVolume(rc,lrd,sfloat1::AndNot(rm,sfloat1::trueI()),pkernel,prs,ls,r+1,1)*HG_Phase(sfloat4::dot3(lrd,rd))*msigmas
+            sfloat4 cm = SampleVolume(rc,lrd,sfloat1::AndNot(rm,sint1::trueI()),pkernel,prs,ls,r+1,1)*HG_Phase(sfloat4::dot3(lrd,rd))*msigmas
                 /(msigmae*L_Pdf(lrd,la));*/
 #endif
             c.v[0] += sfloat1::Or(sfloat1::And(rm,ll.v[0]),sfloat1::AndNot(rm,cm.v[0]));
