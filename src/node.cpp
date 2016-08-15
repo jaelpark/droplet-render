@@ -410,7 +410,7 @@ BaseNode * CreateNodeByType(const char *pname, uint level, NodeTree *pnt){
     if(strcmp(pname,"ClNodeFloatAdd") == 0){
         return new AddNode<float>(level,pnt);
     }else if(strcmp(pname,"ClNodeFloatSub") == 0){
-        return new DivNode<float>(level,pnt);
+        return new SubNode<float>(level,pnt);
     }else if(strcmp(pname,"ClNodeFloatMul") == 0){
         return new MulNode<float>(level,pnt);
     }else if(strcmp(pname,"ClNodeFloatDiv") == 0){
