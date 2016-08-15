@@ -98,6 +98,22 @@ public:
     void Evaluate(const void *);
 };
 
+template<class T>
+class MinNode : public BaseValueNode<T>{
+public:
+	MinNode(uint, NodeTree *);
+	~MinNode();
+	void Evaluate(const void *);
+};
+
+template<class T>
+class MaxNode : public BaseValueNode<T>{
+public:
+	MaxNode(uint, NodeTree *);
+	~MaxNode();
+	void Evaluate(const void *);
+};
+
 class IFbmNoise : public virtual BaseValueNode<float>, public virtual BaseValueNode<dfloat3>{
 protected:
 	IFbmNoise(uint, NodeTree *);
@@ -202,6 +218,20 @@ protected:
 public:
 	virtual void Evaluate(const void *) = 0;
 	static ISmokeCache * Create(uint, NodeTree *);
+};
+
+class IComposite : public virtual BaseFogNode{
+protected:
+	IComposite(uint, NodeTree *);
+	~IComposite();
+public:
+	virtual void Evaluate(const void *) = 0;
+	static IComposite * Create(uint, NodeTree *);
+	enum INPUT{
+		INPUT_VALUE,
+		INPUT_FOG,
+		INPUT_COUNT
+	};
 };
 
 class IAdvection : public virtual BaseFogNode{

@@ -139,6 +139,40 @@ void PowNode<T>::Evaluate(const void *pp){
     this->result.local().value[0] = powf(a,b);
 }
 
+template<class T>
+MinNode<T>::MinNode(uint level, NodeTree *pnt) : BaseValueNode<T>(level,pnt), BaseNode(level,pnt){
+    //
+}
+
+template<class T>
+MinNode<T>::~MinNode(){
+    //
+}
+
+template<class T>
+void MinNode<T>::Evaluate(const void *pp){
+	T a = dynamic_cast<BaseValueNode<T>*>(this->pnodes[0])->BaseValueNode<T>::result.local().value[this->indices[0]];
+    T b = dynamic_cast<BaseValueNode<T>*>(this->pnodes[1])->BaseValueNode<T>::result.local().value[this->indices[1]];
+    this->result.local().value[0] = a < b?a:b;
+}
+
+template<class T>
+MaxNode<T>::MaxNode(uint level, NodeTree *pnt) : BaseValueNode<T>(level,pnt), BaseNode(level,pnt){
+    //
+}
+
+template<class T>
+MaxNode<T>::~MaxNode(){
+    //
+}
+
+template<class T>
+void MaxNode<T>::Evaluate(const void *pp){
+	T a = dynamic_cast<BaseValueNode<T>*>(this->pnodes[0])->BaseValueNode<T>::result.local().value[this->indices[0]];
+    T b = dynamic_cast<BaseValueNode<T>*>(this->pnodes[1])->BaseValueNode<T>::result.local().value[this->indices[1]];
+    this->result.local().value[0] = a > b?a:b;
+}
+
 /*FbmNoise::FbmNoise(uint _level, NodeTree *pnt) : BaseValueNode(_level,pnt){
 	//
 }
@@ -259,6 +293,14 @@ ISmokeCache::~ISmokeCache(){
 	//
 }
 
+IComposite::IComposite(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt){
+	//
+}
+
+IComposite::~IComposite(){
+	//
+}
+
 IAdvection::IAdvection(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt){
 	//
 }
@@ -375,6 +417,10 @@ BaseNode * CreateNodeByType(const char *pname, uint level, NodeTree *pnt){
         return new DivNode<float>(level,pnt);
     }else if(strcmp(pname,"ClNodeFloatPow") == 0){
         return new PowNode<float>(level,pnt);
+	}else if(strcmp(pname,"ClNodeFloatMin") == 0){
+		return new MinNode<float>(level,pnt);
+	}else if(strcmp(pname,"ClNodeFloatMax") == 0){
+		return new MaxNode<float>(level,pnt);
 
 	}else if(strcmp(pname,"ClNodeFbmNoise") == 0){
 		return IFbmNoise::Create(level,pnt);
@@ -387,6 +433,8 @@ BaseNode * CreateNodeByType(const char *pname, uint level, NodeTree *pnt){
 		return IParticleInput::Create(level,pnt);
 	}else if(strcmp(pname,"ClNodeSmokeCache") == 0){
 		return ISmokeCache::Create(level,pnt);
+	}else if(strcmp(pname,"ClNodeComposite") == 0){
+		return IComposite::Create(level,pnt);
 	}else if(strcmp(pname,"ClNodeAdvection") == 0){
 		return IAdvection::Create(level,pnt);
     }else if(strcmp(pname,"ClNodeDisplacement") == 0){
@@ -434,14 +482,16 @@ template class SubNode<float>;
 template class MulNode<float>;
 template class DivNode<float>;
 template class PowNode<float>;
+template class MinNode<float>;
+template class MaxNode<float>;
 
 template class BaseValueNode<int>;
 //template<> std::vector<BaseValueNode<int> *> BaseValueNode<int>::nodes = std::vector<BaseValueNode<int> *>();
-template class AddNode<int>;
+/*template class AddNode<int>;
 template class SubNode<int>;
 template class MulNode<int>;
 template class DivNode<int>;
-template class PowNode<int>;
+template class PowNode<int>;*/
 
 template class BaseValueNode<dfloat3>;
 

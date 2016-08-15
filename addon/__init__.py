@@ -12,7 +12,7 @@ from bl_ui import properties_render
 import nodeitems_utils
 from bpy.props import PointerProperty
 
-from bl_ui import properties_particle,properties_physics_common,properties_physics_smoke
+from bl_ui import properties_particle,properties_physics_common,properties_physics_field,properties_physics_smoke
 
 #NOTE: addon directory name cannot coincide with pyd module name
 import libdroplet #libblcloud #pyd/so filename
@@ -125,6 +125,8 @@ def register():
 	properties_particle.PARTICLE_PT_draw.COMPAT_ENGINES.add(config.dre_engineid);
 
 	properties_physics_common.PHYSICS_PT_add.COMPAT_ENGINES.add(config.dre_engineid);
+
+	properties_physics_field.PHYSICS_PT_field.COMPAT_ENGINES.add(config.dre_engineid);
 
 	properties_physics_smoke.PHYSICS_PT_smoke.COMPAT_ENGINES.add(config.dre_engineid);
 	properties_physics_smoke.PHYSICS_PT_smoke_highres.COMPAT_ENGINES.add(config.dre_engineid);

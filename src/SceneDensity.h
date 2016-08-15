@@ -33,6 +33,13 @@ public:
 	void Evaluate(const void *);
 };
 
+class Composite : public BaseFogNode1, public IComposite{
+public:
+	Composite(uint, NodeTree *);
+	~Composite();
+	void Evaluate(const void *);
+};
+
 class Advection : public BaseFogNode1, public IAdvection{
 public:
 	Advection(uint, NodeTree *);

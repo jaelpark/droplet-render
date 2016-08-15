@@ -215,6 +215,24 @@ class ClNodeFloatPow(bpy.types.Node):
 		self.inputs.new("ClNodeFloatSocket","b");
 		self.outputs.new("ClNodeFloatSocket","Out");
 
+class ClNodeFloatMin(bpy.types.Node):
+	bl_idname = "ClNodeFloatMin";
+	bl_label = "Min";
+
+	def init(self, context):
+		self.inputs.new("ClNodeFloatSocket","a");
+		self.inputs.new("ClNodeFloatSocket","b");
+		self.outputs.new("ClNodeFloatSocket","Out");
+
+class ClNodeFloatMax(bpy.types.Node):
+	bl_idname = "ClNodeFloatMax";
+	bl_label = "Max";
+
+	def init(self, context):
+		self.inputs.new("ClNodeFloatSocket","a");
+		self.inputs.new("ClNodeFloatSocket","b");
+		self.outputs.new("ClNodeFloatSocket","Out");
+
 #class ClPropertyEmpty(bpy.types.PropertyGroup):
 	#pass
 
@@ -252,6 +270,15 @@ class ClNodeSurfaceOutput(bpy.types.Node):
 	#def draw_buttons(self, context, layout):
 		#layout.row().label("wefwefwef",icon="LOCKED");
 
+class ClNodeComposite(bpy.types.Node):
+	bl_idname = "ClNodeComposite";
+	bl_label = "Composition";
+
+	def init(self, context):
+		self.inputs.new("ClNodeFloatSocket","In");
+		self.inputs.new("ClNodeFogSocket","Fog");
+		self.outputs.new("ClNodeFogSocket","Fog");
+
 class ClNodeAdvection(bpy.types.Node):
 	bl_idname = "ClNodeAdvection";
 	bl_label = "Advection";
@@ -285,7 +312,6 @@ class ClNodeDisplacement(bpy.types.Node):
 	#def draw_buttons(self, context, layout):
 		#self.props.draw(context,layout);
 
-#TODO: deprecate this in favor of displacement + separate value perlin noise?
 #^^this alternative is still unoptimal, as all (noise) nodes of the tree would be evaluated (above level+1), even if only was was needed for current displacement node.
 # class ClNodefBmPerlinNoise(bpy.types.Node):
 # 	bl_idname = "ClNodefBmPerlinNoise";
@@ -338,6 +364,8 @@ categories = [
 		NodeItem("ClNodeFloatMul"),
 		NodeItem("ClNodeFloatDiv"),
 		NodeItem("ClNodeFloatPow"),
+		NodeItem("ClNodeFloatMin"),
+		NodeItem("ClNodeFloatMax"),
 	]),
 	ClNodeCategory("CONVERSION_CATEGORY","Conversion",items = [
 		NodeItem("ClNodeVectorFieldSampler"),
@@ -346,6 +374,7 @@ categories = [
 		NodeItem("ClNodeFbmNoise"),
 	]),
 	ClNodeCategory("DENSITY_CATEGORY","Fog",items = [
+		NodeItem("ClNodeComposite"),
 		NodeItem("ClNodeAdvection"),
 	]),
 	ClNodeCategory("SURFACE_CATEGORY","Surface",items = [
