@@ -360,7 +360,7 @@ public:
     std::vector<BaseNode *> nodes;
 };*/
 
-BaseNode * CreateNodeByType(const char *, uint, NodeTree *);
+BaseNode * CreateNodeByType(const char *, const void *, uint, NodeTree *);
 BaseNode * CreateNodeBySocket(const char *, const void *, uint, NodeTree *);
 //void EvaluateValueGroup(uint);
 //void SortNodes();

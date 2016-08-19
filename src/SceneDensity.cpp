@@ -304,7 +304,6 @@ void Advection::Evaluate(const void *pp){
 	openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
 
 	openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler> samplerd(*pnode->pdgrid);
-	//openvdb::tools::GridSampler<openvdb::Vec3SGrid, openvdb::tools::StaggeredBoxSampler> samplerv(*pvfn->pvgrid);
 
 	DebugPrintf("> Advecting fog volume...\n");
 
@@ -333,14 +332,22 @@ void Advection::Evaluate(const void *pp){
 			float s = pdist->locr(indices[IAdvection::INPUT_DISTANCE])/(float)piters->locr(indices[IAdvection::INPUT_ITERATIONS]);
 
 			float4 rc = float4::load(posw.asPointer());
-			/*for(uint i = 0; i < piters->locr(indices[IAdvection::INPUT_ITERATIONS]); ++i){
-				//openvdb::math::Vec3s v = samplerv.wsSample(posw);
-				//rc += s*float4::load((dfloat3*)v.asPointer());
+			uint ic = piters->locr(indices[IAdvection::INPUT_ITERATIONS]);
+			for(uint i = 0; i < ic; ++i){
+				dfloat3 v = pvn->locr(indices[IAdvection::INPUT_VELOCITY]);
+				rc += s*float4::load(&v);
+				//
+				//all the other inputs except the vector is evaluated only per-voxel
+				new(&np1) ValueNodeParams((dfloat3*)posw.asPointer(),&zr,0.0f,0.0f);
+				pntree->EvaluateNodes0(&np1,level+1,emask);
 				//
 				//float4::store((dfloat3*)posw.asPointer(),rc);
 				//float p = samplerd.wsSample(posw); //TODO: do actual integration instead of sampling the last value?
-			}*/
+			}
 
+			//TODO: bool value to indicate wether to sample surfaces
+			//This is done by passing the node Py-object to CreateNodeByType. Here most of the generality is
+			//already lost, and querying node specific parameters should be ok.
 			float4::store((dfloat3*)posw.asPointer(),rc);
 			float p = samplerd.wsSample(posw);
 

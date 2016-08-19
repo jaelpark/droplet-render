@@ -90,7 +90,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
             const char *pn = PyUnicode_AsUTF8(pidn);
             DebugPrintf("%s\n",pn);
 
-            Node::BaseNode *pbn = Node::CreateNodeByType(pn,l,pnt);//Node::CreateNode(pn,l);
+            Node::BaseNode *pbn = Node::CreateNodeByType(pn,proot,l,pnt);//Node::CreateNode(pn,l);
             if(!pbn){
                 DebugPrintf("Error: unknown node %s\n",pn);
                 return 0;

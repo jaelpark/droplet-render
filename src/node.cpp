@@ -406,7 +406,7 @@ void NodeTree::DeleteAll(){
     ntrees.clear();
 }
 
-BaseNode * CreateNodeByType(const char *pname, uint level, NodeTree *pnt){
+BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, NodeTree *pnt){
     if(strcmp(pname,"ClNodeFloatAdd") == 0){
         return new AddNode<float>(level,pnt);
     }else if(strcmp(pname,"ClNodeFloatSub") == 0){
@@ -436,6 +436,7 @@ BaseNode * CreateNodeByType(const char *pname, uint level, NodeTree *pnt){
 	}else if(strcmp(pname,"ClNodeComposite") == 0){
 		return IComposite::Create(level,pnt);
 	}else if(strcmp(pname,"ClNodeAdvection") == 0){
+		//TODO: query surface bool
 		return IAdvection::Create(level,pnt);
     }else if(strcmp(pname,"ClNodeDisplacement") == 0){
         return IDisplacement::Create(level,pnt);
