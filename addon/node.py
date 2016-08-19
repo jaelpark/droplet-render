@@ -158,8 +158,10 @@ class ClNodeParticleInput(bpy.types.Node):
 	bl_label = "ParticleSystem";
 
 	def init(self, context):
-		self.inputs.new("ClNodeFloatSocket","Raster.res");
-		self.inputs.new("ClNodeFloatSocket","Weight");
+		#self.inputs.new("ClNodeFloatSocket","Raster.res");
+		#self.inputs.new("ClNodeFloatSocket","Weight");
+		self.inputs.new("ClNodeFloatSocket","Size");
+		self.inputs.new("ClNodeFloatSocket","Cutoff");
 		self.outputs.new("ClNodeFogSocket","Fog");
 		#self.outputs.new("ClNodeVectorFieldSocket","Velocity");
 

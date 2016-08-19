@@ -581,11 +581,12 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
         vdbc.close();
 
         {
-            FILE *pf = fopen("/tmp/droplet-fileid.bin","rb"); //TODO: use grid metadata to store this info
+            FILE *pf = fopen("/tmp/droplet-fileid.bin","rb");
             if(!pf)
                 throw(0);
             fread(&index,1,4,pf);
             fread(&leafx[VOLUME_BUFFER_SDF],1,4,pf);
+			leafx[VOLUME_BUFFER_FOG] = 0;
 
             uint pobl = (index+1)*sizeof(OctreeStructure);
             pob = (OctreeStructure*)_mm_malloc(pobl,16);
@@ -620,22 +621,19 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
     }
 
 	DebugPrintf("> Resampling volume data...\n");
-
-	//openvdb::FloatGrid::ConstAccessor
+	
 	//openvdb::tools::GridSampler<openvdb::FloatGrid::ConstAccessor, openvdb::tools::BoxSampler> fsampler(pgrid->getConstAccessor(),pgrid->transform());
 
 	openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler> *psampler[VOLUME_BUFFER_COUNT];
 	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i){
 		if(pgrid[i]){
 			pbuf[i] = new LeafVolume[leafx[i]];
-			psampler[i] = new openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler>(*pgrid[i]);
+			psampler[i] = new openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler>(*pgrid[i]); //non-cached, thread safe version
 		}else{
 			pbuf[i] = 0;
 			psampler[i] = 0;
 		}
 	}
-    //openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler> samplerd(*pgrid[VOLUME_BUFFER_SDF]); //non-cached, thread safe version
-	//openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler> samplerf(*pgrid[VOLUME_BUFFER_FOG]);
 
     //float4 nv = float4(N);
     const uint uN = BLCLOUD_uN;

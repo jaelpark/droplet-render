@@ -5,7 +5,9 @@
 
 #include <openvdb/openvdb.h>
 #include <openvdb/tools/Interpolation.h>
-#include <openvdb/tools/GridTransformer.h>
+#include <openvdb/tools/ParticlesToLevelSet.h>
+#include <openvdb/tools/LevelSetUtil.h> //sdfToFogVolume
+#include <openvdb/tools/GridTransformer.h> //resampleToMatch
 #include <openvdb/tools/Composite.h>
 
 #include "SceneDensity.h"
@@ -44,6 +46,32 @@ BaseVectorFieldNode * BaseVectorFieldNode::Create(uint level, NodeTree *pnt){
 	return new BaseVectorFieldNode1(level,pnt);
 }
 
+class ParticleInputList{
+public:
+	typedef openvdb::Vec3R PosType;
+	ParticleInputList(SceneData::ParticleSystem *_pps, float _rscale) : pps(_pps), rscale(_rscale){}//, rscale(1.0f), vscale(1.0f){}
+	//ParticleInputList(openvdb::Real rscale1 = 1.0f, openvdb::Real vscale1 = 1.0f) : rscale(rscale1), vscale(vscale1){}
+
+	size_t size() const{
+		return pps->vl.size();
+	}
+
+	void getPos(size_t x, PosType &p) const{
+		dfloat3 &t = pps->vl[x];
+		p = openvdb::Vec3R(t.x,t.y,t.z);
+	}
+
+	void getPosRad(size_t x, PosType &p, openvdb::Real &r) const{
+		dfloat3 &t = pps->vl[x];
+		p = openvdb::Vec3R(t.x,t.y,t.z);
+		r = rscale;
+	}
+
+protected:
+	SceneData::ParticleSystem *pps;
+	float rscale;
+};
+
 ParticleInput::ParticleInput(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), IParticleInput(_level,pnt){
     //
     //DebugPrintf(">> ParticleInput()\n");
@@ -59,6 +87,38 @@ void ParticleInput::Evaluate(const void *pp){
 	if(!pps)
 		return;
 
+	BaseValueNode<float> *psizen = dynamic_cast<BaseValueNode<float>*>(pnodes[IParticleInput::INPUT_SIZE]); //should lifetime determine the size?
+	BaseValueNode<float> *pcoffn = dynamic_cast<BaseValueNode<float>*>(pnodes[IParticleInput::INPUT_CUTOFF]);
+
+	dfloat3 zr(0.0f);
+	ValueNodeParams np(&zr,&zr,0.0f,0.0f);
+	pntree->EvaluateNodes0(&np,level+1,emask);
+
+	float size = psizen->locr(indices[IParticleInput::INPUT_SIZE]);
+	float coff = pcoffn->locr(indices[IParticleInput::INPUT_CUTOFF]);
+
+	openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
+	//pdgrid->setTransform(pgridtr);
+
+	pdgrid = openvdb::FloatGrid::create(coff);
+    pdgrid->setGridClass(openvdb::GRID_LEVEL_SET);
+	pdgrid->setTransform(pgridtr);
+	//pdgrid = openvdb::createLevelSet<openvdb::FloatGrid>(pgridtr->voxelSize().x(),coff/pgridtr->voxelSize().x());
+
+	ParticleInputList pl(pps,size);
+
+	DebugPrintf("> Rasterizing particles...\n");
+	openvdb::tools::ParticlesToLevelSet<openvdb::FloatGrid> lsf(*pdgrid);
+	lsf.setGrainSize(1);
+	lsf.rasterizeSpheres(pl);
+	lsf.finalize();
+
+	DebugPrintf("> Converting fog volume...\n");
+	openvdb::tools::sdfToFogVolume(*pdgrid);
+
+	pdgrid->tree().voxelizeActiveTiles(true); //voxelize the interior so that futher processing works
+
+#if 0
 	BaseValueNode<float> *prasres = dynamic_cast<BaseValueNode<float>*>(pnodes[IParticleInput::INPUT_RASTERIZATIONRES]);
 	BaseValueNode<float> *pweight = dynamic_cast<BaseValueNode<float>*>(pnodes[IParticleInput::INPUT_WEIGHT]);
 
@@ -110,6 +170,7 @@ void ParticleInput::Evaluate(const void *pp){
 	//advection: trace voxel if density < threshold
 
 	pdgrid->tree().prune();
+#endif
 }
 
 IParticleInput * IParticleInput::Create(uint level, NodeTree *pnt){
@@ -262,12 +323,12 @@ void Advection::Evaluate(const void *pp){
 			openvdb::Coord c = m.getCoord();
 			openvdb::math::Vec3s posw = pnode->pdgrid->transform().indexToWorld(c);
 
-			ValueNodeParams np1((dfloat3*)posw.asPointer(),&zr,0.0f,m.getValue());
-			pntree->EvaluateNodes0(&np1,level+1,emask);
-
 			float f = m.getValue();
 			if(f > pthrs->locr(indices[IAdvection::INPUT_THRESHOLD]))
 				continue;
+
+			ValueNodeParams np1((dfloat3*)posw.asPointer(),&zr,0.0f,f);
+			pntree->EvaluateNodes0(&np1,level+1,emask);
 
 			float s = pdist->locr(indices[IAdvection::INPUT_DISTANCE])/(float)piters->locr(indices[IAdvection::INPUT_ITERATIONS]);
 

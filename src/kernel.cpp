@@ -401,7 +401,9 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
 	//approximate very high orders of scattering by lowering the cross section as r gets higher
     sfloat1 msigmaa = sfloat1(2.3f)*expf(-2.0f*(float)r)+sfloat1(0.02f);
-    sfloat1 msigmas = sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(2.9f);//sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(2.9f);
+    //sfloat1 msigmas = sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(2.9f);//sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(2.9f);
+	//0.5, 1.2, 1.9
+	sfloat1 msigmas = sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(1.9f);//sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(2.9f);
     sfloat1 msigmae = msigmaa+msigmas;
 
     for(uint s = 0; s < samples; ++s){
@@ -750,6 +752,8 @@ bool RenderKernel::Initialize(const Scene *pscene, const dmatrix44 *pviewi, cons
     float se = XM_PIDIV2-th; //solar elevation
 
 	pskyms = arhosek_rgb_skymodelstate_alloc_init(2.2,0.6,se);
+
+	DebugPrintf("Initialized render kernel.\n");
 
 	return true;
 }

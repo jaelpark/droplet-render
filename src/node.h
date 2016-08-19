@@ -56,6 +56,7 @@ public:
 	tbb::enumerable_thread_specific<BaseValueResult<T>> result;
 };
 
+//NOTE: this could all be replaced with some common arithmetic node implementation which calls some operand
 template<class T>
 class AddNode : public BaseValueNode<T>{
 public:
@@ -205,8 +206,10 @@ public:
 	virtual void Evaluate(const void *) = 0;
 	static IParticleInput * Create(uint, NodeTree *);
 	enum INPUT{
-		INPUT_RASTERIZATIONRES,
-		INPUT_WEIGHT,
+		/*INPUT_RASTERIZATIONRES,
+		INPUT_WEIGHT,*/
+		INPUT_SIZE,
+		INPUT_CUTOFF,
 		INPUT_COUNT
 	};
 };

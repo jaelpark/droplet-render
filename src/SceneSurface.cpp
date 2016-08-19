@@ -1,7 +1,6 @@
 #include "main.h"
 #include "node.h"
 #include "scene.h"
-#include "noise.h"
 
 #include <openvdb/openvdb.h>
 #include <openvdb/tools/MeshToVolume.h>
