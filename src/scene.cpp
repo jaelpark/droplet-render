@@ -346,8 +346,6 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
                openvdb::tools::csgUnion(*pgrid[VOLUME_BUFFER_SDF],*ptgrid);
             else pgrid[VOLUME_BUFFER_SDF] = ptgrid;
         }
-
-        //TODO: get also the field sdf here, if available.
     }
 
 	for(uint i = 0; i < SceneData::SmokeCache::objs.size(); ++i){
@@ -382,7 +380,8 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
 			}
 
 			if(pgrid[VOLUME_BUFFER_FOG])
-				openvdb::tools::compSum(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
+				openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
+				//openvdb::tools::compSum(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
 			else pgrid[VOLUME_BUFFER_FOG] = pdfn->pdgrid;
 		}
 	}
@@ -419,7 +418,8 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
 			}
 
 			if(pgrid[VOLUME_BUFFER_FOG])
-				openvdb::tools::compSum(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
+				openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
+				//openvdb::tools::compSum(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
 			else pgrid[VOLUME_BUFFER_FOG] = pdfn->pdgrid;
 			//pgrid[VOLUME_BUFFER_FOG] = pdfn->pdgrid;
 		}
@@ -621,7 +621,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
     }
 
 	DebugPrintf("> Resampling volume data...\n");
-	
+
 	//openvdb::tools::GridSampler<openvdb::FloatGrid::ConstAccessor, openvdb::tools::BoxSampler> fsampler(pgrid->getConstAccessor(),pgrid->transform());
 
 	openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler> *psampler[VOLUME_BUFFER_COUNT];

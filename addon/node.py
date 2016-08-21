@@ -257,20 +257,16 @@ class ClNodeSurfaceOutput(bpy.types.Node):
 	bl_idname = "ClNodeSurfaceOutput";
 	bl_label = "Surface Output";
 
-	#props = PointerProperty(type=ClPropertyEmpty);
-
 	def init(self, context):
 		#TODO: 3d space to surface node: using sdf gradients, get the closest surface point and convert to texc
 		#self.inputs.new("ClNodeShaderSocket","Shader");
 		self.inputs.new("ClNodeFogSocket","Fog");
+		#self.inputs.new("ClNodeFogSocket","Fog.PostFX");
 		self.inputs.new("ClNodeSurfaceSocket","Surface.Field");
 		self.inputs.new("ClNodeSurfaceSocket","Surface");
 
 		#self.color = (0.7,0.7,0.8);
 		#self.use_custom_color = True;
-
-	#def draw_buttons(self, context, layout):
-		#layout.row().label("wefwefwef",icon="LOCKED");
 
 class ClNodeComposite(bpy.types.Node):
 	bl_idname = "ClNodeComposite";
@@ -285,6 +281,8 @@ class ClNodeAdvection(bpy.types.Node):
 	bl_idname = "ClNodeAdvection";
 	bl_label = "Advection";
 
+	#surface_advection = BoolProperty(name="Surface",default=True,description="Advect from the surfaces.");
+
 	def init(self, context):
 		self.inputs.new("ClNodeFloatSocket","Threshold");
 		self.inputs.new("ClNodeFloatSocket","Distance");
@@ -295,7 +293,7 @@ class ClNodeAdvection(bpy.types.Node):
 		self.outputs.new("ClNodeFogSocket","Fog");
 
 	#def draw_buttons(self, context, layout):
-		#layout.row().label("Baked advection");
+		#layout.prop(self,"surface_advection");
 
 class ClNodeDisplacement(bpy.types.Node):
 	bl_idname = "ClNodeDisplacement";
@@ -310,9 +308,6 @@ class ClNodeDisplacement(bpy.types.Node):
 		self.inputs.new("ClNodeFloatSocket","Billow");
 		self.inputs.new("ClNodeSurfaceSocket","Surface");
 		self.outputs.new("ClNodeSurfaceSocket","Surface");
-
-	#def draw_buttons(self, context, layout):
-		#self.props.draw(context,layout);
 
 #^^this alternative is still unoptimal, as all (noise) nodes of the tree would be evaluated (above level+1), even if only was was needed for current displacement node.
 # class ClNodefBmPerlinNoise(bpy.types.Node):

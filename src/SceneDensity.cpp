@@ -326,12 +326,13 @@ void Advection::Evaluate(const void *pp){
 			if(f > pthrs->locr(indices[IAdvection::INPUT_THRESHOLD]))
 				continue;
 
+			float4 rc = float4::load(posw.asPointer());
+
 			ValueNodeParams np1((dfloat3*)posw.asPointer(),&zr,0.0f,f);
 			pntree->EvaluateNodes0(&np1,level+1,emask);
 
 			float s = pdist->locr(indices[IAdvection::INPUT_DISTANCE])/(float)piters->locr(indices[IAdvection::INPUT_ITERATIONS]);
 
-			float4 rc = float4::load(posw.asPointer());
 			uint ic = piters->locr(indices[IAdvection::INPUT_ITERATIONS]);
 			for(uint i = 0; i < ic; ++i){
 				dfloat3 v = pvn->locr(indices[IAdvection::INPUT_VELOCITY]);
@@ -348,8 +349,16 @@ void Advection::Evaluate(const void *pp){
 			//TODO: bool value to indicate wether to sample surfaces
 			//This is done by passing the node Py-object to CreateNodeByType. Here most of the generality is
 			//already lost, and querying node specific parameters should be ok.
+
+			/*alternative: fog post-processing, taking into account the global fog
+			-output node has additional input called Fog.PostFX: composite node (for example) is used to provide input with the help of VoxelInfo
+			-fog objects that use the postfx socket are stored for later evaluation
+			-For each grid stored for post-processing, loop through the active voxels. Instead of having only local fog information, VoxelInfo gets data
+			from the full fog grid and all surfaces. This then works with advection operators, for example.
+			-results are written in parallel to several partial grids, which then after every pp operations is complete is written to the global grid
+			*/
 			float4::store((dfloat3*)posw.asPointer(),rc);
-			float p = samplerd.wsSample(posw);
+			float p = samplerd.wsSample(posw); //TODO: modulate density by final distance
 
 			std::get<1>(fgt).setValue(c,f+p);
         }

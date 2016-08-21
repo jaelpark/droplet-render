@@ -614,6 +614,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 //#define BLCLOUD_MULTIPLE_IMPORTANCE
 #ifdef BLCLOUD_MULTIPLE_IMPORTANCE
             //sample the phase function and lights
+			sfloat1 la = sfloat1(pkernel->plights[0].angle);
             sfloat4 srd = HG_Sample(rd,prs);
             sfloat4 lrd = L_Sample(sfloat1(float4::load(&pkernel->plights[0].direction)),la,prs);
 
@@ -623,7 +624,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
             sfloat1 ps = p1+p2;
 
             //need two samples - with the phase sampling keep on the recursion while for the light do only single scattering
-            sfloat1 gm1 = sfloat1::AndNot(rm,sfloat1::trueI());
+            sfloat1 gm1 = sfloat1::AndNot(rm,sint1::trueI());
             sfloat4 s1 = SampleVolume(rc,srd,gm1,pkernel,prs,ls,r+1,1); //p1 canceled by phase=pdf=p1
             sfloat4 s2 = SampleVolume(rc,lrd,gm1,pkernel,prs,ls,BLCLOUD_MAX_RECURSION-1,1)*HG_Phase(sfloat4::dot3(lrd,rd)); //p2 canceled by the MIS estimator
 
