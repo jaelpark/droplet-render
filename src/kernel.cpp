@@ -311,7 +311,7 @@ inline sfloat4 L_Sample(const sfloat4 &iv, const sfloat1 &la, sint4 *prs){
     return b1*st*cph+b2*st*sph+iv*ct;
 }
 
-static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pkernel, sint4 *prs, ParallelLeafList &ls, uint r, uint samples){
+static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pkernel, sint4 *prs, ParallelLeafList &ls, uint r, uint samples, sfloat1 *prq){
 	OctreeStructure *pob = pkernel->pscene->pob;
 
 	dintN sgm = dintN(gm);
@@ -548,67 +548,70 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
         //directional lights (needs better sampling - currently too much variance for small lights)
         sfloat4 lc = sfloat1::zero();
-        for(uint i = 0; i < pkernel->lightc; ++i){
-            //sfloat1 lt = sfloat1::Greater(sfloat4::dot3(rd,sfloat4(float4::load(&pkernel->plights[i].direction))),sfloat1(0.96f));
-            sfloat1 lt = sfloat1::Greater(sfloat4::dot3(rd,sfloat4(float4::load(&pkernel->plights[i].direction))),sfloat1(pkernel->plights[i].angle));
-            //lm = sfloat1::Or(lm,lt); //0.995f
+		sfloat4 ll;
+		if(!sfloat1::AnyTrue(sfloat1::EqualR(rm,zr))){ //skip (sky)lighting calculations if all incident rays scatter
+	        for(uint i = 0; i < pkernel->lightc; ++i){
+	            //sfloat1 lt = sfloat1::Greater(sfloat4::dot3(rd,sfloat4(float4::load(&pkernel->plights[i].direction))),sfloat1(0.96f));
+	            sfloat1 lt = sfloat1::Greater(sfloat4::dot3(rd,sfloat4(float4::load(&pkernel->plights[i].direction))),sfloat1(pkernel->plights[i].angle));
+	            //lm = sfloat1::Or(lm,lt); //0.995f
 
-            float4 c = float4::load(&pkernel->plights[i].color);
-            lc.v[0] = sfloat1::Or(sfloat1::And(lt,c.splat<0>()),sfloat1::AndNot(lt,lc.v[0]));
-            lc.v[1] = sfloat1::Or(sfloat1::And(lt,c.splat<1>()),sfloat1::AndNot(lt,lc.v[1]));
-            lc.v[2] = sfloat1::Or(sfloat1::And(lt,c.splat<2>()),sfloat1::AndNot(lt,lc.v[2]));
-        }
+	            float4 c = float4::load(&pkernel->plights[i].color);
+	            lc.v[0] = sfloat1::Or(sfloat1::And(lt,c.splat<0>()),sfloat1::AndNot(lt,lc.v[0]));
+	            lc.v[1] = sfloat1::Or(sfloat1::And(lt,c.splat<1>()),sfloat1::AndNot(lt,lc.v[1]));
+	            lc.v[2] = sfloat1::Or(sfloat1::And(lt,c.splat<2>()),sfloat1::AndNot(lt,lc.v[2]));
+	        }
 
-        //skylighting
-        //sfloat1 th = sfloat1::acos(rd.v[2]); //add/remove abs to remove/get ground
-        //sfloat1 ph = sfloat1::atan2(rd.v[0],rd.v[1]);
-        //sfloat1 sth, cth, szr, czr;
-        //sincos_ps(th,&sth.v,&cth.v);
-        sfloat1 rdz = sfloat1::abs(rd.v[2]);
-        sfloat1 sth = sfloat1::sqrt(1.0f-rd.v[2]*rd.v[2]);
-        sfloat1 cth = rdz;
-        sfloat1 lth = sfloat1::zero(); //sun theta
-        sfloat1 lph = sfloat1::zero();
-        sfloat1 slth, clth, slph, clph;
-        sincos_ps(lth,&slth.v,&clth.v);
-        sincos_ps(lph,&slph.v,&clph.v);
+	        //skylighting
+	        //sfloat1 th = sfloat1::acos(rd.v[2]); //add/remove abs to remove/get ground
+	        //sfloat1 ph = sfloat1::atan2(rd.v[0],rd.v[1]);
+	        //sfloat1 sth, cth, szr, czr;
+	        //sincos_ps(th,&sth.v,&cth.v);
+	        sfloat1 rdz = sfloat1::abs(rd.v[2]);
+	        sfloat1 sth = sfloat1::sqrt(1.0f-rd.v[2]*rd.v[2]);
+	        sfloat1 cth = rdz;
+	        sfloat1 lth = sfloat1::zero(); //sun theta
+	        sfloat1 lph = sfloat1::zero();
+	        sfloat1 slth, clth, slph, clph;
+	        sincos_ps(lth,&slth.v,&clth.v);
+	        sincos_ps(lph,&slph.v,&clph.v);
 
-        //sfloat1 cph = sth*slth*cos_ps(lph-ph)+cth*clth;
-        sfloat1 rdd = rd.v[0]/rd.v[1];
-        sfloat1 acr = 1.0f/sfloat1::sqrt(rdd*rdd+1.0f); //cos(ph = atan(rdd))
-        sfloat1 czp = acr*(rdd*slph+clph); //cos(zr-ph)
-        sfloat1 cph = sth*slth*czp+cth*clth;
+	        //sfloat1 cph = sth*slth*cos_ps(lph-ph)+cth*clth;
+	        sfloat1 rdd = rd.v[0]/rd.v[1];
+	        sfloat1 acr = 1.0f/sfloat1::sqrt(rdd*rdd+1.0f); //cos(ph = atan(rdd))
+	        sfloat1 czp = acr*(rdd*slph+clph); //cos(zr-ph)
+	        sfloat1 cph = sth*slth*czp+cth*clth;
 
-        //sfloat1 cc1 = sfloat1::Greater(cph,sfloat1::one());
-        //sfloat1 cc2 = sfloat1::Less(cph,-sfloat1::one());
-        //sfloat1 ga = sfloat1::acos(cph);
-        /*ga = sfloat1::Or(sfloat1::And(cc1,zr),sfloat1::AndNot(cc1,ga));
-        ga = sfloat1::Or(sfloat1::And(cc2,sfloat1(XM_PI)),sfloat1::AndNot(cc2,ga));*/
+	        //sfloat1 cc1 = sfloat1::Greater(cph,sfloat1::one());
+	        //sfloat1 cc2 = sfloat1::Less(cph,-sfloat1::one());
+	        //sfloat1 ga = sfloat1::acos(cph);
+	        /*ga = sfloat1::Or(sfloat1::And(cc1,zr),sfloat1::AndNot(cc1,ga));
+	        ga = sfloat1::Or(sfloat1::And(cc2,sfloat1(XM_PI)),sfloat1::AndNot(cc2,ga));*/
 
-        //th = sfloat1::min(th,sfloat1(XM_PIDIV2-0.001f));
+	        //th = sfloat1::min(th,sfloat1(XM_PIDIV2-0.001f));
 
-        //sfloat1 gacs = cos_ps(ga);
-        //sfloat1 thcs = cos_ps(th);
-        sfloat1 gmma = 1.570796808f+(-0.7107710905f+(-0.9654782056e-5f+
-             (-2.721495228f+(0.2766071913e-4f+(5.591013086f+(-0.1860396098e-4f-3.690226730f*cph)*cph)*cph)*cph)*cph)*cph)*cph; //acos minimax
-        sfloat1 gacs = sfloat1::saturate(cph);
-        sfloat1 thcs = sfloat1::max(rdz,sfloat1::zero());
-        sfloat1 raym = gacs*gacs;
-		sfloat4 ca;
-		for(uint i = 0; i < 3; ++i){
-            sfloat1 caf[9];
-			for(uint j = 0; j < 9; ++j)
-                caf[j] = sfloat1(pkernel->pskyms->configs[i][j]);
-            //arhosek_tristim_skymodel_radiance(pkernel->pskyms,sth,sga,0)
-            sfloat1 expm = exp_ps(caf[4]*gmma);
-            sfloat1 miem = (sfloat1::one()+raym)/sfloat1::pow(sfloat1::one()+caf[8]*caf[8]-sfloat1(2.0f)*caf[8]*gacs,sfloat1(1.5f));
-            sfloat1 zenh = sfloat1::sqrt(thcs);
-            ca.v[i] = (sfloat1::one()+caf[0]*exp_ps(caf[1]/(thcs+sfloat1(0.01f))))*(caf[2]+caf[3]*expm+caf[5]*raym+caf[6]*miem+caf[7]*zenh);
-			ca.v[i] *= 0.028f*pkernel->pskyms->radiances[i];
+	        //sfloat1 gacs = cos_ps(ga);
+	        //sfloat1 thcs = cos_ps(th);
+	        sfloat1 gmma = 1.570796808f+(-0.7107710905f+(-0.9654782056e-5f+
+	             (-2.721495228f+(0.2766071913e-4f+(5.591013086f+(-0.1860396098e-4f-3.690226730f*cph)*cph)*cph)*cph)*cph)*cph)*cph; //acos minimax
+	        sfloat1 gacs = sfloat1::saturate(cph);
+	        sfloat1 thcs = sfloat1::max(rdz,sfloat1::zero());
+	        sfloat1 raym = gacs*gacs;
+			sfloat4 ca;
+			for(uint i = 0; i < 3; ++i){
+	            sfloat1 caf[9];
+				for(uint j = 0; j < 9; ++j)
+	                caf[j] = sfloat1(pkernel->pskyms->configs[i][j]);
+	            //arhosek_tristim_skymodel_radiance(pkernel->pskyms,sth,sga,0)
+	            sfloat1 expm = exp_ps(caf[4]*gmma);
+	            sfloat1 miem = (sfloat1::one()+raym)/sfloat1::pow(sfloat1::one()+caf[8]*caf[8]-sfloat1(2.0f)*caf[8]*gacs,sfloat1(1.5f));
+	            sfloat1 zenh = sfloat1::sqrt(thcs);
+	            ca.v[i] = (sfloat1::one()+caf[0]*exp_ps(caf[1]/(thcs+sfloat1(0.01f))))*(caf[2]+caf[3]*expm+caf[5]*raym+caf[6]*miem+caf[7]*zenh);
+				ca.v[i] *= 0.028f*pkernel->pskyms->radiances[i];
+			}
+	        ca.v[3] = sfloat1::zero();
+
+	        ll = lc+ca;
 		}
-        ca.v[3] = sfloat1::zero();
-
-        sfloat4 ll = lc+ca;
 
         if(r < pkernel->scattevs && sfloat1::AnyTrue(sfloat1::EqualR(rm,zr))){
 //#define BLCLOUD_MULTIPLE_IMPORTANCE
@@ -625,15 +628,19 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
             //need two samples - with the phase sampling keep on the recursion while for the light do only single scattering
             sfloat1 gm1 = sfloat1::AndNot(rm,sint1::trueI());
-            sfloat4 s1 = SampleVolume(rc,srd,gm1,pkernel,prs,ls,r+1,1); //p1 canceled by phase=pdf=p1
-            sfloat4 s2 = SampleVolume(rc,lrd,gm1,pkernel,prs,ls,BLCLOUD_MAX_RECURSION-1,1)*HG_Phase(sfloat4::dot3(lrd,rd)); //p2 canceled by the MIS estimator
+			sfloat1 rq;
+            sfloat4 s1 = SampleVolume(rc,srd,gm1,pkernel,prs,ls,r+1,1,&rq); //p1 canceled by phase=pdf=p1
+            sfloat4 s2 = SampleVolume(rc,lrd,gm1,pkernel,prs,ls,BLCLOUD_MAX_RECURSION-1,1,&rq)*HG_Phase(sfloat4::dot3(lrd,rd)); //p2 canceled by the MIS estimator
 
             //estimator S(1)*f1*w1/p1+S(2)*f2*w2/p2 /= woodcock pdf
             sfloat4 cm = (s1*p1+s2)*msigmas/(msigmae*ps);
+
+			//if phase pdf SampleVolume didn't recurse further, sample towards light with r = Max
 #else
+			sfloat1 rq;
             //phase function sampling
             sfloat4 srd = HG_Sample(rd,prs);
-            sfloat4 cm = SampleVolume(rc,srd,sfloat1::AndNot(rm,sint1::trueI()),pkernel,prs,ls,r+1,1)*msigmas/msigmae;
+            sfloat4 cm = SampleVolume(rc,srd,sfloat1::AndNot(rm,sint1::trueI()),pkernel,prs,ls,r+1,1,&rq)*msigmas/msigmae;
             //phase/pdf(=phase)=1
 
             //light sampling, obviously won't alone result in any sky lighting
@@ -642,11 +649,13 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
             sfloat4 cm = SampleVolume(rc,lrd,sfloat1::AndNot(rm,sint1::trueI()),pkernel,prs,ls,r+1,1)*HG_Phase(sfloat4::dot3(lrd,rd))*msigmas
                 /(msigmae*L_Pdf(lrd,la));*/
 #endif
+			*prq = sint1::trueI();
             c.v[0] += sfloat1::Or(sfloat1::And(rm,ll.v[0]),sfloat1::AndNot(rm,cm.v[0]));
             c.v[1] += sfloat1::Or(sfloat1::And(rm,ll.v[1]),sfloat1::AndNot(rm,cm.v[1]));
             c.v[2] += sfloat1::Or(sfloat1::And(rm,ll.v[2]),sfloat1::AndNot(rm,cm.v[2]));
             c.v[3] += sfloat1::one();
         }else if(!(pkernel->flags & RENDER_TRANSPARENT) || r > 0){
+			*prq = sint1::falseI();
             c.v[0] += sfloat1::Or(sfloat1::And(rm,ll.v[0]),sfloat1::AndNot(rm,zr));
             c.v[1] += sfloat1::Or(sfloat1::And(rm,ll.v[1]),sfloat1::AndNot(rm,zr));
             c.v[2] += sfloat1::Or(sfloat1::And(rm,ll.v[2]),sfloat1::AndNot(rm,zr));
@@ -698,7 +707,8 @@ static void K_Render(dmatrix44 *pviewi, dmatrix44 *pproji, RenderKernel *pkernel
                     sfloat1::And(sfloat1::Greater(posh.v[0],-sfloat1::one()),sfloat1::Less(posh.v[0],sfloat1::one())),
                     sfloat1::And(sfloat1::Greater(posh.v[1],-sfloat1::one()),sfloat1::Less(posh.v[1],sfloat1::one())));
 
-                sfloat4 c = SampleVolume(ro,rd,gm,pkernel,&rngs,ls,0,samples);
+				sfloat1 rq;
+                sfloat4 c = SampleVolume(ro,rd,gm,pkernel,&rngs,ls,0,samples,&rq);
 
 				dintN wmask = dintN(gm);
                 if(wmask.v[0] != 0)
