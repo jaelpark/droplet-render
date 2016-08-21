@@ -33,6 +33,13 @@ public:
 	void Evaluate(const void *);
 };
 
+class FogPostInput : public BaseFogNode1, public IFogPostInput{
+public:
+	FogPostInput(uint, NodeTree *);
+	~FogPostInput();
+	void Evaluate(const void *);
+};
+
 class Composite : public BaseFogNode1, public IComposite{
 public:
 	Composite(uint, NodeTree *);

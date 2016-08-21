@@ -293,6 +293,14 @@ ISmokeCache::~ISmokeCache(){
 	//
 }
 
+IFogPostInput::IFogPostInput(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt){
+	//
+}
+
+IFogPostInput::~IFogPostInput(){
+	//
+}
+
 IComposite::IComposite(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt){
 	//
 }
@@ -433,6 +441,8 @@ BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, No
 		return IParticleInput::Create(level,pnt);
 	}else if(strcmp(pname,"ClNodeSmokeCache") == 0){
 		return ISmokeCache::Create(level,pnt);
+	}else if(strcmp(pname,"ClNodeFogPostInput") == 0){
+		return IFogPostInput::Create(level,pnt);
 	}else if(strcmp(pname,"ClNodeComposite") == 0){
 		return IComposite::Create(level,pnt);
 	}else if(strcmp(pname,"ClNodeAdvection") == 0){

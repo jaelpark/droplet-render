@@ -218,6 +218,22 @@ ISmokeCache * ISmokeCache::Create(uint level, NodeTree *pnt){
 	return new SmokeCache(level,pnt);
 }
 
+FogPostInput::FogPostInput(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), IFogPostInput(_level,pnt){
+    //
+}
+
+FogPostInput::~FogPostInput(){
+    //
+}
+
+void FogPostInput::Evaluate(const void *pp){
+	//
+}
+
+IFogPostInput * IFogPostInput::Create(uint level, NodeTree *pnt){
+	return new FogPostInput(level,pnt);
+}
+
 Composite::Composite(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), IComposite(_level,pnt){
 	//
 }
@@ -353,8 +369,8 @@ void Advection::Evaluate(const void *pp){
 			/*alternative: fog post-processing, taking into account the global fog
 			-output node has additional input called Fog.PostFX: composite node (for example) is used to provide input with the help of VoxelInfo
 			-fog objects that use the postfx socket are stored for later evaluation
-			-For each grid stored for post-processing, loop through the active voxels. Instead of having only local fog information, VoxelInfo gets data
-			from the full fog grid and all surfaces. This then works with advection operators, for example.
+			-For each grid stored for post-processing (deep-copied), loop through the active voxels. Instead of having only local fog information,
+			VoxelInfo gets data from the full fog grid and all surfaces. This then works with advection operators, for example.
 			-results are written in parallel to several partial grids, which then after every pp operations is complete is written to the global grid
 			*/
 			float4::store((dfloat3*)posw.asPointer(),rc);

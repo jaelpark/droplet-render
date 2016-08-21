@@ -223,6 +223,15 @@ public:
 	static ISmokeCache * Create(uint, NodeTree *);
 };
 
+class IFogPostInput : public virtual BaseFogNode{
+protected:
+	IFogPostInput(uint, NodeTree *);
+	~IFogPostInput();
+public:
+	virtual void Evaluate(const void *) = 0;
+	static IFogPostInput * Create(uint, NodeTree *);
+};
+
 class IComposite : public virtual BaseFogNode{
 protected:
 	IComposite(uint, NodeTree *);
@@ -326,7 +335,8 @@ public:
         //INPUT_SHADER,
         //INPUT_FIELD,
         INPUT_FOG,
-        INPUT_FIELD,
+		INPUT_FOGPOST,
+        //INPUT_FIELD,
         INPUT_SURFACE,
         INPUT_COUNT,
     };

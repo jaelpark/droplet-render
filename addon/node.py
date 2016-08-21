@@ -172,6 +172,13 @@ class ClNodeSmokeCache(bpy.types.Node):
 	def init(self, context):
 		self.outputs.new("ClNodeFogSocket","Fog");
 
+class ClNodeFogPostInput(bpy.types.Node):
+	bl_idname = "ClNodeFogPostInput";
+	bl_label = "FogPostInput";
+
+	def init(self, context):
+		 self.outputs.new("ClNodeFogSocket","Fog");
+
 class ClNodeFloatAdd(bpy.types.Node):
 	bl_idname = "ClNodeFloatAdd";
 	bl_label = "Add";
@@ -261,8 +268,7 @@ class ClNodeSurfaceOutput(bpy.types.Node):
 		#TODO: 3d space to surface node: using sdf gradients, get the closest surface point and convert to texc
 		#self.inputs.new("ClNodeShaderSocket","Shader");
 		self.inputs.new("ClNodeFogSocket","Fog");
-		#self.inputs.new("ClNodeFogSocket","Fog.PostFX");
-		self.inputs.new("ClNodeSurfaceSocket","Surface.Field");
+		self.inputs.new("ClNodeFogSocket","Fog.Post");
 		self.inputs.new("ClNodeSurfaceSocket","Surface");
 
 		#self.color = (0.7,0.7,0.8);
@@ -349,6 +355,7 @@ categories = [
 		NodeItem("ClNodeSurfaceInput"),
 		NodeItem("ClNodeParticleInput"),
 		NodeItem("ClNodeSmokeCache"),
+		NodeItem("ClNodeFogPostInput"),
 		NodeItem("ClNodeVoxelInfo"),
 	]),
 	ClNodeCategory("OUTPUT_CATEGORY","Output",items = [
