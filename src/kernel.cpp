@@ -400,10 +400,14 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 	sample();*/
 
 	//approximate very high orders of scattering by lowering the cross section as r gets higher
-    sfloat1 msigmaa = sfloat1(2.3f)*expf(-2.0f*(float)r)+sfloat1(0.02f);
+    /*sfloat1 msigmaa = sfloat1(2.3f)*expf(-2.0f*(float)r)+sfloat1(0.02f);
     //sfloat1 msigmas = sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(2.9f);//sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(2.9f);
 	//0.5, 1.2, 1.9
-	sfloat1 msigmas = sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(1.9f);//sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(2.9f);
+	sfloat1 msigmas = sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(1.9f);//sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(2.9f);*/
+	sfloat1 msigmaa = sfloat1(0.05f);
+	sfloat1 msigmas = sfloat1(7.11f);
+	//sfloat1 msigmaa = sfloat1(2.3f)*expf(-2.0f*(float)r)+sfloat1(0.02f);
+	//sfloat1 msigmas = sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(4.0f);
     sfloat1 msigmae = msigmaa+msigmas;
 
     for(uint s = 0; s < samples; ++s){
@@ -419,7 +423,8 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
             qm = sfloat1::And(qm,rm);
 			qm = sfloat1::And(qm,sint1::Less(sint1(i),sint1::load(&leafcount)));
-            if(sfloat1::AllTrue(sfloat1::EqualR(qm,zr)))
+            //if(sfloat1::AllTrue(sfloat1::EqualR(qm,zr)))
+			if(qm.AllFalse())
 				break;
 
             sfloat4 ce = sfloat1::zero();
@@ -478,7 +483,8 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
             sfloat1 smax = sfloat1::load(&smax1);//sfloat1(1.0f); //local max in this leaf
             for(sfloat1 sr = -log_ps(RNG_Sample(prs))/(msigmae*smax), sc, sh;; sr -= log_ps(RNG_Sample(prs))/(msigmae*smax)){
                 sm = sfloat1::And(sm,rm);
-                if(sfloat1::AllTrue(sfloat1::EqualR(sm,zr)))
+                //if(sfloat1::AllTrue(sfloat1::EqualR(sm,zr)))
+				if(sfloat1(sm).AllFalse())
 					break;
 				//rc = lo+rd*sr;
                 sc = s0+sr;
@@ -549,7 +555,8 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
         //directional lights (needs better sampling - currently too much variance for small lights)
         sfloat4 lc = sfloat1::zero();
 		sfloat4 ll;
-		if(!sfloat1::AnyTrue(sfloat1::EqualR(rm,zr))){ //skip (sky)lighting calculations if all incident rays scatter
+		//if(!sfloat1::AnyTrue(sfloat1::EqualR(rm,zr))){ //skip (sky)lighting calculations if all incident rays scatter
+		if(rm.AnyTrue()){ //skip (sky)lighting calculations if all incident rays scatter (at least one of rm != 0)
 	        for(uint i = 0; i < pkernel->lightc; ++i){
 	            //sfloat1 lt = sfloat1::Greater(sfloat4::dot3(rd,sfloat4(float4::load(&pkernel->plights[i].direction))),sfloat1(0.96f));
 	            sfloat1 lt = sfloat1::Greater(sfloat4::dot3(rd,sfloat4(float4::load(&pkernel->plights[i].direction))),sfloat1(pkernel->plights[i].angle));
@@ -613,8 +620,9 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 	        ll = lc+ca;
 		}
 
-        if(r < pkernel->scattevs && sfloat1::AnyTrue(sfloat1::EqualR(rm,zr))){
-//#define BLCLOUD_MULTIPLE_IMPORTANCE
+        //if(r < pkernel->scattevs && sfloat1::AnyTrue(sfloat1::EqualR(rm,zr))){
+		if(r < pkernel->scattevs && rm.AnyFalse()){
+#define BLCLOUD_MULTIPLE_IMPORTANCE
 #ifdef BLCLOUD_MULTIPLE_IMPORTANCE
             //sample the phase function and lights
 			sfloat1 la = sfloat1(pkernel->plights[0].angle);
@@ -624,23 +632,34 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
             //pdfs for the balance heuristic w_x = p_x/sum(p_i,i=0..N)
             sfloat1 p1 = HG_Phase(sfloat4::dot3(srd,rd));
             sfloat1 p2 = L_Pdf(lrd,la);
-            sfloat1 ps = p1+p2;
+            //sfloat1 ps = p1+p2;
 
             //need two samples - with the phase sampling keep on the recursion while for the light do only single scattering
             sfloat1 gm1 = sfloat1::AndNot(rm,sint1::trueI());
 			sfloat1 rq;
-            sfloat4 s1 = SampleVolume(rc,srd,gm1,pkernel,prs,ls,r+1,1,&rq); //p1 canceled by phase=pdf=p1
-            sfloat4 s2 = SampleVolume(rc,lrd,gm1,pkernel,prs,ls,BLCLOUD_MAX_RECURSION-1,1,&rq)*HG_Phase(sfloat4::dot3(lrd,rd)); //p2 canceled by the MIS estimator
+            //sfloat4 s1 = SampleVolume(rc,srd,gm1,pkernel,prs,ls,r+1,1,&rq); //p1 canceled by phase=pdf=p1
+            //sfloat4 s2 = SampleVolume(rc,lrd,gm1,pkernel,prs,ls,BLCLOUD_MAX_RECURSION-1,1,&rq)*HG_Phase(sfloat4::dot3(lrd,rd)); //p2 canceled by the MIS estimator
 
             //estimator S(1)*f1*w1/p1+S(2)*f2*w2/p2 /= woodcock pdf
-            sfloat4 cm = (s1*p1+s2)*msigmas/(msigmae*ps);
+
+			sfloat4 s1 = SampleVolume(rc,srd,gm1,pkernel,prs,ls,r+1,1,&rq);
+			sfloat4 s2 = SampleVolume(rc,lrd,gm1,pkernel,prs,ls,BLCLOUD_MAX_RECURSION-1,1,&rq);
+
+			//(HG_Phase(X)*SampleVolume(X)*p1/(p1+L_Pdf(X)))/p1 = (HG_Phase(X)=p1)*SampleVolume(X)/(p1+L_Pdf(X)) = p1*SampleVolume(X)/(p1+L_Pdf(X))
+			//(HG_Phase(Y)*SampleVolume(Y)*p2/(HG_Phase(Y)+p2))/p2 = HG_phase(Y)*SampleVolume(Y)/(HG_Phase(Y)+p2)
+			sfloat1 p3 = HG_Phase(sfloat4::dot3(lrd,rd));
+			sfloat4 cm = s1*p1/(p1+L_Pdf(srd,la))+s2*p3/(p3+p2);
+			cm *= msigmas/msigmae;
+
+			//s1=HG_Phase(X)*SampleVolume(X)
+			//s1*p1/(p1+L_Pdf(X))
 
 			//if phase pdf SampleVolume didn't recurse further, sample towards light with r = Max
 #else
-			sfloat1 rq;
+			/*sfloat1 rq;
             //phase function sampling
             sfloat4 srd = HG_Sample(rd,prs);
-            sfloat4 cm = SampleVolume(rc,srd,sfloat1::AndNot(rm,sint1::trueI()),pkernel,prs,ls,r+1,1,&rq)*msigmas/msigmae;
+            sfloat4 cm = SampleVolume(rc,srd,sfloat1::AndNot(rm,sint1::trueI()),pkernel,prs,ls,r+1,1,&rq)*msigmas/msigmae;*/
             //phase/pdf(=phase)=1
 
             //light sampling, obviously won't alone result in any sky lighting
@@ -648,6 +667,28 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
             sfloat4 lrd = L_Sample(sfloat1(float4::load(&pkernel->plights[0].direction)),la,prs);
             sfloat4 cm = SampleVolume(rc,lrd,sfloat1::AndNot(rm,sint1::trueI()),pkernel,prs,ls,r+1,1)*HG_Phase(sfloat4::dot3(lrd,rd))*msigmas
                 /(msigmae*L_Pdf(lrd,la));*/
+
+			sfloat1 la = sfloat1(pkernel->plights[0].angle);
+            sfloat4 srd = HG_Sample(rd,prs);
+            sfloat4 lrd = L_Sample(sfloat1(float4::load(&pkernel->plights[0].direction)),la,prs);
+
+			//pdfs for the balance heuristic w_x = p_x/sum(p_i,i=0..N)
+            sfloat1 p1 = HG_Phase(sfloat4::dot3(srd,rd));
+            sfloat1 p2 = L_Pdf(lrd,la);
+
+			sfloat1 gm1 = sfloat1::AndNot(rm,sint1::trueI()), rq1, rq2;
+            sfloat4 s1 = SampleVolume(rc,srd,gm1,pkernel,prs,ls,r+1,1,&rq1);
+			sfloat4 s2 = SampleVolume(rc,lrd,gm1,pkernel,prs,ls,BLCLOUD_MAX_RECURSION-1,1,&rq2);
+			//sfloat4 s2 = !sfloat1::AllTrue(rq1)?SampleVolume(rc,lrd,gm1,pkernel,prs,ls,BLCLOUD_MAX_RECURSION-1,1,&rq2):zr;
+
+			sfloat1 p3 = HG_Phase(sfloat4::dot3(lrd,rd));
+			sfloat4 cf = s1*p1/(p1+L_Pdf(srd,la))+s2*p3/(p3+p2);
+
+			sfloat4 cm;
+			cm.v[0] = sfloat1::Or(sfloat1::And(rq1,s1.v[0]),sfloat1::AndNot(rq1,cf.v[0]));
+			cm.v[1] = sfloat1::Or(sfloat1::And(rq1,s1.v[1]),sfloat1::AndNot(rq1,cf.v[1]));
+			cm.v[2] = sfloat1::Or(sfloat1::And(rq1,s1.v[2]),sfloat1::AndNot(rq1,cf.v[2]));
+			cm *= msigmas/msigmae;
 #endif
 			*prq = sint1::trueI();
             c.v[0] += sfloat1::Or(sfloat1::And(rm,ll.v[0]),sfloat1::AndNot(rm,cm.v[0]));

@@ -283,6 +283,26 @@ public:
         return r;
     }
 
+	inline bool AllTrue() const{
+		return _mm_movemask_ps(v) == 0b1111;
+	}
+
+	inline bool AllFalse() const{
+		return _mm_movemask_ps(v) == 0;
+	}
+
+	inline bool AnyTrue() const{
+		return _mm_movemask_ps(v) > 0;
+	}
+
+	inline bool AnyFalse() const{
+		return _mm_movemask_ps(v) != 0b1111;
+	}
+
+	/*inline sfloat1 Select(const sfloat1 &a, const sfloat1 &b){
+		return sfloat1::Or(sfloat1::And(v,a),sfloat1::AndNot(v,b));
+	}*/
+
     //------------------------------------------------------------------------------
     //Arithmetic operations and dual input functions are defined as static members
 
@@ -293,15 +313,6 @@ public:
     static inline sfloat1 one(){
         return _mm_set1_ps(1.0f);
     }
-
-    /*static inline sfloat1 trueI(){
-        __m128i t = _mm_set1_epi32(-1);
-        return _mm_castsi128_ps(t);
-    }
-
-    static inline sfloat1 falseI(){
-        return zero();
-    }*/
 
     static inline sfloat1 selectctrl(uint a, uint b, uint c, uint d){
         __m128i t = _mm_set_epi32(d,c,b,a);
@@ -419,6 +430,10 @@ public:
         return r;
     }
 
+	static inline sfloat1 Equal(const sfloat1 &a, const sfloat1 &b){
+		return _mm_cmpeq_ps(a.v,b.v);
+	}
+
     static inline sfloat1 Greater(const sfloat1 &a, const sfloat1 &b){
         return _mm_cmpgt_ps(a.v,b.v);
     }
@@ -433,46 +448,6 @@ public:
 
     static inline sfloat1 LessOrEqual(const sfloat1 &a, const sfloat1 &b){
         return _mm_cmple_ps(a.v,b.v);
-    }
-
-    /*
-    __m128i vTemp = _mm_cmpeq_epi32(_mm_castps_si128(V1),_mm_castps_si128(V2));
-    return ((_mm_movemask_ps(_mm_castsi128_ps(vTemp))==0xf) != 0);*/
-    /*static inline int EqualR(const sfloat1 &a, const sfloat1 &b){
-        __m128i v =_mm_cmpeq_epi32(_mm_castps_si128(a.v),_mm_castps_si128(b.v));
-        return _mm_movemask_ps(_mm_castsi128_ps(v));
-    }
-
-    static inline bool AllTrue(int m){
-        //return (((CR) & XM_CRMASK_CR6TRUE) == XM_CRMASK_CR6TRUE);
-        return (m == 0xf);//(m & 0xf) == 0xf;
-    }
-
-    static inline bool AnyTrue(int m){
-        //return (((CR) & XM_CRMASK_CR6FALSE) != XM_CRMASK_CR6FALSE);
-        return (m != 0);
-    }
-
-    static inline bool AnyFalse(int m){
-        //return (((CR) & XM_CRMASK_CR6TRUE) != XM_CRMASK_CR6TRUE);
-        return (m != 0xf);
-    }*/
-    static inline uint EqualR(const sfloat1 &a, const sfloat1 &b){
-        __m128i v =_mm_cmpeq_epi32(_mm_castps_si128(a.v),_mm_castps_si128(b.v));
-        int t = _mm_movemask_ps(_mm_castsi128_ps(v));
-        return (t == 0xf?0x80:0x20);
-    }
-
-    static inline bool AllTrue(uint m){
-        return ((m & 0x80) == 0x80);
-    }
-
-    static inline bool AnyTrue(uint m){
-        return ((m & 0x20) != 0x20);
-    }
-
-    static inline bool AnyFalse(uint m){
-        return ((m & 0x80) != 0x80);
     }
 
     static inline sfloat1 And(const sfloat1 &a, const sfloat1 &b){

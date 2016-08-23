@@ -56,13 +56,15 @@ bool BoundingBox::Intersects(const float4 &v0, const float4 &v1, const float4 &v
 
     float4 dj = float4::Or(float4::Greater(tmin,bmax),float4::Greater(bmin,tmax));
     //if(float4::AnyTrue(float4::EqualR(float4::swizzle(dj,0,1,2,0),float4::trueI())))
-    if(float4::AnyTrue(float4::EqualR(dj.swizzle<0,1,2,0>(),sint1::trueI())))
+    //if(float4::AnyTrue(float4::EqualR(dj.swizzle<0,1,2,0>(),sint1::trueI())))
+	if(dj.swizzle<0,1,2,0>().AnyTrue())
         return false;
 
     float4 n = float4::cross(v1-v0,v2-v0);
     float4 d = float4::dot3(n,v0);
 
-    if(float4::AllTrue(float4::EqualR(n,z)))
+    //if(float4::AllTrue(float4::EqualR(n,z)))
+	if(float4::Equal(n,z).AllTrue())
         return false;
 
     float4 ns = float4::Greater(n,z);
@@ -170,7 +172,8 @@ bool BoundingBox::Intersects(const float4 &v0, const float4 &v1, const float4 &v
     ni = float4::Or(ni,float4::Less(max,-r));
 
     //AnyFalse (EqualR(ni,true))
-    return float4::AnyFalse(float4::EqualR(ni,sint1::trueI()));
+    //return float4::AnyFalse(float4::EqualR(ni,sint1::trueI()));
+	return ni.AnyFalse();
 }
 
 bool BoundingBox::Intersects(const BoundingBox &bb) const{
@@ -186,7 +189,8 @@ bool BoundingBox::Intersects(const BoundingBox &bb) const{
 
     float4 dj = float4::Or(float4::Greater(bmina,bmaxb),float4::Greater(bminb,bmaxa));
     //return !float4::AnyTrue(float4::EqualR(float4::swizzle(dj,0,1,2,0),float4::trueI()));
-    return !float4::AnyTrue(float4::EqualR(dj.swizzle<0,1,2,0>(),sint1::trueI()));
+    //return !float4::AnyTrue(float4::EqualR(dj.swizzle<0,1,2,0>(),sint1::trueI()));
+	return dj.swizzle<0,1,2,0>().AllFalse();
 }
 
 Octree::Octree(uint _x) : x(_x){//, lock(ATOMIC_FLAG_INIT){
