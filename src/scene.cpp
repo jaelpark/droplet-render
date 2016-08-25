@@ -298,6 +298,8 @@ protected:
 	openvdb::Real vscale;
 };*/
 
+using PostFogParams = std::tuple<SceneData::BaseObject *, openvdb::FloatGrid::Ptr>;
+
 static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT], Scene *pscene){
     openvdb::math::Transform::Ptr pgridtr = openvdb::math::Transform::createLinearTransform(s);
 	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
@@ -313,6 +315,7 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
     uint vca = 0;
 
 	std::vector<BoundingBox> fogbvs;
+	std::vector<PostFogParams> fogppl; //input grids to be post-processed
 
 	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
 		pgrid[i] = 0;
@@ -352,12 +355,21 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
         }
     }
 
+	openvdb::FloatGrid::Ptr ptfog = openvdb::FloatGrid::create();
+	ptfog->setTransform(pgridtr);
+	ptfog->setGridClass(openvdb::GRID_FOG_VOLUME);
+
 	for(uint i = 0; i < SceneData::SmokeCache::objs.size(); ++i){
 		Node::InputNodeParams snp(SceneData::SmokeCache::objs[i],pgridtr);
 		SceneData::SmokeCache::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOG);
 
 		Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(SceneData::SmokeCache::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOG]);
 		if(pdfn->pdgrid->activeVoxelCount() > 0){
+			if(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->imask & Node::OutputNode::INPUT_FOGPOST){
+				fogppl.push_back(PostFogParams(SceneData::SmokeCache::objs[i],pdfn->pdgrid->deepCopy()));
+				openvdb::tools::compMax(*ptfog,*pdfn->pdgrid);
+				continue;
+			}
 			if(pgrid[VOLUME_BUFFER_FOG])
 				openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid); //compSum
 			else pgrid[VOLUME_BUFFER_FOG] = pdfn->pdgrid;
@@ -370,13 +382,33 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
 
 		Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOG]);
 		if(pdfn->pdgrid->activeVoxelCount() > 0){
+			if(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->imask & Node::OutputNode::INPUT_FOGPOST){
+				fogppl.push_back(PostFogParams(SceneData::ParticleSystem::prss[i],pdfn->pdgrid->deepCopy()));
+				openvdb::tools::compMax(*ptfog,*pdfn->pdgrid);
+				continue;
+			}
 			if(pgrid[VOLUME_BUFFER_FOG])
 				openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
 			else pgrid[VOLUME_BUFFER_FOG] = pdfn->pdgrid;
-
-			//if(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->imask & Node::OutputNode::INPUT_FOGPOST)
-				//TODO: deep-copy (necessary)
 		}
+	}
+
+	//fog post-processor
+	if(fogppl.size() > 0){
+		openvdb::FloatGrid::Ptr pqfog;
+		if(pgrid[VOLUME_BUFFER_FOG]){
+			pqfog = pgrid[VOLUME_BUFFER_FOG]->deepCopy();
+			openvdb::tools::compMax(*pqfog,*ptfog);
+		}else pqfog = ptfog;
+	}
+
+	for(uint i = 0; i < fogppl.size(); ++i){
+		SceneData::PostFog fobj(std::get<0>(fogppl[i])->pnt,std::get<1>(fogppl[i]));
+		Node::InputNodeParams snp(&fobj,pgridtr);
+		fobj.pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOGPOST);
+		//TODO: every ValueNodeParams created before EvaluateNodes0 needs updating
+		//maybe InputNodeParams(obj,tansform,sdf,rho), where the last two params are defined only for the pp pass
+		//Additional node to accompany VoxelInfo: SceneInfo (input: posw, outputs: dist, density)
 	}
 
 	/*
@@ -389,7 +421,7 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
 		}else combine(final,t);
 	}
 
-	b = combineCopy(final,a); //global grid node parameter (problem: copying compositor doesn't exist, only csgs do)
+	b = final?combineCopy(final,a):a; //global grid node parameter (there's Tree::combine2(), see cookbook)
 	//workaround: b = DeepCopy(final); combine(b,a); //it's okay to lose a-grid
 	for(pplist){
 		t = EvaluateNodes1(FOGPOST); //FogPostInput
@@ -411,7 +443,7 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
 			openvdb::Vec3s extw = 0.5f*dimi*s; //pgrid1->transform().indexToWorld(dimi);
 
 			openvdb::Vec3d posi = bbox.getCenter();
-			openvdb::Vec3d posw = pgrid[VOLUME_BUFFER_FOG]->transformPtr()->indexToWorld(posi); //pgridtr
+			openvdb::Vec3d posw = pgridtr->indexToWorld(posi);
 
 			BoundingBox aabb;
 			aabb.sc = dfloat3(posw.x(),posw.y(),posw.z());

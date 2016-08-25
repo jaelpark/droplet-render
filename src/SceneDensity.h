@@ -1,6 +1,17 @@
 #ifndef SCENE_DENSITY_H
 #define SCENE_DENSITY_H
 
+namespace SceneData{
+
+class PostFog : public BaseObject{
+public:
+	PostFog(Node::NodeTree *, openvdb::FloatGrid::Ptr);
+	~PostFog();
+	openvdb::FloatGrid::Ptr pdgrid;
+};
+
+}
+
 namespace Node{
 
 //additional layer of abstraction - the openvdb compile times are ridiculous

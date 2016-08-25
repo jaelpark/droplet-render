@@ -12,6 +12,18 @@
 
 #include "SceneDensity.h"
 
+namespace SceneData{
+
+PostFog::PostFog(Node::NodeTree *_pnt, openvdb::FloatGrid::Ptr _pdgrid) : BaseObject(_pnt), pdgrid(_pdgrid){
+	//
+}
+
+PostFog::~PostFog(){
+	//
+}
+
+}
+
 namespace Node{
 
 using InputNodeParams = std::tuple<SceneData::BaseObject *, openvdb::math::Transform::Ptr>;
@@ -227,7 +239,11 @@ FogPostInput::~FogPostInput(){
 }
 
 void FogPostInput::Evaluate(const void *pp){
-	//
+	InputNodeParams *pd = (InputNodeParams*)pp;
+	SceneData::PostFog *ppf = dynamic_cast<SceneData::PostFog*>(std::get<INP_OBJECT>(*pd));
+	if(!ppf)
+		return;
+	pdgrid = ppf->pdgrid;
 }
 
 IFogPostInput * IFogPostInput::Create(uint level, NodeTree *pnt){
