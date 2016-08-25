@@ -43,6 +43,8 @@ class ClRenderPanel(bpy.types.Panel):
 class ClSamplingProperties(bpy.types.PropertyGroup):
 	samples = IntProperty(name="Render",default=500,min=1,description="Number of samples to be taken");
 	scatterevs = IntProperty(name="Scattering",default=12,min=0,max=32,description="Maximum volume scattering events.");
+	msigmas = FloatProperty(name="Sigma.S",default=7.11,min=0.0,description="Macroscopic scattering cross section for maximum density.");
+	msigmaa = FloatProperty(name="Sigma.A",default=0.03,min=0.0,description="Macroscopic absorption cross section for maximum density.");
 
 	def draw(self, context, layout):
 		s = layout.split();
@@ -50,6 +52,9 @@ class ClSamplingProperties(bpy.types.PropertyGroup):
 		c.row().label("Samples:");
 		c.row().prop(self,"samples");
 		#seed, default 1000
+		c.row().label("Volumetrics:");
+		c.row().prop(self,"msigmas");
+		c.row().prop(self,"msigmaa");
 
 		c = s.column();
 		c.row().label("Path tracing:");

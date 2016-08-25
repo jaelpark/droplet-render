@@ -5,9 +5,8 @@
 
 struct Light{
     dfloat3 direction;
-    dfloat3 color;
+    dfloat3 color; //color*intensity
     float angle;
-    //float intensity;
 };
 
 #define BLCLOUD_MAX_RECURSION 32 //BLCLOUD_MAX_RECURSION
@@ -40,25 +39,22 @@ class RenderKernel{
 public:
 	RenderKernel();
 	~RenderKernel();
-    bool Initialize(const Scene *, const dmatrix44 *, const dmatrix44 *, const std::vector<Light> *, uint, uint, uint, uint, uint, uint);
+    bool Initialize(const Scene *, const dmatrix44 *, const dmatrix44 *, const std::vector<Light> *, uint, float, float, uint, uint, uint, uint, uint);
     void Render(uint, uint, uint);
 	void Destroy();
 	//
     //XMFLOAT4A *phb; //host buffer
     dfloat4 *phb; //host buffer
-#ifndef BLCLOUD_CPU
-	OctreeStructure *pob; //device octree
-	class float4 *prt; //device buffer
-#else
     const Scene *pscene;
 	struct ArHosekSkyModelState *pskyms;
-#endif
 	Light *plights;
 	uint lightc;
     dmatrix44 viewi;
     dmatrix44 proji;
     //uint samples;
-    uint scattevs;
+    uint scattevs; //max number of scattering events
+	float msigmas; //macroscopic scattering cross section
+	float msigmaa; //-- absorption
 	uint rx;
 	uint ry;
 	uint w;

@@ -428,6 +428,9 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
     PyObject *psampling = PyObject_GetAttrString(pscene,"blcloudsampling");
     PyObject *pscattevs = PyObject_GetAttrString(psampling,"scatterevs");
     uint scattevs = (uint)PyLong_AsLong(pscattevs);
+	float msigmas = PyGetFloat(psampling,"msigmas");
+	float msigmaa = PyGetFloat(psampling,"msigmaa");
+	//float
     //
     Py_DECREF(pscattevs);
     Py_DECREF(psampling);
@@ -454,7 +457,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	//gpscene->BuildScene();
 
 	gpkernel = new RenderKernel();
-    gpkernel->Initialize(gpscene,&sviewi,&sproji,&lights,scattevs,rx,ry,w,h,flags);
+    gpkernel->Initialize(gpscene,&sviewi,&sproji,&lights,scattevs,msigmas,msigmaa,rx,ry,w,h,flags);
 
 	return Py_None;
 }

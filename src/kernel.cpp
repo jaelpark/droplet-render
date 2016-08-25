@@ -404,8 +404,8 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
     //sfloat1 msigmas = sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(2.9f);//sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(2.9f);
 	//0.5, 1.2, 1.9
 	sfloat1 msigmas = sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(1.9f);//sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(2.9f);*/
-	sfloat1 msigmaa = sfloat1(0.05f);
-	sfloat1 msigmas = sfloat1(7.11f);
+	sfloat1 msigmaa = sfloat1(pkernel->msigmaa);//sfloat1(0.05f);
+	sfloat1 msigmas = sfloat1(pkernel->msigmas);//sfloat1(7.11f);
 	//sfloat1 msigmaa = sfloat1(2.3f)*expf(-2.0f*(float)r)+sfloat1(0.02f);
 	//sfloat1 msigmas = sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(4.0f);
     sfloat1 msigmae = msigmaa+msigmas;
@@ -627,7 +627,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
             //sample the phase function and lights
 			sfloat1 la = sfloat1(pkernel->plights[0].angle);
             sfloat4 srd = HG_Sample(rd,prs);
-            sfloat4 lrd = L_Sample(sfloat1(float4::load(&pkernel->plights[0].direction)),la,prs);
+            sfloat4 lrd = L_Sample(sfloat4(float4::load(&pkernel->plights[0].direction)),la,prs);
 
             //pdfs for the balance heuristic w_x = p_x/sum(p_i,i=0..N)
             sfloat1 p1 = HG_Phase(sfloat4::dot3(srd,rd));
@@ -778,7 +778,7 @@ RenderKernel::~RenderKernel(){
 }
 
 bool RenderKernel::Initialize(const Scene *pscene, const dmatrix44 *pviewi, const dmatrix44 *pproji, const std::vector<Light> *plights, uint scattevs,
-    uint rx, uint ry, uint w, uint h, uint flags){
+    float msigmas, float msigmaa, uint rx, uint ry, uint w, uint h, uint flags){
     if(!(phb = (dfloat4*)_mm_malloc(rx*ry*16,16))){
         //DebugPrintf("Framebuffer allocation failure.\n");
 		return false;
@@ -786,6 +786,8 @@ bool RenderKernel::Initialize(const Scene *pscene, const dmatrix44 *pviewi, cons
 
 	this->pscene = pscene;
     this->scattevs = scattevs;
+	this->msigmas = msigmas;
+	this->msigmaa = msigmaa;
 	this->rx = rx;
 	this->ry = ry;
 	this->w = w;
