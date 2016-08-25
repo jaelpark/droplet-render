@@ -138,7 +138,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
                     Py_DECREF(pvalue);
                     Py_DECREF(pidn);
                     continue;
-                }
+                }else pbn->imask |= 1<<nx;
 
                 PyObject *pnode = PyObject_GetAttrString(plnk1,"from_node");
                 Py_hash_t h = PyObject_Hash(pnode);
@@ -430,7 +430,6 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
     uint scattevs = (uint)PyLong_AsLong(pscattevs);
 	float msigmas = PyGetFloat(psampling,"msigmas");
 	float msigmaa = PyGetFloat(psampling,"msigmaa");
-	//float
     //
     Py_DECREF(pscattevs);
     Py_DECREF(psampling);

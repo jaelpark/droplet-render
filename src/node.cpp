@@ -7,7 +7,7 @@
 
 namespace Node{
 
-BaseNode::BaseNode(uint _level, NodeTree *_pntree) : omask(0), emask(0), level(_level), pntree(_pntree){
+BaseNode::BaseNode(uint _level, NodeTree *_pntree) : imask(0), omask(0), emask(0), level(_level), pntree(_pntree){
     memset(pnodes,0,sizeof(pnodes));
 }
 

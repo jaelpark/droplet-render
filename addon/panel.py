@@ -52,7 +52,7 @@ class ClSamplingProperties(bpy.types.PropertyGroup):
 		c.row().label("Samples:");
 		c.row().prop(self,"samples");
 		#seed, default 1000
-		c.row().label("Volumetrics:");
+		c.row().label("Light transport:");
 		c.row().prop(self,"msigmas");
 		c.row().prop(self,"msigmaa");
 

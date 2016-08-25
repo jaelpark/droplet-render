@@ -371,7 +371,7 @@ void Advection::Evaluate(const void *pp){
 			-fog objects that use the postfx socket are stored for later evaluation
 			-For each grid stored for post-processing (deep-copied), loop through the active voxels. Instead of having only local fog information,
 			VoxelInfo gets data from the full fog grid and all surfaces. This then works with advection operators, for example.
-			-results are written in parallel to several partial grids, which then after every pp operations is complete is written to the global grid
+			-results are written in parallel to several partial grids, which then after every pp operation is complete is written to the global grid
 			*/
 			float4::store((dfloat3*)posw.asPointer(),rc);
 			float p = samplerd.wsSample(posw); //TODO: modulate density by final distance
