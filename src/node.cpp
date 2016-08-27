@@ -268,6 +268,19 @@ void VoxelInfo::Evaluate(const void *pp){
 	rs.value[OUTPUT_FLOAT_DENSITY] = std::get<VNP_DENSITY>(*pd);
 }
 
+SceneInfo::SceneInfo(uint _level, NodeTree *pnt) : BaseValueNode<float>(_level,pnt), BaseNode(_level,pnt){
+	//
+}
+
+SceneInfo::~SceneInfo(){
+	//
+}
+
+void SceneInfo::Evaluate(const void *pp){
+	ValueNodeParams *pd = (ValueNodeParams*)pp;
+	//can't evaluate in arbitruary locations, not in here node.cpp at least
+}
+
 ISurfaceInput::ISurfaceInput(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt){
     //
     //DebugPrintf(">> ISurfaceInput()\n");
@@ -435,6 +448,8 @@ BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, No
 
 	}else if(strcmp(pname,"ClNodeVoxelInfo") == 0){
 		return new VoxelInfo(level,pnt);
+	}else if(strcmp(pname,"ClNodeSceneInfo") == 0){
+		return new SceneInfo(level,pnt);
     }else if(strcmp(pname,"ClNodeSurfaceInput") == 0){
         return ISurfaceInput::Create(level,pnt);
 	}else if(strcmp(pname,"ClNodeParticleInput") == 0){

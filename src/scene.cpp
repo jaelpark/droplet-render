@@ -299,6 +299,10 @@ protected:
 };*/
 
 using PostFogParams = std::tuple<SceneData::BaseObject *, openvdb::FloatGrid::Ptr>;
+enum PFP{
+	PFP_OBJECT,
+	PFP_INPUTGRID
+};
 
 static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT], Scene *pscene){
     openvdb::math::Transform::Ptr pgridtr = openvdb::math::Transform::createLinearTransform(s);
@@ -365,7 +369,7 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
 
 		Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(SceneData::SmokeCache::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOG]);
 		if(pdfn->pdgrid->activeVoxelCount() > 0){
-			if(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->imask & Node::OutputNode::INPUT_FOGPOST){
+			if(SceneData::SmokeCache::objs[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST){
 				fogppl.push_back(PostFogParams(SceneData::SmokeCache::objs[i],pdfn->pdgrid->deepCopy()));
 				openvdb::tools::compMax(*ptfog,*pdfn->pdgrid);
 				continue;
@@ -382,7 +386,7 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
 
 		Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOG]);
 		if(pdfn->pdgrid->activeVoxelCount() > 0){
-			if(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->imask & Node::OutputNode::INPUT_FOGPOST){
+			if(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST){
 				fogppl.push_back(PostFogParams(SceneData::ParticleSystem::prss[i],pdfn->pdgrid->deepCopy()));
 				openvdb::tools::compMax(*ptfog,*pdfn->pdgrid);
 				continue;
@@ -403,12 +407,15 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
 	}
 
 	for(uint i = 0; i < fogppl.size(); ++i){
-		SceneData::PostFog fobj(std::get<0>(fogppl[i])->pnt,std::get<1>(fogppl[i]));
+		SceneData::PostFog fobj(std::get<PFP_OBJECT>(fogppl[i])->pnt,std::get<PFP_INPUTGRID>(fogppl[i]),pgrid);
 		Node::InputNodeParams snp(&fobj,pgridtr);
 		fobj.pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOGPOST);
 		//TODO: every ValueNodeParams created before EvaluateNodes0 needs updating
 		//maybe InputNodeParams(obj,tansform,sdf,rho), where the last two params are defined only for the pp pass
 		//Additional node to accompany VoxelInfo: SceneInfo (input: posw, outputs: dist, density)
+		//
+		//PostFog can store the global input grids, which is given to InputNodeParams (above). Every level-1 node can then
+		//construct the ValueNodeParams. Create an additional interface to sample these grids and pass it with ValueNodeParams.
 	}
 
 	/*

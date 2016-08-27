@@ -133,7 +133,7 @@ void Displacement::Evaluate(const void *pp){
     //This could probably be faster with parallel reduction
     //openvdb::tools::compSum(*psgrid,*std::get<0>(*m));
     openvdb::FloatGrid::Accessor sgrida = psgrid->getAccessor();
-    openvdb::FloatGrid::Accessor dgrida = pbgrid->getAccessor();
+    openvdb::FloatGrid::Accessor bgrida = pbgrid->getAccessor();
     openvdb::FloatGrid::ConstAccessor dgrida0 = pnode->pbgrid->getConstAccessor();
     for(tbb::enumerable_thread_specific<FloatGridT>::const_iterator q = tgrida.begin(); q != tgrida.end(); ++q){
         //
@@ -143,13 +143,13 @@ void Displacement::Evaluate(const void *pp){
             float d = sgrida.getValue(c);
             float f = m.getValue();
 
-            dgrida.setValue(c,f/amp);
             f *= powf(std::min(dgrida0.getValue(c),1.0f),pbilln->locr(indices[IDisplacement::INPUT_BILLOW])); //this is here because of the normalization
+			bgrida.setValue(c,2.0f*f/amp); //bgrida.setValue(c,f/amp);
 
             sgrida.setValue(c,d-f);
 
             //if(omask & (1<<OUTPUT_GRID))
-                //dgrida.setValue(c,d/amp);
+                //bgrida.setValue(c,d/amp);
         }
     }
 

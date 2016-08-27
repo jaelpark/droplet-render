@@ -14,8 +14,9 @@
 
 namespace SceneData{
 
-PostFog::PostFog(Node::NodeTree *_pnt, openvdb::FloatGrid::Ptr _pdgrid) : BaseObject(_pnt), pdgrid(_pdgrid){
-	//
+PostFog::PostFog(Node::NodeTree *_pnt, openvdb::FloatGrid::Ptr _pdgrid, openvdb::FloatGrid::Ptr _pgrid[VOLUME_BUFFER_COUNT]) : BaseObject(_pnt), pdgrid(_pdgrid){
+	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
+		pgrid[i] = _pgrid[i];
 }
 
 PostFog::~PostFog(){
@@ -388,6 +389,8 @@ void Advection::Evaluate(const void *pp){
 			-For each grid stored for post-processing (deep-copied), loop through the active voxels. Instead of having only local fog information,
 			VoxelInfo gets data from the full fog grid and all surfaces. This then works with advection operators, for example.
 			-results are written in parallel to several partial grids, which then after every pp operation is complete is written to the global grid
+
+			Convert the ValueNodeParams to some interface (which also provides samplers for the global grids)?
 			*/
 			float4::store((dfloat3*)posw.asPointer(),rc);
 			float p = samplerd.wsSample(posw); //TODO: modulate density by final distance

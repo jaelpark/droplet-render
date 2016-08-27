@@ -190,6 +190,21 @@ public:
 	};
 };
 
+class SceneInfo : public BaseValueNode<float>{
+public:
+	SceneInfo(uint, NodeTree *);
+	~SceneInfo();
+	void Evaluate(const void *);
+	/*enum INPUT{
+		INPUT_POSITION
+	};*/
+	enum OUTPUT_FLOAT{
+		OUTPUT_FLOAT_DISTANCE,
+		OUTPUT_FLOAT_DENSITY,
+		OUTPUT_FLOAT_COUNT
+	};
+};
+
 class ISurfaceInput : public virtual BaseSurfaceNode{
 protected:
     ISurfaceInput(uint, NodeTree *);
