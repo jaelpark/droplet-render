@@ -29,15 +29,6 @@ public:
     void Evaluate(const void *);
 };
 
-#ifdef BLCLOUD_DEPRECATED
-class fBmPerlinNoise : public BaseSurfaceNode1, public IfBmPerlinNoise{
-public:
-    fBmPerlinNoise(uint, NodeTree *);
-    ~fBmPerlinNoise();
-    void Evaluate(const void *);
-};
-#endif
-
 }
 
 #endif

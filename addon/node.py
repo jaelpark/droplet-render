@@ -151,7 +151,7 @@ class ClNodeSceneInfo(bpy.types.Node):
 	bl_label = "Scene Info";
 
 	def init(self, context):
-		#self.inputs.new("ClNodeVectorSocket","World");
+		self.inputs.new("ClNodeVectorSocket","World");
 		self.outputs.new("ClNodeFloatSocket","Distance");
 		self.outputs.new("ClNodeFloatSocket","Density");
 

@@ -5,12 +5,24 @@
 
 namespace Node{
 
-using ValueNodeParams = std::tuple<dfloat3 *, dfloat3 *, float, float>;
+/*using ValueNodeParams = std::tuple<dfloat3 *, dfloat3 *, float, float>;
 enum VNP{
 	VNP_VOXPOSW,
 	VNP_CPTPOSW,
 	VNP_DISTANCE,
 	VNP_DENSITY
+};*/
+
+class IValueNodeParams{
+public:
+	IValueNodeParams();
+	~IValueNodeParams();
+	virtual const dfloat3 * GetVoxPosW() const = 0;
+	virtual const dfloat3 * GetCptPosW() const = 0;
+	virtual float GetLocalDistance() const = 0;
+	virtual float GetLocalDensity() const = 0;
+	virtual float SampleGlobalDistance(const dfloat3 &) const = 0;
+	virtual float SampleGlobalDensity(const dfloat3 &) const = 0;
 };
 
 class NodeTree;
@@ -195,9 +207,9 @@ public:
 	SceneInfo(uint, NodeTree *);
 	~SceneInfo();
 	void Evaluate(const void *);
-	/*enum INPUT{
+	enum INPUT{
 		INPUT_POSITION
-	};*/
+	};
 	enum OUTPUT_FLOAT{
 		OUTPUT_FLOAT_DISTANCE,
 		OUTPUT_FLOAT_DENSITY,
@@ -294,27 +306,6 @@ public:
         INPUT_COUNT
     };
 };
-
-#ifdef BLCLOUD_DEPRECATED
-class IfBmPerlinNoise : public virtual BaseSurfaceNode{
-protected:
-    IfBmPerlinNoise(uint, NodeTree *);
-    ~IfBmPerlinNoise();
-public:
-    virtual void Evaluate(const void *) = 0;
-    static IfBmPerlinNoise * Create(uint, NodeTree *);
-    enum INPUT{
-        INPUT_OCTAVES,
-        INPUT_FREQ,
-        INPUT_AMP,
-        INPUT_FJUMP,
-        INPUT_GAIN,
-        INPUT_BILLOW,
-        INPUT_SURFACE,
-        INPUT_COUNT
-    };
-};
-#endif
 
 class IVectorFieldSampler : public virtual BaseValueNode<dfloat3>{
 protected:

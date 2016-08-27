@@ -7,6 +7,14 @@
 
 namespace Node{
 
+IValueNodeParams::IValueNodeParams(){
+	//
+}
+
+IValueNodeParams::~IValueNodeParams(){
+	//
+}
+
 BaseNode::BaseNode(uint _level, NodeTree *_pntree) : imask(0), omask(0), emask(0), level(_level), pntree(_pntree){
     memset(pnodes,0,sizeof(pnodes));
 }
@@ -257,15 +265,15 @@ VoxelInfo::~VoxelInfo(){
 }
 
 void VoxelInfo::Evaluate(const void *pp){
-	ValueNodeParams *pd = (ValueNodeParams*)pp;
+	IValueNodeParams *pd = (IValueNodeParams*)pp;
 
 	BaseValueResult<dfloat3> &rv = this->BaseValueNode<dfloat3>::result.local();
-	rv.value[OUTPUT_VECTOR_VOXPOSW] = *std::get<VNP_VOXPOSW>(*pd);
-	rv.value[OUTPUT_VECTOR_CPTPOSW] = *std::get<VNP_CPTPOSW>(*pd);
+	rv.value[OUTPUT_VECTOR_VOXPOSW] = *pd->GetVoxPosW();
+	rv.value[OUTPUT_VECTOR_CPTPOSW] = *pd->GetCptPosW();
 
 	BaseValueResult<float> &rs = this->BaseValueNode<float>::result.local();
-	rs.value[OUTPUT_FLOAT_DISTANCE] = std::get<VNP_DISTANCE>(*pd);
-	rs.value[OUTPUT_FLOAT_DENSITY] = std::get<VNP_DENSITY>(*pd);
+	rs.value[OUTPUT_FLOAT_DISTANCE] = pd->GetLocalDistance();
+	rs.value[OUTPUT_FLOAT_DENSITY] = pd->GetLocalDensity();
 }
 
 SceneInfo::SceneInfo(uint _level, NodeTree *pnt) : BaseValueNode<float>(_level,pnt), BaseNode(_level,pnt){
@@ -277,8 +285,14 @@ SceneInfo::~SceneInfo(){
 }
 
 void SceneInfo::Evaluate(const void *pp){
-	ValueNodeParams *pd = (ValueNodeParams*)pp;
-	//can't evaluate in arbitruary locations, not in here node.cpp at least
+	IValueNodeParams *pd = (IValueNodeParams*)pp;
+
+	BaseValueNode<dfloat3> *pnode = dynamic_cast<BaseValueNode<dfloat3>*>(pnodes[INPUT_POSITION]);
+	dfloat3 dposw = pnode->locr(indices[INPUT_POSITION]);
+
+	BaseValueResult<float> &rs = this->BaseValueNode<float>::result.local();
+	rs.value[OUTPUT_FLOAT_DISTANCE] = pd->SampleGlobalDistance(dposw); //TODO: check if output is used (omask)
+	rs.value[OUTPUT_FLOAT_DENSITY] = pd->SampleGlobalDensity(dposw);
 }
 
 ISurfaceInput::ISurfaceInput(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt){
@@ -337,16 +351,6 @@ IDisplacement::IDisplacement(uint _level, NodeTree *pnt) : BaseSurfaceNode(_leve
 IDisplacement::~IDisplacement(){
     //
 }
-
-#ifdef BLCLOUD_DEPRECATED
-IfBmPerlinNoise::IfBmPerlinNoise(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt){
-    //
-}
-
-IfBmPerlinNoise::~IfBmPerlinNoise(){
-    //
-}
-#endif
 
 IVectorFieldSampler::IVectorFieldSampler(uint _level, NodeTree *pnt) : BaseValueNode<dfloat3>(_level,pnt), BaseNode(_level,pnt){
 	//

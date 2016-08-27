@@ -115,27 +115,27 @@ FbmNoise::~FbmNoise(){
 }
 
 void FbmNoise::Evaluate(const void *pp){
-	BaseValueNode<int> *poctn = dynamic_cast<BaseValueNode<int>*>(pnodes[IFbmNoise::INPUT_OCTAVES]);
-    BaseValueNode<float> *pfreqn = dynamic_cast<BaseValueNode<float>*>(pnodes[IFbmNoise::INPUT_FREQ]);
-    BaseValueNode<float> *pampn = dynamic_cast<BaseValueNode<float>*>(pnodes[IFbmNoise::INPUT_AMP]);
-    BaseValueNode<float> *pfjumpn = dynamic_cast<BaseValueNode<float>*>(pnodes[IFbmNoise::INPUT_FJUMP]);
-    BaseValueNode<float> *pgainn = dynamic_cast<BaseValueNode<float>*>(pnodes[IFbmNoise::INPUT_GAIN]);
-    BaseValueNode<dfloat3> *pnode = dynamic_cast<BaseValueNode<dfloat3>*>(pnodes[IFbmNoise::INPUT_POSITION]);
+	BaseValueNode<int> *poctn = dynamic_cast<BaseValueNode<int>*>(pnodes[INPUT_OCTAVES]);
+    BaseValueNode<float> *pfreqn = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_FREQ]);
+    BaseValueNode<float> *pampn = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_AMP]);
+    BaseValueNode<float> *pfjumpn = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_FJUMP]);
+    BaseValueNode<float> *pgainn = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_GAIN]);
+    BaseValueNode<dfloat3> *pnode = dynamic_cast<BaseValueNode<dfloat3>*>(pnodes[INPUT_POSITION]);
 
-	dfloat3 dposw = pnode->locr(indices[IFbmNoise::INPUT_POSITION]);
+	dfloat3 dposw = pnode->locr(indices[INPUT_POSITION]);
 	sfloat4 sposw = sfloat4(sfloat1(dposw.x,dposw.y,dposw.z,0.0f))+sfloat4(
 		sfloat1(0.0f),
 		sfloat1(1.0f,0.0f,0.0f,0.0f), //TODO: module the offset somehow
 		sfloat1(0.0f,1.0f,0.0f,0.0f),
 		sfloat1(0.0f,0.0f,1.0f,0.0f));
 
-	sfloat1 f = fBm::noise(sposw,poctn->locr(indices[IFbmNoise::INPUT_OCTAVES]),pfreqn->locr(indices[IFbmNoise::INPUT_FREQ]),
-		pampn->locr(indices[IFbmNoise::INPUT_AMP]),pfjumpn->locr(indices[IFbmNoise::INPUT_FJUMP]),pgainn->locr(indices[IFbmNoise::INPUT_GAIN]));
+	sfloat1 f = fBm::noise(sposw,poctn->locr(indices[INPUT_OCTAVES]),pfreqn->locr(indices[INPUT_FREQ]),
+		pampn->locr(indices[INPUT_AMP]),pfjumpn->locr(indices[INPUT_FJUMP]),pgainn->locr(indices[INPUT_GAIN]));
 
 	BaseValueResult<float> &rs = this->BaseValueNode<float>::result.local();
 	rs.value[OUTPUT_FLOAT_NOISE] = fabsf(f.get<0>());
-	rs.value[OUTPUT_FLOAT_MAXIMUM] = fBm::GetAmplitudeMax(poctn->locr(indices[IFbmNoise::INPUT_OCTAVES]),pampn->locr(indices[IFbmNoise::INPUT_AMP]),
-		pgainn->locr(indices[IFbmNoise::INPUT_GAIN]));
+	rs.value[OUTPUT_FLOAT_MAXIMUM] = fBm::GetAmplitudeMax(poctn->locr(indices[INPUT_OCTAVES]),pampn->locr(indices[INPUT_AMP]),
+		pgainn->locr(indices[INPUT_GAIN]));
 	BaseValueResult<dfloat3> &rv = this->BaseValueNode<dfloat3>::result.local();
 	rv.value[OUTPUT_VECTOR_NOISE] = dfloat3(0.57735f*f); //normalize by 1/sqrt(3) to have max length equal to amplitude
 }

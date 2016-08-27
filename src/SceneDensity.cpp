@@ -1,6 +1,5 @@
 #include "main.h"
 #include "node.h"
-#include "scene.h"
 #include "noise.h"
 
 #include <openvdb/openvdb.h>
@@ -10,13 +9,13 @@
 #include <openvdb/tools/GridTransformer.h> //resampleToMatch
 #include <openvdb/tools/Composite.h>
 
+#include "scene.h"
 #include "SceneDensity.h"
 
 namespace SceneData{
 
-PostFog::PostFog(Node::NodeTree *_pnt, openvdb::FloatGrid::Ptr _pdgrid, openvdb::FloatGrid::Ptr _pgrid[VOLUME_BUFFER_COUNT]) : BaseObject(_pnt), pdgrid(_pdgrid){
-	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
-		pgrid[i] = _pgrid[i];
+PostFog::PostFog(Node::NodeTree *_pnt, openvdb::FloatGrid::Ptr _pdgrid) : BaseObject(_pnt), pdgrid(_pdgrid){
+	//
 }
 
 PostFog::~PostFog(){
@@ -26,12 +25,6 @@ PostFog::~PostFog(){
 }
 
 namespace Node{
-
-using InputNodeParams = std::tuple<SceneData::BaseObject *, openvdb::math::Transform::Ptr>;
-enum INP{
-	INP_OBJECT,
-	INP_TRANSFORM
-};
 
 BaseFogNode1::BaseFogNode1(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt){
     pdgrid = openvdb::FloatGrid::create();
@@ -100,15 +93,16 @@ void ParticleInput::Evaluate(const void *pp){
 	if(!pps)
 		return;
 
-	BaseValueNode<float> *psizen = dynamic_cast<BaseValueNode<float>*>(pnodes[IParticleInput::INPUT_SIZE]); //should lifetime determine the size?
-	BaseValueNode<float> *pcoffn = dynamic_cast<BaseValueNode<float>*>(pnodes[IParticleInput::INPUT_CUTOFF]);
+	BaseValueNode<float> *psizen = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_SIZE]); //should lifetime determine the size?
+	BaseValueNode<float> *pcoffn = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_CUTOFF]);
 
 	dfloat3 zr(0.0f);
-	ValueNodeParams np(&zr,&zr,0.0f,0.0f);
+	const FloatGridBoxSampler *psamplers[] = {std::get<INP_SDFSAMPLER>(*pd),std::get<INP_FOGSAMPLER>(*pd)};
+	ValueNodeParams np(&zr,&zr,0.0f,0.0f,psamplers);
 	pntree->EvaluateNodes0(&np,level+1,emask);
 
-	float size = psizen->locr(indices[IParticleInput::INPUT_SIZE]);
-	float coff = pcoffn->locr(indices[IParticleInput::INPUT_CUTOFF]);
+	float size = psizen->locr(indices[INPUT_SIZE]);
+	float coff = pcoffn->locr(indices[INPUT_CUTOFF]);
 
 	openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
 	//pdgrid->setTransform(pgridtr);
@@ -132,8 +126,8 @@ void ParticleInput::Evaluate(const void *pp){
 	pdgrid->tree().voxelizeActiveTiles(true); //voxelize the interior so that futher processing works
 
 #if 0
-	BaseValueNode<float> *prasres = dynamic_cast<BaseValueNode<float>*>(pnodes[IParticleInput::INPUT_RASTERIZATIONRES]);
-	BaseValueNode<float> *pweight = dynamic_cast<BaseValueNode<float>*>(pnodes[IParticleInput::INPUT_WEIGHT]);
+	BaseValueNode<float> *prasres = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_RASTERIZATIONRES]);
+	BaseValueNode<float> *pweight = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_WEIGHT]);
 
 	dfloat3 zr(0.0f);
 	ValueNodeParams np(&zr,&zr,0.0f,0.0f);
@@ -143,8 +137,8 @@ void ParticleInput::Evaluate(const void *pp){
 	pdgrid->setTransform(pgridtr);
 
 	openvdb::FloatGrid::Ptr ptgrid;
-	if(pgridtr->voxelSize().x() < prasres->locr(indices[IParticleInput::INPUT_RASTERIZATIONRES])){
-		openvdb::math::Transform::Ptr pgridtr1 = openvdb::math::Transform::createLinearTransform(prasres->locr(indices[IParticleInput::INPUT_RASTERIZATIONRES]));
+	if(pgridtr->voxelSize().x() < prasres->locr(indices[INPUT_RASTERIZATIONRES])){
+		openvdb::math::Transform::Ptr pgridtr1 = openvdb::math::Transform::createLinearTransform(prasres->locr(indices[INPUT_RASTERIZATIONRES]));
 		ptgrid = openvdb::FloatGrid::create();
         ptgrid->setGridClass(openvdb::GRID_FOG_VOLUME);
 		ptgrid->setTransform(pgridtr1);
@@ -165,14 +159,14 @@ void ParticleInput::Evaluate(const void *pp){
 		pntree->EvaluateNodes0(&np1,level+1,emask);
 
 		openvdb::Coord q((int)f.x(),(int)f.y(),(int)f.z());
-		grida.modifyValue(q.offsetBy(0,0,0),[&](float &v){v += pweight->locr(indices[IParticleInput::INPUT_WEIGHT])*B.x()*B.y()*B.z();});
-		grida.modifyValue(q.offsetBy(1,0,0),[&](float &v){v += pweight->locr(indices[IParticleInput::INPUT_WEIGHT])*b.x()*B.y()*B.z();});
-		grida.modifyValue(q.offsetBy(0,1,0),[&](float &v){v += pweight->locr(indices[IParticleInput::INPUT_WEIGHT])*B.x()*b.y()*B.z();});
-		grida.modifyValue(q.offsetBy(1,1,0),[&](float &v){v += pweight->locr(indices[IParticleInput::INPUT_WEIGHT])*b.x()*b.y()*B.z();});
-		grida.modifyValue(q.offsetBy(0,0,1),[&](float &v){v += pweight->locr(indices[IParticleInput::INPUT_WEIGHT])*B.x()*B.y()*b.z();});
-		grida.modifyValue(q.offsetBy(1,0,1),[&](float &v){v += pweight->locr(indices[IParticleInput::INPUT_WEIGHT])*b.x()*B.y()*b.z();});
-		grida.modifyValue(q.offsetBy(0,1,1),[&](float &v){v += pweight->locr(indices[IParticleInput::INPUT_WEIGHT])*B.x()*b.y()*b.z();});
-		grida.modifyValue(q.offsetBy(1,1,1),[&](float &v){v += pweight->locr(indices[IParticleInput::INPUT_WEIGHT])*b.x()*b.y()*b.z();});
+		grida.modifyValue(q.offsetBy(0,0,0),[&](float &v){v += pweight->locr(indices[INPUT_WEIGHT])*B.x()*B.y()*B.z();});
+		grida.modifyValue(q.offsetBy(1,0,0),[&](float &v){v += pweight->locr(indices[INPUT_WEIGHT])*b.x()*B.y()*B.z();});
+		grida.modifyValue(q.offsetBy(0,1,0),[&](float &v){v += pweight->locr(indices[INPUT_WEIGHT])*B.x()*b.y()*B.z();});
+		grida.modifyValue(q.offsetBy(1,1,0),[&](float &v){v += pweight->locr(indices[INPUT_WEIGHT])*b.x()*b.y()*B.z();});
+		grida.modifyValue(q.offsetBy(0,0,1),[&](float &v){v += pweight->locr(indices[INPUT_WEIGHT])*B.x()*B.y()*b.z();});
+		grida.modifyValue(q.offsetBy(1,0,1),[&](float &v){v += pweight->locr(indices[INPUT_WEIGHT])*b.x()*B.y()*b.z();});
+		grida.modifyValue(q.offsetBy(0,1,1),[&](float &v){v += pweight->locr(indices[INPUT_WEIGHT])*B.x()*b.y()*b.z();});
+		grida.modifyValue(q.offsetBy(1,1,1),[&](float &v){v += pweight->locr(indices[INPUT_WEIGHT])*b.x()*b.y()*b.z();});
 	}
 
 	if(pgridtr->voxelSize().x() < prasres->locr(indices[IParticleInput::INPUT_RASTERIZATIONRES])){
@@ -266,7 +260,8 @@ void Composite::Evaluate(const void *pp){
 	BaseFogNode1 *pnode = dynamic_cast<BaseFogNode1*>(pnodes[IComposite::INPUT_FOG]);
 
 	dfloat3 zr(0.0f);
-	ValueNodeParams np(&zr,&zr,0.0f,0.0f);
+	const FloatGridBoxSampler *psamplers[] = {std::get<INP_SDFSAMPLER>(*pd),std::get<INP_FOGSAMPLER>(*pd)};
+	ValueNodeParams np(&zr,&zr,0.0f,0.0f,psamplers);
 	pntree->EvaluateNodes0(&np,level+1,emask);
 
 	openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
@@ -289,7 +284,7 @@ void Composite::Evaluate(const void *pp){
 			openvdb::Coord c = m.getCoord();
 			openvdb::math::Vec3s posw = pnode->pdgrid->transform().indexToWorld(c);
 
-			ValueNodeParams np1((dfloat3*)posw.asPointer(),&zr,0.0f,m.getValue());
+			ValueNodeParams np1((dfloat3*)posw.asPointer(),&zr,0.0f,m.getValue(),psamplers);
 			pntree->EvaluateNodes0(&np1,level+1,emask);
 
 			float f = pvalue->locr(indices[IComposite::INPUT_VALUE]);
@@ -324,14 +319,15 @@ Advection::~Advection(){
 void Advection::Evaluate(const void *pp){
 	InputNodeParams *pd = (InputNodeParams*)pp;
 
-	BaseValueNode<float> *pthrs = dynamic_cast<BaseValueNode<float>*>(pnodes[IAdvection::INPUT_THRESHOLD]);
-	BaseValueNode<float> *pdist = dynamic_cast<BaseValueNode<float>*>(pnodes[IAdvection::INPUT_DISTANCE]);
-	BaseValueNode<int> *piters = dynamic_cast<BaseValueNode<int>*>(pnodes[IAdvection::INPUT_ITERATIONS]);
-	BaseValueNode<dfloat3> *pvn = dynamic_cast<BaseValueNode<dfloat3>*>(pnodes[IAdvection::INPUT_VELOCITY]);
-	BaseFogNode1 *pnode = dynamic_cast<BaseFogNode1*>(pnodes[IAdvection::INPUT_FOG]);
+	BaseValueNode<float> *pthrs = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_THRESHOLD]);
+	BaseValueNode<float> *pdist = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_DISTANCE]);
+	BaseValueNode<int> *piters = dynamic_cast<BaseValueNode<int>*>(pnodes[INPUT_ITERATIONS]);
+	BaseValueNode<dfloat3> *pvn = dynamic_cast<BaseValueNode<dfloat3>*>(pnodes[INPUT_VELOCITY]);
+	BaseFogNode1 *pnode = dynamic_cast<BaseFogNode1*>(pnodes[INPUT_FOG]);
 
 	dfloat3 zr(0.0f);
-	ValueNodeParams np(&zr,&zr,0.0f,0.0f);
+	const FloatGridBoxSampler *psamplers[] = {std::get<INP_SDFSAMPLER>(*pd),std::get<INP_FOGSAMPLER>(*pd)};
+	ValueNodeParams np(&zr,&zr,0.0f,0.0f,psamplers);
 	pntree->EvaluateNodes0(&np,level+1,emask);
 
 	openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
@@ -356,23 +352,23 @@ void Advection::Evaluate(const void *pp){
 			openvdb::math::Vec3s posw = pnode->pdgrid->transform().indexToWorld(c);
 
 			float f = m.getValue();
-			if(f > pthrs->locr(indices[IAdvection::INPUT_THRESHOLD]))
+			if(f > pthrs->locr(indices[INPUT_THRESHOLD]))
 				continue;
 
 			float4 rc = float4::load(posw.asPointer());
 
-			ValueNodeParams np1((dfloat3*)posw.asPointer(),&zr,0.0f,f);
+			ValueNodeParams np1((dfloat3*)posw.asPointer(),&zr,0.0f,f,psamplers);
 			pntree->EvaluateNodes0(&np1,level+1,emask);
 
-			float s = pdist->locr(indices[IAdvection::INPUT_DISTANCE])/(float)piters->locr(indices[IAdvection::INPUT_ITERATIONS]);
+			float s = pdist->locr(indices[INPUT_DISTANCE])/(float)piters->locr(indices[INPUT_ITERATIONS]);
 
-			uint ic = piters->locr(indices[IAdvection::INPUT_ITERATIONS]);
+			uint ic = piters->locr(indices[INPUT_ITERATIONS]);
 			for(uint i = 0; i < ic; ++i){
-				dfloat3 v = pvn->locr(indices[IAdvection::INPUT_VELOCITY]);
+				dfloat3 v = pvn->locr(indices[INPUT_VELOCITY]);
 				rc += s*float4::load(&v);
 				//
 				//all the other inputs except the vector is evaluated only per-voxel
-				new(&np1) ValueNodeParams((dfloat3*)posw.asPointer(),&zr,0.0f,0.0f);
+				new(&np1) ValueNodeParams((dfloat3*)posw.asPointer(),&zr,0.0f,0.0f,psamplers);
 				pntree->EvaluateNodes0(&np1,level+1,emask);
 				//
 				//float4::store((dfloat3*)posw.asPointer(),rc);
@@ -424,11 +420,11 @@ VectorFieldSampler::~VectorFieldSampler(){
 }
 
 void VectorFieldSampler::Evaluate(const void *pp){
-	BaseVectorFieldNode1 *pfieldn = dynamic_cast<BaseVectorFieldNode1*>(pnodes[IVectorFieldSampler::INPUT_FIELD]);
-	BaseValueNode<dfloat3> *pnode = dynamic_cast<BaseValueNode<dfloat3>*>(pnodes[IVectorFieldSampler::INPUT_POSITION]);
+	BaseVectorFieldNode1 *pfieldn = dynamic_cast<BaseVectorFieldNode1*>(pnodes[INPUT_FIELD]);
+	BaseValueNode<dfloat3> *pnode = dynamic_cast<BaseValueNode<dfloat3>*>(pnodes[INPUT_POSITION]);
 
 	openvdb::tools::GridSampler<openvdb::Vec3SGrid, openvdb::tools::BoxSampler> sampler1(*pfieldn->pvgrid);
-	dfloat3 dposw = pnode->locr(indices[IFbmNoise::INPUT_POSITION]);
+	dfloat3 dposw = pnode->locr(indices[INPUT_POSITION]);
 
 	openvdb::Vec3s v = sampler1.wsSample(*(openvdb::Vec3s*)&dposw);
 	this->BaseValueNode<dfloat3>::result.local().value[0] = *(dfloat3*)&v;

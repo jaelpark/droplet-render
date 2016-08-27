@@ -1,12 +1,12 @@
 #include "main.h"
 #include "node.h"
-#include "scene.h"
 #include "noise.h"
 
 #include <openvdb/openvdb.h>
 #include <openvdb/tools/Interpolation.h> //samplers
 #include <openvdb/tools/Composite.h> //csg/comp
 
+#include "scene.h"
 #include "SceneSurface.h"
 #include "SceneDensity.h"
 
@@ -14,11 +14,41 @@
 
 namespace Node{
 
-using InputNodeParams = std::tuple<SceneData::BaseObject *, openvdb::math::Transform::Ptr>;
-enum INP{
-	INP_OBJECT,
-	INP_TRANSFORM
-};
+ValueNodeParams::ValueNodeParams(const dfloat3 *_pvoxw, const dfloat3 *_pcptw, float _s, float _p, const FloatGridBoxSampler *_psampler[VOLUME_BUFFER_COUNT])
+	: pvoxw(_pvoxw), pcptw(_pcptw), distance(_s), density(_p){
+	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
+		psampler[i] = _psampler[i];
+}
+
+ValueNodeParams::~ValueNodeParams(){
+	//
+}
+
+const dfloat3 * ValueNodeParams::GetVoxPosW() const{
+	return pvoxw;
+}
+
+const dfloat3 * ValueNodeParams::GetCptPosW() const{
+	return pcptw;
+}
+
+float ValueNodeParams::GetLocalDistance() const{
+	return distance;
+}
+
+float ValueNodeParams::GetLocalDensity() const{
+	return density;
+}
+
+float ValueNodeParams::SampleGlobalDistance(const dfloat3 &p) const{
+	//
+	return 0.0f;
+}
+
+float ValueNodeParams::SampleGlobalDensity(const dfloat3 &p) const{
+	//
+	return 0.0f;
+}
 
 }
 
@@ -304,10 +334,12 @@ enum PFP{
 	PFP_INPUTGRID
 };
 
-static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT], Scene *pscene){
+static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT], FloatGridBoxSampler *psampler[VOLUME_BUFFER_COUNT], Scene *pscene){
     openvdb::math::Transform::Ptr pgridtr = openvdb::math::Transform::createLinearTransform(s);
-	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
+	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i){
 		pgrid[i] = 0;
+		psampler[i] = 0;
+	}
 
     float4 scaabbmin = float4(FLT_MAX);
     float4 scaabbmax = -scaabbmin;
@@ -321,11 +353,8 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
 	std::vector<BoundingBox> fogbvs;
 	std::vector<PostFogParams> fogppl; //input grids to be post-processed
 
-	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
-		pgrid[i] = 0;
-
     for(uint i = 0; i < SceneData::Surface::objs.size(); ++i){
-		Node::InputNodeParams snp(SceneData::Surface::objs[i],pgridtr);
+		Node::InputNodeParams snp(SceneData::Surface::objs[i],pgridtr,0,0);
 		SceneData::Surface::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_SURFACE);
 
         //dynamic cast to BaseSurfaceNode1 - getting empty
@@ -364,7 +393,7 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
 	ptfog->setGridClass(openvdb::GRID_FOG_VOLUME);
 
 	for(uint i = 0; i < SceneData::SmokeCache::objs.size(); ++i){
-		Node::InputNodeParams snp(SceneData::SmokeCache::objs[i],pgridtr);
+		Node::InputNodeParams snp(SceneData::SmokeCache::objs[i],pgridtr,0,0);
 		SceneData::SmokeCache::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOG);
 
 		Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(SceneData::SmokeCache::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOG]);
@@ -381,7 +410,7 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
 	}
 
 	for(uint i = 0; i < SceneData::ParticleSystem::prss.size(); ++i){
-		Node::InputNodeParams snp(SceneData::ParticleSystem::prss[i],pgridtr);
+		Node::InputNodeParams snp(SceneData::ParticleSystem::prss[i],pgridtr,0,0);
         SceneData::ParticleSystem::prss[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOG);
 
 		Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOG]);
@@ -406,16 +435,17 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
 		}else pqfog = ptfog;
 	}
 
+	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
+		if(pgrid[i])
+			psampler[i] = new FloatGridBoxSampler(*pgrid[i]);
+
 	for(uint i = 0; i < fogppl.size(); ++i){
-		SceneData::PostFog fobj(std::get<PFP_OBJECT>(fogppl[i])->pnt,std::get<PFP_INPUTGRID>(fogppl[i]),pgrid);
-		Node::InputNodeParams snp(&fobj,pgridtr);
+		SceneData::PostFog fobj(std::get<PFP_OBJECT>(fogppl[i])->pnt,std::get<PFP_INPUTGRID>(fogppl[i]));
+		Node::InputNodeParams snp(&fobj,pgridtr,psampler[VOLUME_BUFFER_SDF],psampler[VOLUME_BUFFER_FOG]);
 		fobj.pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOGPOST);
-		//TODO: every ValueNodeParams created before EvaluateNodes0 needs updating
-		//maybe InputNodeParams(obj,tansform,sdf,rho), where the last two params are defined only for the pp pass
-		//Additional node to accompany VoxelInfo: SceneInfo (input: posw, outputs: dist, density)
-		//
-		//PostFog can store the global input grids, which is given to InputNodeParams (above). Every level-1 node can then
-		//construct the ValueNodeParams. Create an additional interface to sample these grids and pass it with ValueNodeParams.
+
+		Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(fobj.pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOGPOST]);
+		openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
 	}
 
 	/*
@@ -610,6 +640,8 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
     const float lff = 4.0f; //levelset offset (narrow band voxels counting from the surface)
 
     openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT];// = {0};
+	FloatGridBoxSampler *psampler[VOLUME_BUFFER_COUNT];
+
     //openvdb::io::File vdbc = openvdb::io::File("/tmp/droplet-fileid.vdb");
 	openvdb::io::File vdbc("/tmp/droplet-fileid.vdb");
     try{
@@ -618,7 +650,11 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 
         vdbc.open(false);
         pgrid[VOLUME_BUFFER_SDF] = openvdb::gridPtrCast<openvdb::FloatGrid>(vdbc.readGrid("surface-levelset"));
+		pgrid[VOLUME_BUFFER_FOG] = 0;
         vdbc.close();
+
+		psampler[VOLUME_BUFFER_SDF] = new FloatGridBoxSampler(*pgrid[VOLUME_BUFFER_SDF]);
+		psampler[VOLUME_BUFFER_FOG] = 0;
 
         {
             FILE *pf = fopen("/tmp/droplet-fileid.bin","rb");
@@ -642,7 +678,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
         }
 
         //S_Create(pvl,ptl,s,lff,&pgrid,&pob,&index,&leafx);
-        S_Create(s,lff,pgrid,this);
+        S_Create(s,lff,pgrid,psampler,this);
 		if(pgrid[VOLUME_BUFFER_SDF])
         	pgrid[VOLUME_BUFFER_SDF]->setName("surface-levelset");
 
@@ -664,15 +700,12 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 
 	//openvdb::tools::GridSampler<openvdb::FloatGrid::ConstAccessor, openvdb::tools::BoxSampler> fsampler(pgrid->getConstAccessor(),pgrid->transform());
 
-	openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler> *psampler[VOLUME_BUFFER_COUNT];
+	//FloatGridBoxSampler *psampler[VOLUME_BUFFER_COUNT];
 	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i){
 		if(pgrid[i]){
 			pbuf[i] = new LeafVolume[leafx[i]];
-			psampler[i] = new openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler>(*pgrid[i]); //non-cached, thread safe version
-		}else{
-			pbuf[i] = 0;
-			psampler[i] = 0;
-		}
+			//psampler[i] = new FloatGridBoxSampler(*pgrid[i]); //non-cached, thread safe version
+		}else pbuf[i] = 0;
 	}
 
     //float4 nv = float4(N);
