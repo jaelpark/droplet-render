@@ -41,13 +41,11 @@ float ValueNodeParams::GetLocalDensity() const{
 }
 
 float ValueNodeParams::SampleGlobalDistance(const dfloat3 &p) const{
-	//
-	return 0.0f;
+	return psampler[VOLUME_BUFFER_SDF]->wsSample(*(openvdb::Vec3f*)&p);
 }
 
 float ValueNodeParams::SampleGlobalDensity(const dfloat3 &p) const{
-	//
-	return 0.0f;
+	return psampler[VOLUME_BUFFER_FOG]->wsSample(*(openvdb::Vec3f*)&p);
 }
 
 }
@@ -334,12 +332,10 @@ enum PFP{
 	PFP_INPUTGRID
 };
 
-static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT], FloatGridBoxSampler *psampler[VOLUME_BUFFER_COUNT], Scene *pscene){
+static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT], Scene *pscene){
     openvdb::math::Transform::Ptr pgridtr = openvdb::math::Transform::createLinearTransform(s);
-	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i){
+	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
 		pgrid[i] = 0;
-		psampler[i] = 0;
-	}
 
     float4 scaabbmin = float4(FLT_MAX);
     float4 scaabbmax = -scaabbmin;
@@ -388,7 +384,11 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
         }
     }
 
-	openvdb::FloatGrid::Ptr ptfog = openvdb::FloatGrid::create();
+	openvdb::FloatGrid::Ptr ptsdf = openvdb::FloatGrid::create(4.0f*s); //dummy query grid
+	ptsdf->setTransform(pgridtr);
+	ptsdf->setGridClass(openvdb::GRID_LEVEL_SET);
+
+	openvdb::FloatGrid::Ptr ptfog = openvdb::FloatGrid::create(); //temporary grid to store the fog to be post-processed
 	ptfog->setTransform(pgridtr);
 	ptfog->setGridClass(openvdb::GRID_FOG_VOLUME);
 
@@ -433,19 +433,22 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
 			pqfog = pgrid[VOLUME_BUFFER_FOG]->deepCopy();
 			openvdb::tools::compMax(*pqfog,*ptfog);
 		}else pqfog = ptfog;
-	}
 
-	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
-		if(pgrid[i])
-			psampler[i] = new FloatGridBoxSampler(*pgrid[i]);
+		FloatGridBoxSampler *pdsampler = new FloatGridBoxSampler(pgrid[VOLUME_BUFFER_SDF]?*pgrid[VOLUME_BUFFER_SDF]:*ptsdf);
+		FloatGridBoxSampler *ppsampler = new FloatGridBoxSampler(*pqfog);
+		for(uint i = 0; i < fogppl.size(); ++i){
+			SceneData::PostFog fobj(std::get<PFP_OBJECT>(fogppl[i])->pnt,std::get<PFP_INPUTGRID>(fogppl[i]));
+			Node::InputNodeParams snp(&fobj,pgridtr,pdsampler,ppsampler);
+			fobj.pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOGPOST);
 
-	for(uint i = 0; i < fogppl.size(); ++i){
-		SceneData::PostFog fobj(std::get<PFP_OBJECT>(fogppl[i])->pnt,std::get<PFP_INPUTGRID>(fogppl[i]));
-		Node::InputNodeParams snp(&fobj,pgridtr,psampler[VOLUME_BUFFER_SDF],psampler[VOLUME_BUFFER_FOG]);
-		fobj.pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOGPOST);
+			Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(fobj.pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOGPOST]);
+			if(pgrid[VOLUME_BUFFER_FOG])
+				openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
+			else pgrid[VOLUME_BUFFER_FOG] = pdfn->pdgrid;
+		}
 
-		Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(fobj.pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOGPOST]);
-		openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
+		delete pdsampler;
+		delete ppsampler;
 	}
 
 	/*
@@ -653,9 +656,6 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 		pgrid[VOLUME_BUFFER_FOG] = 0;
         vdbc.close();
 
-		psampler[VOLUME_BUFFER_SDF] = new FloatGridBoxSampler(*pgrid[VOLUME_BUFFER_SDF]);
-		psampler[VOLUME_BUFFER_FOG] = 0;
-
         {
             FILE *pf = fopen("/tmp/droplet-fileid.bin","rb");
             if(!pf)
@@ -678,7 +678,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
         }
 
         //S_Create(pvl,ptl,s,lff,&pgrid,&pob,&index,&leafx);
-        S_Create(s,lff,pgrid,psampler,this);
+        S_Create(s,lff,pgrid,this);
 		if(pgrid[VOLUME_BUFFER_SDF])
         	pgrid[VOLUME_BUFFER_SDF]->setName("surface-levelset");
 
@@ -704,8 +704,11 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i){
 		if(pgrid[i]){
 			pbuf[i] = new LeafVolume[leafx[i]];
-			//psampler[i] = new FloatGridBoxSampler(*pgrid[i]); //non-cached, thread safe version
-		}else pbuf[i] = 0;
+			psampler[i] = new FloatGridBoxSampler(*pgrid[i]); //non-cached, thread safe version
+		}else{
+			pbuf[i] = 0;
+			psampler[i] = 0;
+		}
 	}
 
     //float4 nv = float4(N);
@@ -718,7 +721,6 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
     });*/
 	tbb::parallel_for(tbb::blocked_range<size_t>(0,index),[&](const tbb::blocked_range<size_t> &nr){
         //FastGridSampler &ffs = fsampler.local();
-
 		openvdb::Vec3f posw;
 		for(uint i = nr.begin(); i < nr.end(); ++i){
 			if(pob[i].volx[VOLUME_BUFFER_SDF] == ~0u){

@@ -108,8 +108,8 @@ void ParticleInput::Evaluate(const void *pp){
 	//pdgrid->setTransform(pgridtr);
 
 	pdgrid = openvdb::FloatGrid::create(coff);
-    pdgrid->setGridClass(openvdb::GRID_LEVEL_SET);
 	pdgrid->setTransform(pgridtr);
+	pdgrid->setGridClass(openvdb::GRID_LEVEL_SET);
 	//pdgrid = openvdb::createLevelSet<openvdb::FloatGrid>(pgridtr->voxelSize().x(),coff/pgridtr->voxelSize().x());
 
 	ParticleInputList pl(pps,size);
