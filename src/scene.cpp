@@ -384,7 +384,7 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
         }
     }
 
-	openvdb::FloatGrid::Ptr ptsdf = openvdb::FloatGrid::create(4.0f*s); //dummy query grid
+	openvdb::FloatGrid::Ptr ptsdf = openvdb::FloatGrid::create(lff*s); //dummy query grid
 	ptsdf->setTransform(pgridtr);
 	ptsdf->setGridClass(openvdb::GRID_LEVEL_SET);
 
@@ -676,8 +676,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
             DebugPrintf("Attempt to read VDB-cache failed. Writing to a new one.\n");
             cm = SCENE_CACHE_WRITE;
         }
-
-        //S_Create(pvl,ptl,s,lff,&pgrid,&pob,&index,&leafx);
+		
         S_Create(s,lff,pgrid,this);
 		if(pgrid[VOLUME_BUFFER_SDF])
         	pgrid[VOLUME_BUFFER_SDF]->setName("surface-levelset");

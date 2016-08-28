@@ -466,11 +466,11 @@ BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, No
 		return IComposite::Create(level,pnt);
 	}else if(strcmp(pname,"ClNodeAdvection") == 0){
 		//TODO: query surface bool
-		/*PyObject *psa = PyObject_GetAttrString((PyObject*)pnode,"surface_advection");
-		bool sa = PyObject_IsTrue(psa);
-		Py_DECREF(psa);*/
+		PyObject *psl = PyObject_GetAttrString((PyObject*)pnode,"sample_local");
+		bool sl = PyObject_IsTrue(psl);
+		Py_DECREF(psl);
 
-		return IAdvection::Create(level,pnt);
+		return IAdvection::Create(level,pnt,sl);
     }else if(strcmp(pname,"ClNodeDisplacement") == 0){
         return IDisplacement::Create(level,pnt);
 #ifdef BLCLOUD_DEPRECATED

@@ -280,11 +280,12 @@ protected:
 	~IAdvection();
 public:
 	virtual void Evaluate(const void *) = 0;
-	static IAdvection * Create(uint, NodeTree *);
+	static IAdvection * Create(uint, NodeTree *, bool);
 	enum INPUT{
 		INPUT_THRESHOLD,
 		INPUT_DISTANCE,
 		INPUT_ITERATIONS,
+		INPUT_DENSITY,
 		INPUT_VELOCITY,
 		INPUT_FOG,
 		INPUT_COUNT

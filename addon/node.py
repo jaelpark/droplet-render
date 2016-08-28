@@ -297,18 +297,20 @@ class ClNodeAdvection(bpy.types.Node):
 	bl_label = "Advection";
 
 	#surface_advection = BoolProperty(name="Surface",default=True,description="Advect from the surfaces.");
+	sample_local = BoolProperty(name="Provide Local Data",default=False,description="When enabled, local density information is provided for the VoxelInfo node (for each advection step when not using SceneInfo during post-processing). For performance reasons and by the assumption that advection is performed during post-processing, this is turned off by default. By disabling local sampling, the VoxelInfo density output will remain constant (the value for the voxel currently being processed), which may also be desired in some cases.");
 
 	def init(self, context):
 		self.inputs.new("ClNodeFloatSocket","Threshold");
 		self.inputs.new("ClNodeFloatSocket","Distance");
 		self.inputs.new("ClNodeIntSocket","Iterations");
 		#self.inputs.new("ClNodeVectorFieldSocket","Velocity");
+		self.inputs.new("ClNodeFloatSocket","Density");
 		self.inputs.new("ClNodeVectorSocket","Velocity");
 		self.inputs.new("ClNodeFogSocket","Fog");
 		self.outputs.new("ClNodeFogSocket","Fog");
 
-	#def draw_buttons(self, context, layout):
-		#layout.prop(self,"surface_advection");
+	def draw_buttons(self, context, layout):
+		layout.prop(self,"sample_local");
 
 class ClNodeDisplacement(bpy.types.Node):
 	bl_idname = "ClNodeDisplacement";

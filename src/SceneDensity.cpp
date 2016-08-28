@@ -308,7 +308,7 @@ IComposite * IComposite::Create(uint level, NodeTree *pnt){
 	return new Composite(level,pnt);
 }
 
-Advection::Advection(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), IAdvection(_level,pnt){
+Advection::Advection(uint _level, NodeTree *pnt, bool sl) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), IAdvection(_level,pnt), sample_local(sl){
 	//
 }
 
@@ -322,6 +322,7 @@ void Advection::Evaluate(const void *pp){
 	BaseValueNode<float> *pthrs = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_THRESHOLD]);
 	BaseValueNode<float> *pdist = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_DISTANCE]);
 	BaseValueNode<int> *piters = dynamic_cast<BaseValueNode<int>*>(pnodes[INPUT_ITERATIONS]);
+	BaseValueNode<float> *pdn = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_DENSITY]);
 	BaseValueNode<dfloat3> *pvn = dynamic_cast<BaseValueNode<dfloat3>*>(pnodes[INPUT_VELOCITY]);
 	BaseFogNode1 *pnode = dynamic_cast<BaseFogNode1*>(pnodes[INPUT_FOG]);
 
@@ -352,46 +353,37 @@ void Advection::Evaluate(const void *pp){
 			openvdb::math::Vec3s posw = pnode->pdgrid->transform().indexToWorld(c);
 
 			float f = m.getValue();
-			if(f > pthrs->locr(indices[INPUT_THRESHOLD]))
-				continue;
-
 			float4 rc = float4::load(posw.asPointer());
 
 			ValueNodeParams np1((dfloat3*)posw.asPointer(),&zr,0.0f,f,psamplers);
 			pntree->EvaluateNodes0(&np1,level+1,emask);
 
+			float th = pthrs->locr(indices[INPUT_THRESHOLD]);
+			if(f > th)
+				continue;
+
 			float s = pdist->locr(indices[INPUT_DISTANCE])/(float)piters->locr(indices[INPUT_ITERATIONS]);
 
 			uint ic = piters->locr(indices[INPUT_ITERATIONS]);
 			for(uint i = 0; i < ic; ++i){
+				float p = pdn->locr(indices[INPUT_DENSITY]);
+				//TODO: do actual integration instead of sampling the last value?
+				if(p > th){
+					std::get<1>(fgt).setValue(c,p);
+					break;
+				}
 				dfloat3 v = pvn->locr(indices[INPUT_VELOCITY]);
 				rc += s*float4::load(&v);
 				//
 				//all the other inputs except the vector is evaluated only per-voxel
-				new(&np1) ValueNodeParams((dfloat3*)posw.asPointer(),&zr,0.0f,0.0f,psamplers);
+				//TODO: advection data to info node (current iteration, distance etc)?
+				//TODO: local data sampling (by the sample_local option)
+				new(&np1) ValueNodeParams((dfloat3*)posw.asPointer(),&zr,0.0f,f,psamplers);
 				pntree->EvaluateNodes0(&np1,level+1,emask);
 				//
 				//float4::store((dfloat3*)posw.asPointer(),rc);
-				//float p = samplerd.wsSample(posw); //TODO: do actual integration instead of sampling the last value?
+				//float p = samplerd.wsSample(posw);
 			}
-
-			//TODO: bool value to indicate wether to sample surfaces
-			//This is done by passing the node Py-object to CreateNodeByType. Here most of the generality is
-			//already lost, and querying node specific parameters should be ok.
-
-			/*alternative: fog post-processing, taking into account the global fog
-			-output node has additional input called Fog.PostFX: composite node (for example) is used to provide input with the help of VoxelInfo
-			-fog objects that use the postfx socket are stored for later evaluation
-			-For each grid stored for post-processing (deep-copied), loop through the active voxels. Instead of having only local fog information,
-			VoxelInfo gets data from the full fog grid and all surfaces. This then works with advection operators, for example.
-			-results are written in parallel to several partial grids, which then after every pp operation is complete is written to the global grid
-
-			Convert the ValueNodeParams to some interface (which also provides samplers for the global grids)?
-			*/
-			float4::store((dfloat3*)posw.asPointer(),rc);
-			float p = samplerd.wsSample(posw); //TODO: modulate density by final distance
-
-			std::get<1>(fgt).setValue(c,f+p);
         }
     });
 
@@ -407,8 +399,8 @@ void Advection::Evaluate(const void *pp){
     }
 }
 
-IAdvection * IAdvection::Create(uint level, NodeTree *pnt){
-	return new Advection(level,pnt);
+IAdvection * IAdvection::Create(uint level, NodeTree *pnt, bool sl){
+	return new Advection(level,pnt,sl);
 }
 
 VectorFieldSampler::VectorFieldSampler(uint level, NodeTree *pnt) : BaseValueNode<dfloat3>(level,pnt), BaseNode(level,pnt), IVectorFieldSampler(level,pnt){
