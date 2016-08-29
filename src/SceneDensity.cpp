@@ -328,8 +328,8 @@ void Advection::Evaluate(const void *pp){
 
 	dfloat3 zr(0.0f);
 	const FloatGridBoxSampler *psamplers[] = {std::get<INP_SDFSAMPLER>(*pd),std::get<INP_FOGSAMPLER>(*pd)};
-	ValueNodeParams np(&zr,&zr,0.0f,0.0f,psamplers);
-	pntree->EvaluateNodes0(&np,level+1,emask);
+	//ValueNodeParams np(&zr,&zr,0.0f,0.0f,psamplers);
+	//pntree->EvaluateNodes0(&np,level+1,emask);
 
 	openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
 
@@ -378,11 +378,9 @@ void Advection::Evaluate(const void *pp){
 				//all the other inputs except the vector is evaluated only per-voxel
 				//TODO: advection data to info node (current iteration, distance etc)?
 				//TODO: local data sampling (by the sample_local option)
+				float4::store((dfloat3*)posw.asPointer(),rc);
 				new(&np1) ValueNodeParams((dfloat3*)posw.asPointer(),&zr,0.0f,f,psamplers);
 				pntree->EvaluateNodes0(&np1,level+1,emask);
-				//
-				//float4::store((dfloat3*)posw.asPointer(),rc);
-				//float p = samplerd.wsSample(posw);
 			}
         }
     });

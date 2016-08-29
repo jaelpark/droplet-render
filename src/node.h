@@ -128,6 +128,20 @@ public:
 	void Evaluate(const void *);
 };
 
+class FloatInput : public BaseValueNode<float>{
+public:
+	FloatInput(uint, NodeTree *);
+	~FloatInput();
+	void Evaluate(const void *);
+};
+
+class VectorInput : public BaseValueNode<dfloat3>{
+public:
+	VectorInput(uint, NodeTree *);
+	~VectorInput();
+	void Evaluate(const void *);
+};
+
 class IFbmNoise : public virtual BaseValueNode<float>, public virtual BaseValueNode<dfloat3>{
 protected:
 	IFbmNoise(uint, NodeTree *);
@@ -213,6 +227,7 @@ public:
 	enum OUTPUT_FLOAT{
 		OUTPUT_FLOAT_DISTANCE,
 		OUTPUT_FLOAT_DENSITY,
+		OUTPUT_FLOAT_FINAL,
 		OUTPUT_FLOAT_COUNT
 	};
 };

@@ -181,6 +181,33 @@ void MaxNode<T>::Evaluate(const void *pp){
     this->result.local().value[0] = a > b?a:b;
 }
 
+FloatInput::FloatInput(uint level, NodeTree *pnt) : BaseValueNode<float>(level,pnt), BaseNode(level,pnt){
+	//
+}
+
+FloatInput::~FloatInput(){
+	//
+}
+
+void FloatInput::Evaluate(const void *pp){
+	this->result.local().value[0] = dynamic_cast<BaseValueNode<float>*>(this->pnodes[0])->BaseValueNode<float>::result.local().value[this->indices[0]];
+}
+
+VectorInput::VectorInput(uint level, NodeTree *pnt) : BaseValueNode<dfloat3>(level,pnt), BaseNode(level,pnt){
+	//
+}
+
+VectorInput::~VectorInput(){
+	//
+}
+
+void VectorInput::Evaluate(const void *pp){
+	this->result.local().value[0] = dfloat3(
+		dynamic_cast<BaseValueNode<float>*>(this->pnodes[0])->BaseValueNode<float>::result.local().value[this->indices[0]],
+		dynamic_cast<BaseValueNode<float>*>(this->pnodes[1])->BaseValueNode<float>::result.local().value[this->indices[1]],
+		dynamic_cast<BaseValueNode<float>*>(this->pnodes[2])->BaseValueNode<float>::result.local().value[this->indices[2]]);
+}
+
 /*FbmNoise::FbmNoise(uint _level, NodeTree *pnt) : BaseValueNode(_level,pnt){
 	//
 }
@@ -293,6 +320,7 @@ void SceneInfo::Evaluate(const void *pp){
 	BaseValueResult<float> &rs = this->BaseValueNode<float>::result.local();
 	rs.value[OUTPUT_FLOAT_DISTANCE] = pd->SampleGlobalDistance(dposw); //TODO: check if output is used (omask)
 	rs.value[OUTPUT_FLOAT_DENSITY] = pd->SampleGlobalDensity(dposw);
+	rs.value[OUTPUT_FLOAT_FINAL] = rs.value[OUTPUT_FLOAT_DISTANCE] > 0.0f?rs.value[OUTPUT_FLOAT_DENSITY]:1.0f;
 }
 
 ISurfaceInput::ISurfaceInput(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt){
@@ -450,6 +478,10 @@ BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, No
 	}else if(strcmp(pname,"ClNodeFbmNoise") == 0){
 		return IFbmNoise::Create(level,pnt);
 
+	}else if(strcmp(pname,"ClNodeFloatInput") == 0){
+		return new FloatInput(level,pnt);
+	}else if(strcmp(pname,"ClNodeVectorInput") == 0){
+		return new VectorInput(level,pnt);
 	}else if(strcmp(pname,"ClNodeVoxelInfo") == 0){
 		return new VoxelInfo(level,pnt);
 	}else if(strcmp(pname,"ClNodeSceneInfo") == 0){
@@ -473,10 +505,6 @@ BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, No
 		return IAdvection::Create(level,pnt,sl);
     }else if(strcmp(pname,"ClNodeDisplacement") == 0){
         return IDisplacement::Create(level,pnt);
-#ifdef BLCLOUD_DEPRECATED
-    }else if(strcmp(pname,"ClNodefBmPerlinNoise") == 0){
-        return IfBmPerlinNoise::Create(level,pnt);
-#endif
 	}else if(strcmp(pname,"ClNodeVectorFieldSampler") == 0){
 		return IVectorFieldSampler::Create(level,pnt);
     }else if(strcmp(pname,"ClNodeSurfaceOutput") == 0){

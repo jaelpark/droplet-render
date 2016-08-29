@@ -132,10 +132,6 @@ class ClNodeFieldSocket(bpy.types.NodeSocket):
 	def draw_color(self, context, node):
 		return (0.6,0,1,1);
 
-#class ClNodeFloatInput(bpy.types.Node):
-#	bl_idname = "ClNodeFloatInput";
-#	bl_label = "Float";
-
 class ClNodeVoxelInfo(bpy.types.Node):
 	bl_idname = "ClNodeVoxelInfo";
 	bl_label = "Voxel Info";
@@ -154,6 +150,7 @@ class ClNodeSceneInfo(bpy.types.Node):
 		self.inputs.new("ClNodeVectorSocket","World");
 		self.outputs.new("ClNodeFloatSocket","Distance");
 		self.outputs.new("ClNodeFloatSocket","Density");
+		self.outputs.new("ClNodeFloatSocket","Density.Final");
 
 class ClNodeSurfaceInput(bpy.types.Node):
 	bl_idname = "ClNodeSurfaceInput";
@@ -250,6 +247,24 @@ class ClNodeFloatMax(bpy.types.Node):
 		self.inputs.new("ClNodeFloatSocket","a");
 		self.inputs.new("ClNodeFloatSocket","b");
 		self.outputs.new("ClNodeFloatSocket","Out");
+
+class ClNodeFloatInput(bpy.types.Node):
+	bl_idname = "ClNodeFloatInput";
+	bl_label = "Value";
+
+	def init(self, context):
+		self.inputs.new("ClNodeFloatSocket","Value");
+		self.outputs.new("ClNodeFloatSocket","Out");
+
+class ClNodeVectorInput(bpy.types.Node):
+	bl_idname = "ClNodeVectorInput";
+	bl_label = "Vector";
+
+	def init(self, context):
+		self.inputs.new("ClNodeFloatSocket","x");
+		self.inputs.new("ClNodeFloatSocket","y");
+		self.inputs.new("ClNodeFloatSocket","z");
+		self.outputs.new("ClNodeVectorSocket","Out");
 
 #class ClPropertyEmpty(bpy.types.PropertyGroup):
 	#pass
@@ -367,6 +382,8 @@ categories = [
 		NodeItem("ClNodeParticleInput"),
 		NodeItem("ClNodeSmokeCache"),
 		NodeItem("ClNodeFogPostInput"),
+		NodeItem("ClNodeFloatInput"),
+		NodeItem("ClNodeVectorInput"),
 		NodeItem("ClNodeVoxelInfo"),
 		NodeItem("ClNodeSceneInfo"),
 	]),
