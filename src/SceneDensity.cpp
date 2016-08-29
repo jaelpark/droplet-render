@@ -261,8 +261,8 @@ void Composite::Evaluate(const void *pp){
 
 	dfloat3 zr(0.0f);
 	const FloatGridBoxSampler *psamplers[] = {std::get<INP_SDFSAMPLER>(*pd),std::get<INP_FOGSAMPLER>(*pd)};
-	ValueNodeParams np(&zr,&zr,0.0f,0.0f,psamplers);
-	pntree->EvaluateNodes0(&np,level+1,emask);
+	//ValueNodeParams np(&zr,&zr,0.0f,0.0f,psamplers);
+	//pntree->EvaluateNodes0(&np,level+1,emask);
 
 	openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
 	pdgrid->setTransform(pgridtr);
@@ -332,8 +332,7 @@ void Advection::Evaluate(const void *pp){
 	//pntree->EvaluateNodes0(&np,level+1,emask);
 
 	openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
-
-	openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler> samplerd(*pnode->pdgrid);
+	pdgrid->setTransform(pgridtr);
 
 	DebugPrintf("> Advecting fog volume...\n");
 
