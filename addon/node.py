@@ -266,6 +266,25 @@ class ClNodeVectorInput(bpy.types.Node):
 		self.inputs.new("ClNodeFloatSocket","z");
 		self.outputs.new("ClNodeVectorSocket","Out");
 
+class ClNodeVectorMath(bpy.types.Node):
+	bl_idname = "ClNodeVectorMath";
+	bl_label = "Vector Math";
+
+	op = EnumProperty(name="",default="+",items=(
+		("+","Add",""),
+		("-","Subtract",""),
+		("*","Multiply",""),
+		("/","Divide",""),
+		("X","Cross","")));
+
+	def init(self, context):
+		self.inputs.new("ClNodeVectorSocket","a");
+		self.inputs.new("ClNodeVectorSocket","b");
+		self.outputs.new("ClNodeVectorSocket","Out");
+
+	def draw_buttons(self, context, layout):
+		layout.prop(self,"op");
+
 #class ClPropertyEmpty(bpy.types.PropertyGroup):
 	#pass
 
@@ -402,6 +421,7 @@ categories = [
 		NodeItem("ClNodeFloatPow"),
 		NodeItem("ClNodeFloatMin"),
 		NodeItem("ClNodeFloatMax"),
+		NodeItem("ClNodeVectorMath"),
 	]),
 	ClNodeCategory("CONVERSION_CATEGORY","Conversion",items = [
 		NodeItem("ClNodeVectorFieldSampler"),

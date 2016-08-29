@@ -128,6 +128,14 @@ public:
 	void Evaluate(const void *);
 };
 
+class VectorMath : public BaseValueNode<dfloat3>{
+public:
+	VectorMath(uint, NodeTree *, char);
+	~VectorMath();
+	void Evaluate(const void *);
+	char opch;
+};
+
 class FloatInput : public BaseValueNode<float>{
 public:
 	FloatInput(uint, NodeTree *);

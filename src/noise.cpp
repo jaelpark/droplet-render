@@ -5,7 +5,7 @@
 //http://mrl.nyu.edu/~perlin/noise/
 namespace PerlinNoise{
 
-const static int p[] = {151,160,137,91,90,15,
+static const int p[] = {151,160,137,91,90,15,
     131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
     190, 6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
     88,237,149,56,87,174,20,125,136,171,168, 68,175,74,165,71,134,139,48,27,166,
@@ -61,23 +61,16 @@ sfloat1 noise(const sfloat4 &_pos){
         BB.v[i] = p[(B+1)%256]+Z.v[i];
     }
     sint1 aa = sint1::load(&AA), ab = sint1::load(&AB), ba = sint1::load(&BA), bb = sint1::load(&BB);
-    return sfloat1::lerp(sfloat1::lerp(sfloat1::lerp(grad(aa,pos),
-                                                     grad(ba,pos+sfloat1(-1,0,0,0)),fad.v[0]),
-                                       sfloat1::lerp(grad(ab,pos+sfloat1(0,-1,0,0)),
-                                                     grad(bb,pos+sfloat1(-1,-1,0,0)),fad.v[0]),fad.v[1]),
-                         sfloat1::lerp(sfloat1::lerp(grad(aa+sfloat1::one(),pos+sfloat1(0,0,-1,0)),
-                                                     grad(ba+sfloat1::one(),pos+sfloat1(-1,0,-1,0)),fad.v[0]),
-                                       sfloat1::lerp(grad(ab+sfloat1::one(),pos+sfloat1(0,-1,-1,0)),
-                                                     grad(bb+sfloat1::one(),pos+sfloat1(-1,-1,-1,0)),fad.v[0]),fad.v[1]),fad.v[2]);
+    return sfloat1::lerp(
+		sfloat1::lerp(sfloat1::lerp(grad(aa,pos),
+	                                 grad(ba,pos+sfloat1(-1,0,0,0)),fad.v[0]),
+	                   sfloat1::lerp(grad(ab,pos+sfloat1(0,-1,0,0)),
+	                                 grad(bb,pos+sfloat1(-1,-1,0,0)),fad.v[0]),fad.v[1]),
+	    sfloat1::lerp(sfloat1::lerp(grad(aa+sfloat1::one(),pos+sfloat1(0,0,-1,0)),
+	                                 grad(ba+sfloat1::one(),pos+sfloat1(-1,0,-1,0)),fad.v[0]),
+	                   sfloat1::lerp(grad(ab+sfloat1::one(),pos+sfloat1(0,-1,-1,0)),
+	                                 grad(bb+sfloat1::one(),pos+sfloat1(-1,-1,-1,0)),fad.v[0]),fad.v[1]),fad.v[2]);
 }
-
-/*float noise(const float4 &_pos){
-    float4 F = float4::floor(_pos);
-    float4 pos = _pos-F; //frac
-    float4 fad = fade(pos);
-
-    //TODO: parallel octaves
-}*/
 
 }
 

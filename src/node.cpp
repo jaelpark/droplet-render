@@ -181,6 +181,40 @@ void MaxNode<T>::Evaluate(const void *pp){
     this->result.local().value[0] = a > b?a:b;
 }
 
+VectorMath::VectorMath(uint level, NodeTree *pnt, char _opch) : BaseValueNode<dfloat3>(level,pnt), BaseNode(level,pnt), opch(_opch){
+	//
+}
+
+VectorMath::~VectorMath(){
+	//
+}
+
+void VectorMath::Evaluate(const void *pp){
+	dfloat3 sa = dynamic_cast<BaseValueNode<dfloat3>*>(this->pnodes[0])->BaseValueNode<dfloat3>::result.local().value[this->indices[0]];
+    dfloat3 sb = dynamic_cast<BaseValueNode<dfloat3>*>(this->pnodes[1])->BaseValueNode<dfloat3>::result.local().value[this->indices[1]];
+	float4 a = float4::load(&sa);
+	float4 b = float4::load(&sb);
+	float4 r;
+	switch(opch){
+	case '+':
+		r = a+b;
+		break;
+	case '-':
+		r = a-b;
+		break;
+	case '*':
+		r = a*b;
+		break;
+	case '/':
+		r = a/b;
+		break;
+	case 'X':
+		r = float4::cross(a,b);
+		break;
+	}
+	this->result.local().value[0] = dfloat3(r);
+}
+
 FloatInput::FloatInput(uint level, NodeTree *pnt) : BaseValueNode<float>(level,pnt), BaseNode(level,pnt){
 	//
 }
@@ -474,6 +508,13 @@ BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, No
 		return new MinNode<float>(level,pnt);
 	}else if(strcmp(pname,"ClNodeFloatMax") == 0){
 		return new MaxNode<float>(level,pnt);
+	}else if(strcmp(pname,"ClNodeVectorMath") == 0){
+		PyObject *pop = PyObject_GetAttrString((PyObject*)pnode,"op");
+		const char *pops = PyUnicode_AsUTF8(pop);
+		const char opch = pops[0];
+		Py_DECREF(pop);
+
+		return new VectorMath(level,pnt,opch);
 
 	}else if(strcmp(pname,"ClNodeFbmNoise") == 0){
 		return IFbmNoise::Create(level,pnt);
