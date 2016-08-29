@@ -41,7 +41,7 @@ class ClNodeFloatSocket(bpy.types.NodeSocket):
 	bl_idname = "ClNodeFloatSocket";
 	bl_label = "Float socket";
 
-	value = FloatProperty(name="",default=0,min=0);
+	value = FloatProperty(name="",default=0,min=0,precision=3);
 	type = 'VALUE';
 
 	def draw(self, context, layout, node, x):

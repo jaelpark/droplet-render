@@ -75,7 +75,7 @@ class ClSamplingPanel(bpy.types.Panel):
 		context.scene.blcloudsampling.draw(context,self.layout);
 
 class ClGridProperties(bpy.types.PropertyGroup):
-	detailsize = FloatProperty(name="Detail size",default=0.02,min=0.0001,description="Smallest detail size in blender units.");
+	detailsize = FloatProperty(name="Detail size",default=0.02,min=0.0001,precision=4,description="Smallest detail size in blender units.");
 	adaptive = BoolProperty(name="Adaptive resolution",default=False,description="Distance and FOV based resolution level of detail");
 
 	def draw(self, context, layout):
@@ -193,7 +193,7 @@ class ClMaterialPanel(bpy.types.Panel):
 class ClLampProperties(bpy.types.PropertyGroup):
 	intensity = FloatProperty(name="Intensity",default=50.0,min=0.0);
 	color = FloatVectorProperty(name="Color",default=[1,1,1],subtype='COLOR',size=3);
-	angle = FloatProperty(name="Angle",default=0.95,min=0.0,max=1.0);
+	angle = FloatProperty(name="Angle",default=0.95,min=0.0,max=1.0,precision=3);
 	#color = FloatVectorProperty(name="Color",default=[1,1,1]);
 	#cr = FloatProperty(name="Red",default=1.0,min=0.0,max=1.0);
 
