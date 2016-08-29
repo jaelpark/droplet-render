@@ -295,7 +295,7 @@ protected:
 	~IAdvection();
 public:
 	virtual void Evaluate(const void *) = 0;
-	static IAdvection * Create(uint, NodeTree *, bool);
+	static IAdvection * Create(uint, NodeTree *, uint);
 	enum INPUT{
 		INPUT_THRESHOLD,
 		INPUT_DISTANCE,
@@ -304,6 +304,10 @@ public:
 		INPUT_VELOCITY,
 		INPUT_FOG,
 		INPUT_COUNT
+	};
+	enum BOOL{
+		BOOL_BREAK_ITERATION,
+		BOOL_SAMPLE_LOCAL
 	};
 };
 

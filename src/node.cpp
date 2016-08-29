@@ -498,11 +498,17 @@ BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, No
 		return IComposite::Create(level,pnt);
 	}else if(strcmp(pname,"ClNodeAdvection") == 0){
 		//TODO: query surface bool
+		uint flags = 0;
+
+		PyObject *pfi = PyObject_GetAttrString((PyObject*)pnode,"break_iter");
+		flags |= PyObject_IsTrue(pfi)<<IAdvection::BOOL_BREAK_ITERATION;
+		Py_DECREF(pfi);
+
 		PyObject *psl = PyObject_GetAttrString((PyObject*)pnode,"sample_local");
-		bool sl = PyObject_IsTrue(psl);
+		flags |= PyObject_IsTrue(psl)<<IAdvection::BOOL_SAMPLE_LOCAL;
 		Py_DECREF(psl);
 
-		return IAdvection::Create(level,pnt,sl);
+		return IAdvection::Create(level,pnt,flags);
     }else if(strcmp(pname,"ClNodeDisplacement") == 0){
         return IDisplacement::Create(level,pnt);
 	}else if(strcmp(pname,"ClNodeVectorFieldSampler") == 0){

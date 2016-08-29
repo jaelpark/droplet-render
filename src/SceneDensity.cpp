@@ -308,7 +308,7 @@ IComposite * IComposite::Create(uint level, NodeTree *pnt){
 	return new Composite(level,pnt);
 }
 
-Advection::Advection(uint _level, NodeTree *pnt, bool sl) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), IAdvection(_level,pnt), sample_local(sl){
+Advection::Advection(uint _level, NodeTree *pnt, uint _flags) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), IAdvection(_level,pnt), flags(_flags){
 	//
 }
 
@@ -361,16 +361,15 @@ void Advection::Evaluate(const void *pp){
 			if(f > th)
 				continue;
 
-			float s = pdist->locr(indices[INPUT_DISTANCE])/(float)piters->locr(indices[INPUT_ITERATIONS]);
+			float s = pdist->locr(indices[INPUT_DISTANCE])/(float)piters->locr(indices[INPUT_ITERATIONS]); //step size
+			float p; //density
 
 			uint ic = piters->locr(indices[INPUT_ITERATIONS]);
 			for(uint i = 0; i < ic; ++i){
-				float p = pdn->locr(indices[INPUT_DENSITY]);
+				p = pdn->locr(indices[INPUT_DENSITY]);
 				//TODO: do actual integration instead of sampling the last value?
-				if(p > th){
-					std::get<1>(fgt).setValue(c,p);
+				if(p > th && flags & 1<<BOOL_BREAK_ITERATION)
 					break;
-				}
 				dfloat3 v = pvn->locr(indices[INPUT_VELOCITY]);
 				rc += s*float4::load(&v);
 				//
@@ -381,6 +380,9 @@ void Advection::Evaluate(const void *pp){
 				new(&np1) ValueNodeParams((dfloat3*)posw.asPointer(),&zr,0.0f,f,psamplers);
 				pntree->EvaluateNodes0(&np1,level+1,emask);
 			}
+
+			//if(p > th) //??
+			std::get<1>(fgt).setValue(c,p);
         }
     });
 
@@ -396,8 +398,8 @@ void Advection::Evaluate(const void *pp){
     }
 }
 
-IAdvection * IAdvection::Create(uint level, NodeTree *pnt, bool sl){
-	return new Advection(level,pnt,sl);
+IAdvection * IAdvection::Create(uint level, NodeTree *pnt, uint flags){
+	return new Advection(level,pnt,flags);
 }
 
 VectorFieldSampler::VectorFieldSampler(uint level, NodeTree *pnt) : BaseValueNode<dfloat3>(level,pnt), BaseNode(level,pnt), IVectorFieldSampler(level,pnt){

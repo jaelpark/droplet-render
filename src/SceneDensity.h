@@ -60,10 +60,10 @@ public:
 
 class Advection : public BaseFogNode1, public IAdvection{
 public:
-	Advection(uint, NodeTree *, bool);
+	Advection(uint, NodeTree *, uint);
 	~Advection();
 	void Evaluate(const void *);
-	bool sample_local;
+	uint flags;
 };
 
 class VectorFieldSampler : public IVectorFieldSampler{

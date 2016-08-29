@@ -311,7 +311,9 @@ class ClNodeAdvection(bpy.types.Node):
 	bl_idname = "ClNodeAdvection";
 	bl_label = "Advection";
 
-	#surface_advection = BoolProperty(name="Surface",default=True,description="Advect from the surfaces.");
+	#full_iter = BoolProperty(name="Full Iteration",default=False,description="Always step the specified distance regardless whether density above the threshold was encountered before reaching the iteration limit. Enabling this will in some cases form bodies separated from the advection source while additionally also creating a better density variation when advecting from a heterogenous for volume.");
+	break_iter = BoolProperty(name="Break Iteration",default=False,description="Break the iteration when encountering a density above specificied threshold. Density variation will be more subtle and the advection will no longer form bodies separated from the advection source. Advection performance is significantly improved for low threshold values and dense sources.");
+
 	sample_local = BoolProperty(name="Provide Local Data",default=False,description="When enabled, local density information is provided for the VoxelInfo node (for each advection step when not using SceneInfo during post-processing). For performance reasons and by the assumption that advection is performed during post-processing, this is turned off by default. By disabling local sampling, the VoxelInfo density output will remain constant (the value for the voxel currently being processed), which may also be desired in some cases.");
 
 	def init(self, context):
@@ -325,6 +327,7 @@ class ClNodeAdvection(bpy.types.Node):
 		self.outputs.new("ClNodeFogSocket","Fog");
 
 	def draw_buttons(self, context, layout):
+		layout.prop(self,"break_iter");
 		layout.prop(self,"sample_local");
 
 class ClNodeDisplacement(bpy.types.Node):
