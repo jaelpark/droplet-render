@@ -26,7 +26,7 @@ PostFog::~PostFog(){
 
 namespace Node{
 
-BaseFogNode1::BaseFogNode1(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt){
+BaseFogNode1::BaseFogNode1(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseNode(_level,pnt){
     pdgrid = openvdb::FloatGrid::create();
     pdgrid->setGridClass(openvdb::GRID_FOG_VOLUME);
 }
@@ -39,7 +39,7 @@ BaseFogNode * BaseFogNode::Create(uint level, NodeTree *pnt){
     return new BaseFogNode1(level,pnt);
 }
 
-BaseVectorFieldNode1::BaseVectorFieldNode1(uint _level, NodeTree *pnt) : BaseVectorFieldNode(_level,pnt){
+BaseVectorFieldNode1::BaseVectorFieldNode1(uint _level, NodeTree *pnt) : BaseVectorFieldNode(_level,pnt), BaseNode(_level,pnt){
 	pvgrid = openvdb::Vec3SGrid::create();
 	pvgrid->setGridClass(openvdb::GRID_FOG_VOLUME); //this probably doesn't matter here
 }
@@ -78,7 +78,7 @@ protected:
 	float rscale;
 };
 
-ParticleInput::ParticleInput(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), IParticleInput(_level,pnt){
+ParticleInput::ParticleInput(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), BaseNode(_level,pnt), IParticleInput(_level,pnt){
     //
     //DebugPrintf(">> ParticleInput()\n");
 }
@@ -186,7 +186,7 @@ IParticleInput * IParticleInput::Create(uint level, NodeTree *pnt){
 	return new ParticleInput(level,pnt);
 }
 
-SmokeCache::SmokeCache(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), ISmokeCache(_level,pnt){
+SmokeCache::SmokeCache(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), BaseNode(_level,pnt), ISmokeCache(_level,pnt){
     //
     //DebugPrintf(">> ParticleInput()\n");
 }
@@ -227,7 +227,7 @@ ISmokeCache * ISmokeCache::Create(uint level, NodeTree *pnt){
 	return new SmokeCache(level,pnt);
 }
 
-FogPostInput::FogPostInput(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), IFogPostInput(_level,pnt){
+FogPostInput::FogPostInput(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), BaseNode(_level,pnt), IFogPostInput(_level,pnt){
     //
 }
 
@@ -247,7 +247,7 @@ IFogPostInput * IFogPostInput::Create(uint level, NodeTree *pnt){
 	return new FogPostInput(level,pnt);
 }
 
-Composite::Composite(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), IComposite(_level,pnt){
+Composite::Composite(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), BaseNode(_level,pnt), IComposite(_level,pnt){
 	//
 }
 
@@ -310,7 +310,7 @@ IComposite * IComposite::Create(uint level, NodeTree *pnt){
 	return new Composite(level,pnt);
 }
 
-Advection::Advection(uint _level, NodeTree *pnt, uint _flags) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), IAdvection(_level,pnt), flags(_flags){
+Advection::Advection(uint _level, NodeTree *pnt, uint _flags) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), BaseNode(_level,pnt), IAdvection(_level,pnt), flags(_flags){
 	//
 }
 

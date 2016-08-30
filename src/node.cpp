@@ -334,7 +334,7 @@ void SceneInfo::Evaluate(const void *pp){
 	rs.value[OUTPUT_FLOAT_FINAL] = rs.value[OUTPUT_FLOAT_DISTANCE] > 0.0f?rs.value[OUTPUT_FLOAT_DENSITY]:1.0f;
 }
 
-ISurfaceInput::ISurfaceInput(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt){
+ISurfaceInput::ISurfaceInput(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt), BaseNode(_level,pnt){
     //
 }
 
@@ -342,7 +342,7 @@ ISurfaceInput::~ISurfaceInput(){
     //
 }
 
-IParticleInput::IParticleInput(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt){
+IParticleInput::IParticleInput(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseNode(_level,pnt){
 	//
 }
 
@@ -358,7 +358,7 @@ IFieldInput::~IFieldInput(){
 	//
 }*/
 
-ISmokeCache::ISmokeCache(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt){
+ISmokeCache::ISmokeCache(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseNode(_level,pnt){
 	//
 }
 
@@ -366,7 +366,7 @@ ISmokeCache::~ISmokeCache(){
 	//
 }
 
-IFogPostInput::IFogPostInput(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt){
+IFogPostInput::IFogPostInput(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseNode(_level,pnt){
 	//
 }
 
@@ -374,7 +374,7 @@ IFogPostInput::~IFogPostInput(){
 	//
 }
 
-IComposite::IComposite(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt){
+IComposite::IComposite(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseNode(_level,pnt){
 	//
 }
 
@@ -382,7 +382,7 @@ IComposite::~IComposite(){
 	//
 }
 
-IAdvection::IAdvection(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt){
+IAdvection::IAdvection(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseNode(_level,pnt){
 	//
 }
 
@@ -390,7 +390,7 @@ IAdvection::~IAdvection(){
 	//
 }
 
-IDisplacement::IDisplacement(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt){
+IDisplacement::IDisplacement(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt), BaseNode(_level,pnt){
     //
 }
 

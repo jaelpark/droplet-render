@@ -11,7 +11,7 @@
 
 namespace Node{
 
-BaseSurfaceNode1::BaseSurfaceNode1(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt){
+BaseSurfaceNode1::BaseSurfaceNode1(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt), BaseNode(_level,pnt){
     //
     pbgrid = openvdb::FloatGrid::create();
     pbgrid->setGridClass(openvdb::GRID_FOG_VOLUME);
@@ -31,7 +31,7 @@ BaseSurfaceNode * BaseSurfaceNode::Create(uint level, NodeTree *pnt){
     return new BaseSurfaceNode1(level,pnt);
 }
 
-SurfaceInput::SurfaceInput(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt), BaseSurfaceNode1(_level,pnt), ISurfaceInput(_level,pnt){
+SurfaceInput::SurfaceInput(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt), BaseSurfaceNode1(_level,pnt), BaseNode(_level,pnt), ISurfaceInput(_level,pnt){
     //
     //DebugPrintf(">> SurfaceInput()\n");
 }
@@ -69,7 +69,7 @@ Node::ISurfaceInput * ISurfaceInput::Create(uint level, NodeTree *pnt){
     return new SurfaceInput(level,pnt);
 }
 
-Displacement::Displacement(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt), BaseSurfaceNode1(_level,pnt), IDisplacement(_level,pnt){
+Displacement::Displacement(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt), BaseSurfaceNode1(_level,pnt), BaseNode(_level,pnt), IDisplacement(_level,pnt){
     //
     //DebugPrintf(">> Displacement()\n");
 }

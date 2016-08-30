@@ -177,7 +177,7 @@ public:
 	};
 };
 
-class BaseFogNode : public BaseNode{
+class BaseFogNode : public virtual BaseNode{
 protected:
     BaseFogNode(uint, NodeTree *);
     virtual ~BaseFogNode();
@@ -188,7 +188,7 @@ public:
     static void EvaluateAll(const void *, uint);
 };
 
-class BaseSurfaceNode : public BaseNode{
+class BaseSurfaceNode : public virtual BaseNode{
 protected:
     //BaseSurfaceNode();
     BaseSurfaceNode(uint, NodeTree *);
@@ -198,7 +198,7 @@ public:
     static BaseSurfaceNode * Create(uint, NodeTree *);
 };
 
-class BaseVectorFieldNode : public BaseNode{
+class BaseVectorFieldNode : public virtual BaseNode{
 protected:
 	BaseVectorFieldNode(uint, NodeTree *);
 	virtual ~BaseVectorFieldNode();
