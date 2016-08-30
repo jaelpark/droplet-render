@@ -190,6 +190,29 @@ class ClMaterialPanel(bpy.types.Panel):
 		#context.object.data.droplet.draw(context,self.layout);
 		self.layout.row().prop(context.object.droplet,"nodetree");
 
+class ClParticleSystemProperties(bpy.types.PropertyGroup):
+	nodetree = EnumProperty(name="Node group",items=NodeGroupSelection,description="Node group to be used for this particle system");
+
+	def draw(self, context, layout):
+		layout.row().prop(self,"nodetree");
+
+class ClParticleSystemPanel(bpy.types.Panel):
+	bl_idname = "ClParticleSystemPanel";
+	bl_label = "Render";
+	bl_space_type = "PROPERTIES";
+	bl_region_type = "WINDOW";
+	bl_context = "particle";
+
+	@classmethod
+	def poll(cls, context):
+		return context.scene.render.engine == config.dre_engineid and context.particle_system != None;
+
+	def draw(self, context):
+		#self.layout.row().prop(context.particle_system.droplet,"nodetree");
+		#context.particle_system.droplet.draw(context,self.layout);
+		#context.particle_system.droplet[1]['type'].draw(context,self.layout); #wtf is this tuple nonsense
+		pass
+
 class ClLampProperties(bpy.types.PropertyGroup):
 	intensity = FloatProperty(name="Intensity",default=50.0,min=0.0);
 	color = FloatVectorProperty(name="Color",default=[1,1,1],subtype='COLOR',size=3);

@@ -265,6 +265,25 @@ public:
 	};
 };
 
+/*class IFieldInput : public virtual BaseFogNode, public virtual BaseVectorFieldNode{
+protected:
+	IFieldInput(uint, NodeTree *);
+	~IFieldInput();
+public:
+	virtual void Evaluate(const void *) = 0;
+	static IFieldInput * Create(uint, NodeTree *);
+	enum INPUT{
+		INPUT_RASTERIZATIONRES,
+		INPUT_WEIGHT
+	};
+	enum OUTPUT_FOG{
+		OUTPUT_FOG_DENSITY,
+	};
+	enum OUTPUT_VECTORFIELD{
+		OUTPUT_VECTORFIELD_VELOCITY
+	};
+};*/
+
 class ISmokeCache : public virtual BaseFogNode{
 protected:
 	ISmokeCache(uint, NodeTree *);

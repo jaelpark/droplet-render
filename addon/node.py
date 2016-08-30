@@ -161,7 +161,7 @@ class ClNodeSurfaceInput(bpy.types.Node):
 
 class ClNodeParticleInput(bpy.types.Node):
 	bl_idname = "ClNodeParticleInput";
-	bl_label = "ParticleSystem";
+	bl_label = "ParticleSystem.SphereRaster";
 
 	def init(self, context):
 		#self.inputs.new("ClNodeFloatSocket","Raster.res");
@@ -170,6 +170,16 @@ class ClNodeParticleInput(bpy.types.Node):
 		self.inputs.new("ClNodeFloatSocket","Cutoff");
 		self.outputs.new("ClNodeFogSocket","Fog");
 		#self.outputs.new("ClNodeVectorFieldSocket","Velocity");
+
+class ClNodeFieldInput(bpy.types.Node):
+	bl_idname = "ClNodeFieldInput";
+	bl_label = "ParticleSystem.Field";
+
+	def init(self, context):
+		self.inputs.new("ClNodeFloatSocket","Raster.res");
+		self.inputs.new("ClNodeFloatSocket","Weight");
+		self.outputs.new("ClNodeFogSocket","Fog");
+		self.outputs.new("ClNodeVectorFieldSocket","Velocity");
 
 class ClNodeSmokeCache(bpy.types.Node):
 	bl_idname = "ClNodeSmokeCache";
@@ -402,6 +412,7 @@ categories = [
 	ClNodeCategory("INPUT_CATEGORY","Input",items = [
 		NodeItem("ClNodeSurfaceInput"),
 		NodeItem("ClNodeParticleInput"),
+		NodeItem("ClNodeFieldInput"),
 		NodeItem("ClNodeSmokeCache"),
 		NodeItem("ClNodeFogPostInput"),
 		NodeItem("ClNodeFloatInput"),
@@ -411,7 +422,6 @@ categories = [
 	]),
 	ClNodeCategory("OUTPUT_CATEGORY","Output",items = [
 		NodeItem("ClNodeSurfaceOutput"),
-		#NodeItem("ClNodeFieldOutput"),
 	]),
 	ClNodeCategory("MATH_CATEGORY","Math",items = [
 		NodeItem("ClNodeFloatAdd"),

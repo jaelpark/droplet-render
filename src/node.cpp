@@ -38,7 +38,6 @@ BaseValueNode<T>::BaseValueNode(T r, uint level, NodeTree *pnt) : BaseNode(level
 	for(uint i = 0; i < pnt->nodes0.size(); ++i) //HACK: prevent double listing caused by multiple inheritance
 		if(pnt->nodes0[i] == this)
 			return;
-	//TODO: fix: in case of multiple inheritance (several different BaseValueNode types), do not add multiple instances of the same node
     result = r; //set the default value for every thread
     pnt->nodes0.push_back(this);
 }
@@ -211,6 +210,8 @@ void VectorMath::Evaluate(const void *pp){
 	case 'X':
 		r = float4::cross(a,b);
 		break;
+	default:
+		r = float4::zero();
 	}
 	this->result.local().value[0] = dfloat3(r);
 }
@@ -242,18 +243,6 @@ void VectorInput::Evaluate(const void *pp){
 		dynamic_cast<BaseValueNode<float>*>(this->pnodes[2])->BaseValueNode<float>::result.local().value[this->indices[2]]);
 }
 
-/*FbmNoise::FbmNoise(uint _level, NodeTree *pnt) : BaseValueNode(_level,pnt){
-	//
-}
-
-SalarFbmNoise::~FbmNoise(){
-	//
-}
-
-void SalarFbmNoise::Evaluate(const void *){
-	result = 0.0f; //fBm::noise
-}*/
-
 IFbmNoise::IFbmNoise(uint _level, NodeTree *pnt) : BaseValueNode<float>(_level,pnt), BaseValueNode<dfloat3>(_level,pnt), BaseNode(_level,pnt){
 	//
 }
@@ -268,7 +257,6 @@ void IFbmNoise::Evaluate(const void *pp){
 
 BaseFogNode::BaseFogNode(uint level, NodeTree *pnt) : BaseNode(level,pnt){
     //DebugPrintf(">> BaseSurfaceNode(level)\n");
-    //nodes.push_back(this);
     pnt->nodes1.push_back(this);
 }
 
@@ -279,17 +267,6 @@ BaseFogNode::~BaseFogNode(){
 void BaseFogNode::Evaluate(const void *pp){
     //
 }
-
-/*void BaseFogNode::SortNodes(){
-    std::sort(nodes.begin(),nodes.end(),[&](BaseFogNode *pa, BaseFogNode *pb)->bool{
-        return pa->level > pb->level;
-    });
-}
-
-void BaseFogNode::EvaluateAll(const void *pp, uint max){
-    for(uint i = 0; i < nodes.size() && nodes[i]->level > max; ++i)
-        nodes[i]->Evaluate(pp);
-}*/
 
 BaseSurfaceNode::BaseSurfaceNode(uint level, NodeTree *pnt) : BaseNode(level,pnt){
     //DebugPrintf(">> BaseSurfaceNode(level)\n");
@@ -352,14 +329,13 @@ void SceneInfo::Evaluate(const void *pp){
 	dfloat3 dposw = pnode->locr(indices[INPUT_POSITION]);
 
 	BaseValueResult<float> &rs = this->BaseValueNode<float>::result.local();
-	rs.value[OUTPUT_FLOAT_DISTANCE] = pd->SampleGlobalDistance(dposw); //TODO: check if output is used (omask)
+	rs.value[OUTPUT_FLOAT_DISTANCE] = pd->SampleGlobalDistance(dposw);
 	rs.value[OUTPUT_FLOAT_DENSITY] = pd->SampleGlobalDensity(dposw);
 	rs.value[OUTPUT_FLOAT_FINAL] = rs.value[OUTPUT_FLOAT_DISTANCE] > 0.0f?rs.value[OUTPUT_FLOAT_DENSITY]:1.0f;
 }
 
 ISurfaceInput::ISurfaceInput(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt){
     //
-    //DebugPrintf(">> ISurfaceInput()\n");
 }
 
 ISurfaceInput::~ISurfaceInput(){
@@ -373,6 +349,14 @@ IParticleInput::IParticleInput(uint _level, NodeTree *pnt) : BaseFogNode(_level,
 IParticleInput::~IParticleInput(){
 	//
 }
+
+/*IFieldInput::IFieldInput(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseVectorFieldNode(_level,pnt), BaseNode(_level,pnt){
+	//
+}
+
+IFieldInput::~IFieldInput(){
+	//
+}*/
 
 ISmokeCache::ISmokeCache(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt){
 	//
