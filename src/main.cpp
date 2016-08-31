@@ -277,9 +277,16 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
                     PyGetFloat(pvco,"x"),
                     PyGetFloat(pvco,"y"),
                     PyGetFloat(pvco,"z"),1.0f);
-                pprs->vl.push_back(dfloat3(co)); //already in world-space
+                pprs->pl.push_back(dfloat3(co)); //already in world-space
+				Py_DECREF(pvco);
 
-                Py_DECREF(pvco);
+				PyObject *pvvl = PyObject_GetAttrString(pni,"velocity");
+                float4 vl = float4(
+                    PyGetFloat(pvvl,"x"),
+                    PyGetFloat(pvvl,"y"),
+                    PyGetFloat(pvvl,"z"),1.0f);
+                pprs->vl.push_back(dfloat3(vl));
+				Py_DECREF(pvvl);
             }
             Py_DECREF(ppi);
             Py_DECREF(ppr);

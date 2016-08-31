@@ -70,7 +70,8 @@ public:
     ParticleSystem(Node::NodeTree *);
     ~ParticleSystem();
     static void DeleteAll();
-    std::vector<dfloat3> vl;
+    std::vector<dfloat3> pl; //position
+	std::vector<dfloat3> vl; //velocity
     static std::vector<ParticleSystem *> prss;
 };
 

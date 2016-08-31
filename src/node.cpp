@@ -350,13 +350,13 @@ IParticleInput::~IParticleInput(){
 	//
 }
 
-/*IFieldInput::IFieldInput(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseVectorFieldNode(_level,pnt), BaseNode(_level,pnt){
+IFieldInput::IFieldInput(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseVectorFieldNode(_level,pnt), BaseNode(_level,pnt){
 	//
 }
 
 IFieldInput::~IFieldInput(){
 	//
-}*/
+}
 
 ISmokeCache::ISmokeCache(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseNode(_level,pnt){
 	//
@@ -515,6 +515,8 @@ BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, No
         return ISurfaceInput::Create(level,pnt);
 	}else if(strcmp(pname,"ClNodeParticleInput") == 0){
 		return IParticleInput::Create(level,pnt);
+	}else if(strcmp(pname,"ClNodeFieldInput") == 0){
+		return IFieldInput::Create(level,pnt);
 	}else if(strcmp(pname,"ClNodeSmokeCache") == 0){
 		return ISmokeCache::Create(level,pnt);
 	}else if(strcmp(pname,"ClNodeFogPostInput") == 0){

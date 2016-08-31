@@ -59,16 +59,16 @@ public:
 	//ParticleInputList(openvdb::Real rscale1 = 1.0f, openvdb::Real vscale1 = 1.0f) : rscale(rscale1), vscale(vscale1){}
 
 	size_t size() const{
-		return pps->vl.size();
+		return pps->pl.size();
 	}
 
 	void getPos(size_t x, PosType &p) const{
-		dfloat3 &t = pps->vl[x];
+		dfloat3 &t = pps->pl[x];
 		p = openvdb::Vec3R(t.x,t.y,t.z);
 	}
 
 	void getPosRad(size_t x, PosType &p, openvdb::Real &r) const{
-		dfloat3 &t = pps->vl[x];
+		dfloat3 &t = pps->pl[x];
 		p = openvdb::Vec3R(t.x,t.y,t.z);
 		r = rscale;
 	}
@@ -114,7 +114,7 @@ void ParticleInput::Evaluate(const void *pp){
 
 	ParticleInputList pl(pps,size);
 
-	DebugPrintf("> Rasterizing particles...\n");
+	DebugPrintf("> Rasterizing particle spheres...\n");
 	openvdb::tools::ParticlesToLevelSet<openvdb::FloatGrid> lsf(*pdgrid);
 	lsf.setGrainSize(1);
 	lsf.rasterizeSpheres(pl);
@@ -124,66 +124,126 @@ void ParticleInput::Evaluate(const void *pp){
 	openvdb::tools::sdfToFogVolume(*pdgrid);
 
 	pdgrid->tree().voxelizeActiveTiles(true); //voxelize the interior so that futher processing works
-
-#if 0
-	BaseValueNode<float> *prasres = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_RASTERIZATIONRES]);
-	BaseValueNode<float> *pweight = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_WEIGHT]);
-
-	dfloat3 zr(0.0f);
-	ValueNodeParams np(&zr,&zr,0.0f,0.0f);
-	pntree->EvaluateNodes0(&np,level+1,emask);
-
-	openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
-	pdgrid->setTransform(pgridtr);
-
-	openvdb::FloatGrid::Ptr ptgrid;
-	if(pgridtr->voxelSize().x() < prasres->locr(indices[INPUT_RASTERIZATIONRES])){
-		openvdb::math::Transform::Ptr pgridtr1 = openvdb::math::Transform::createLinearTransform(prasres->locr(indices[INPUT_RASTERIZATIONRES]));
-		ptgrid = openvdb::FloatGrid::create();
-        ptgrid->setGridClass(openvdb::GRID_FOG_VOLUME);
-		ptgrid->setTransform(pgridtr1);
-	}else ptgrid = pdgrid;
-
-	DebugPrintf("> Rasterizing particles...\n");
-
-	openvdb::FloatGrid::Accessor grida = ptgrid->getAccessor();
-	for(uint i = 0; i < pps->vl.size(); ++i){
-		//pntree->EvaluateNodes0(0,level+1,emask);
-		openvdb::Vec3s posw(pps->vl[i].x,pps->vl[i].y,pps->vl[i].z);
-		openvdb::Vec3s c = ptgrid->transform().worldToIndex(posw); //assume cell-centered indices
-		openvdb::Vec3f f = openvdb::Vec3f(floorf(c.x()-0.5f),floorf(c.y()-0.5f),floorf(c.z()-0.5f));
-		openvdb::Vec3f b = c-f;
-		openvdb::Vec3f B = openvdb::Vec3f(1.0f)-b;
-
-		ValueNodeParams np1((dfloat3*)posw.asPointer(),&zr,0.0f,0.0f);
-		pntree->EvaluateNodes0(&np1,level+1,emask);
-
-		openvdb::Coord q((int)f.x(),(int)f.y(),(int)f.z());
-		grida.modifyValue(q.offsetBy(0,0,0),[&](float &v){v += pweight->locr(indices[INPUT_WEIGHT])*B.x()*B.y()*B.z();});
-		grida.modifyValue(q.offsetBy(1,0,0),[&](float &v){v += pweight->locr(indices[INPUT_WEIGHT])*b.x()*B.y()*B.z();});
-		grida.modifyValue(q.offsetBy(0,1,0),[&](float &v){v += pweight->locr(indices[INPUT_WEIGHT])*B.x()*b.y()*B.z();});
-		grida.modifyValue(q.offsetBy(1,1,0),[&](float &v){v += pweight->locr(indices[INPUT_WEIGHT])*b.x()*b.y()*B.z();});
-		grida.modifyValue(q.offsetBy(0,0,1),[&](float &v){v += pweight->locr(indices[INPUT_WEIGHT])*B.x()*B.y()*b.z();});
-		grida.modifyValue(q.offsetBy(1,0,1),[&](float &v){v += pweight->locr(indices[INPUT_WEIGHT])*b.x()*B.y()*b.z();});
-		grida.modifyValue(q.offsetBy(0,1,1),[&](float &v){v += pweight->locr(indices[INPUT_WEIGHT])*B.x()*b.y()*b.z();});
-		grida.modifyValue(q.offsetBy(1,1,1),[&](float &v){v += pweight->locr(indices[INPUT_WEIGHT])*b.x()*b.y()*b.z();});
-
-		//Velocity: weighted average? Would have to keep a temporary grid for the denominator
-	}
-
-	if(pgridtr->voxelSize().x() < prasres->locr(indices[IParticleInput::INPUT_RASTERIZATIONRES])){
-		DebugPrintf("> Upsampling particle fog...\n");
-		openvdb::tools::resampleToMatch<openvdb::tools::BoxSampler>(*ptgrid,*pdgrid);
-	}else DebugPrintf("Used native grid resolution for particle rasterization.\n");
-
-	//advection: trace voxel if density < threshold
-
-	pdgrid->tree().prune();
-#endif
 }
 
 IParticleInput * IParticleInput::Create(uint level, NodeTree *pnt){
 	return new ParticleInput(level,pnt);
+}
+
+FieldInput::FieldInput(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), BaseVectorFieldNode(_level,pnt), BaseVectorFieldNode1(_level,pnt), BaseNode(_level,pnt), IFieldInput(_level,pnt){
+    //
+}
+
+FieldInput::~FieldInput(){
+    //
+}
+
+void FieldInput::Evaluate(const void *pp){
+	InputNodeParams *pd = (InputNodeParams*)pp;
+	SceneData::ParticleSystem *pps = dynamic_cast<SceneData::ParticleSystem*>(std::get<INP_OBJECT>(*pd));
+	if(!pps)
+		return;
+
+	BaseValueNode<float> *prasres = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_RASTERIZATIONRES]);
+	BaseValueNode<float> *pweight = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_WEIGHT]);
+
+	dfloat3 zr(0.0f);
+	const FloatGridBoxSampler *psamplers[] = {std::get<INP_SDFSAMPLER>(*pd),std::get<INP_FOGSAMPLER>(*pd)};
+	ValueNodeParams np(&zr,&zr,0.0f,0.0f,psamplers);
+	pntree->EvaluateNodes0(&np,level+1,emask);
+
+	openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
+	pdgrid->setTransform(pgridtr);
+	pvgrid->setTransform(pgridtr);
+
+	openvdb::FloatGrid::Ptr ptgridd;
+	openvdb::Vec3SGrid::Ptr ptgridv;
+	//openvdb::FloatGrid::Ptr pvdenom; //denomiator for the weighted vector average
+	if(pgridtr->voxelSize().x() < prasres->locr(indices[INPUT_RASTERIZATIONRES])){ //TODO: const expression
+		openvdb::math::Transform::Ptr pgridtr1 = openvdb::math::Transform::createLinearTransform(prasres->locr(indices[INPUT_RASTERIZATIONRES]));
+
+		ptgridd = openvdb::FloatGrid::create();
+	    ptgridd->setGridClass(openvdb::GRID_FOG_VOLUME);
+		ptgridd->setTransform(pgridtr1);
+
+		ptgridv = openvdb::Vec3SGrid::create();
+		ptgridv->setGridClass(openvdb::GRID_FOG_VOLUME);
+		ptgridv->setTransform(pgridtr1);
+
+	}else{
+		ptgridd = pdgrid;
+		ptgridv = pvgrid;
+	}
+
+	DebugPrintf("> Rasterizing particle fields...\n");
+
+	//TODO: multithreading maybe
+	openvdb::FloatGrid::Accessor dgrida = ptgridd->getAccessor();
+	openvdb::Vec3SGrid::Accessor vgrida = ptgridv->getAccessor();
+	//openvdb::FloatGrid::Accessor mgrida = pvdenom->getAccessor();
+	for(uint i = 0; i < pps->pl.size(); ++i){
+		//pntree->EvaluateNodes0(0,level+1,emask);
+		openvdb::Vec3s posw(pps->pl[i].x,pps->pl[i].y,pps->pl[i].z);
+		openvdb::Vec3s c = ptgridd->transform().worldToIndex(posw); //assume cell-centered indices
+		openvdb::Vec3f f = openvdb::Vec3f(floorf(c.x()-0.5f),floorf(c.y()-0.5f),floorf(c.z()-0.5f));
+		openvdb::Vec3f b = c-f;
+		openvdb::Vec3f B = openvdb::Vec3f(1.0f)-b;
+
+		ValueNodeParams np1((dfloat3*)posw.asPointer(),&zr,0.0f,0.0f,psamplers);
+		pntree->EvaluateNodes0(&np1,level+1,emask);
+
+		openvdb::Coord q((int)f.x(),(int)f.y(),(int)f.z());
+
+		{
+			dgrida.modifyValue(q.offsetBy(0,0,0),[&](float &v){v += pweight->locr(indices[INPUT_WEIGHT])*B.x()*B.y()*B.z();});
+			dgrida.modifyValue(q.offsetBy(1,0,0),[&](float &v){v += pweight->locr(indices[INPUT_WEIGHT])*b.x()*B.y()*B.z();});
+			dgrida.modifyValue(q.offsetBy(0,1,0),[&](float &v){v += pweight->locr(indices[INPUT_WEIGHT])*B.x()*b.y()*B.z();});
+			dgrida.modifyValue(q.offsetBy(1,1,0),[&](float &v){v += pweight->locr(indices[INPUT_WEIGHT])*b.x()*b.y()*B.z();});
+			dgrida.modifyValue(q.offsetBy(0,0,1),[&](float &v){v += pweight->locr(indices[INPUT_WEIGHT])*B.x()*B.y()*b.z();});
+			dgrida.modifyValue(q.offsetBy(1,0,1),[&](float &v){v += pweight->locr(indices[INPUT_WEIGHT])*b.x()*B.y()*b.z();});
+			dgrida.modifyValue(q.offsetBy(0,1,1),[&](float &v){v += pweight->locr(indices[INPUT_WEIGHT])*B.x()*b.y()*b.z();});
+			dgrida.modifyValue(q.offsetBy(1,1,1),[&](float &v){v += pweight->locr(indices[INPUT_WEIGHT])*b.x()*b.y()*b.z();});
+		}
+
+		if(omask & 0x2){
+			openvdb::Vec3s velw(pps->vl[i].x,pps->vl[i].y,pps->vl[i].z);
+			vgrida.modifyValue(q.offsetBy(0,0,0),[&](openvdb::Vec3s &v){v += velw*B.x()*B.y()*B.z();});
+			vgrida.modifyValue(q.offsetBy(1,0,0),[&](openvdb::Vec3s &v){v += velw*b.x()*B.y()*B.z();});
+			vgrida.modifyValue(q.offsetBy(0,1,0),[&](openvdb::Vec3s &v){v += velw*B.x()*b.y()*B.z();});
+			vgrida.modifyValue(q.offsetBy(1,1,0),[&](openvdb::Vec3s &v){v += velw*b.x()*b.y()*B.z();});
+			vgrida.modifyValue(q.offsetBy(0,0,1),[&](openvdb::Vec3s &v){v += velw*B.x()*B.y()*b.z();});
+			vgrida.modifyValue(q.offsetBy(1,0,1),[&](openvdb::Vec3s &v){v += velw*b.x()*B.y()*b.z();});
+			vgrida.modifyValue(q.offsetBy(0,1,1),[&](openvdb::Vec3s &v){v += velw*B.x()*b.y()*b.z();});
+			vgrida.modifyValue(q.offsetBy(1,1,1),[&](openvdb::Vec3s &v){v += velw*b.x()*b.y()*b.z();});
+		}
+	}
+
+	//Normalize the vgrid by dgrid (weighted average). This needs to be done manually as openvdb composition methods accept only identical grids.
+	if(omask & 0x2){
+		for(openvdb::Vec3SGrid::ValueOnIter m = ptgridv->beginValueOn(); m.test(); ++m){
+			float w = dgrida.getValue(m.getCoord())/pweight->locr(indices[INPUT_WEIGHT]);
+			m.setValue(*m/w);
+		}
+	}
+
+	if(pgridtr->voxelSize().x() < prasres->locr(indices[INPUT_RASTERIZATIONRES])){
+		DebugPrintf("> Upsampling particle fog...\n");
+		if(omask & 0x1)
+			openvdb::tools::resampleToMatch<openvdb::tools::BoxSampler>(*ptgridd,*pdgrid);
+		if(omask & 0x2)
+			openvdb::tools::resampleToMatch<openvdb::tools::BoxSampler>(*ptgridv,*pvgrid);
+	}else DebugPrintf("Used native grid resolution for particle rasterization.\n");
+
+	//advection: trace voxel if density < threshold
+
+	if(omask & 0x1)
+		pdgrid->tree().prune();
+	if(omask & 0x2)
+		pvgrid->tree().prune();
+}
+
+IFieldInput * IFieldInput::Create(uint level, NodeTree *pnt){
+	return new FieldInput(level,pnt);
 }
 
 SmokeCache::SmokeCache(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), BaseNode(_level,pnt), ISmokeCache(_level,pnt){
@@ -207,6 +267,7 @@ void SmokeCache::Evaluate(const void *pp){
 	try{
 		vdbc.open(false);
 		openvdb::FloatGrid::Ptr ptgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(vdbc.readGrid("density"));
+		//TODO: read also velocity field
 		vdbc.close();
 
 		DebugPrintf("Read OpenVDB smoke cache: %s\n",ptgrid->getName().c_str());
@@ -416,7 +477,7 @@ void VectorFieldSampler::Evaluate(const void *pp){
 	BaseVectorFieldNode1 *pfieldn = dynamic_cast<BaseVectorFieldNode1*>(pnodes[INPUT_FIELD]);
 	BaseValueNode<dfloat3> *pnode = dynamic_cast<BaseValueNode<dfloat3>*>(pnodes[INPUT_POSITION]);
 
-	openvdb::tools::GridSampler<openvdb::Vec3SGrid, openvdb::tools::BoxSampler> sampler1(*pfieldn->pvgrid);
+	openvdb::tools::GridSampler<openvdb::Vec3SGrid, openvdb::tools::BoxSampler> sampler1(*pfieldn->pvgrid); //can't recreate the sampler every iteration?
 	dfloat3 dposw = pnode->locr(indices[INPUT_POSITION]);
 
 	openvdb::Vec3s v = sampler1.wsSample(*(openvdb::Vec3s*)&dposw);

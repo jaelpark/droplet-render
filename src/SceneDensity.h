@@ -37,6 +37,13 @@ public:
     void Evaluate(const void *);
 };
 
+class FieldInput : public BaseFogNode1, public BaseVectorFieldNode1, public IFieldInput{
+public:
+	FieldInput(uint, NodeTree *);
+	~FieldInput();
+	void Evaluate(const void *);
+};
+
 class SmokeCache : public BaseFogNode1, public ISmokeCache{
 public:
 	SmokeCache(uint, NodeTree *);

@@ -41,8 +41,8 @@ public:
     BaseNode *pnodes[12];
     NodeTree *pntree; //can be null
 	uint indices[12]; //index to the input node (pnodes[x]) output socket, per-socket-type basis
-	uint imask; //input mask - a bitmask to indicate if any input nodes are connected (not using default base node)
-    uint omask; //output mask to help optimize storage in some cases
+	uint imask; //input mask - a bitmask to indicate if any (real) input nodes are connected (not using default automatic base node)
+    uint omask; //output mask to help optimize storage and performance in some cases
     uint emask; //ouput root node branch mask (e.g. 0x1 if required for the 1st input, 0x2 for the second, 0x1|0x2 for both, etc.)
     uint level;
 };
@@ -265,7 +265,7 @@ public:
 	};
 };
 
-/*class IFieldInput : public virtual BaseFogNode, public virtual BaseVectorFieldNode{
+class IFieldInput : public virtual BaseFogNode, public virtual BaseVectorFieldNode{
 protected:
 	IFieldInput(uint, NodeTree *);
 	~IFieldInput();
@@ -282,7 +282,7 @@ public:
 	enum OUTPUT_VECTORFIELD{
 		OUTPUT_VECTORFIELD_VELOCITY
 	};
-};*/
+};
 
 class ISmokeCache : public virtual BaseFogNode{
 protected:
