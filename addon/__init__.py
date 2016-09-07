@@ -140,6 +140,7 @@ def register():
 
 	bpy.types.Object.droplet = PointerProperty(type=panel.ClObjectProperties);
 	#bpy.types.ParticleSystem.droplet = PointerProperty(type=panel.ClParticleSystemProperties);
+	bpy.types.ParticleSettings.droplet = PointerProperty(type=panel.ClParticleSystemProperties);
 	bpy.types.Lamp.droplet = PointerProperty(type=panel.ClLampProperties);
 
 	nodeitems_utils.register_node_categories("BLCLOUD_CATEGORIES",node.categories);

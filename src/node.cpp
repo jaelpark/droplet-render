@@ -419,7 +419,8 @@ void OutputNode::Evaluate(const void *pp){
     //never used, output node won't be listed anywhere
 }
 
-NodeTree::NodeTree(){
+NodeTree::NodeTree(const char *pn){
+	strcpy(name,pn);
     ntrees.push_back(this);
 }
 

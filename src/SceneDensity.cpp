@@ -433,8 +433,11 @@ void Advection::Evaluate(const void *pp){
 				//TODO: do actual integration instead of sampling the last value?
 				if(p > th && flags & 1<<BOOL_BREAK_ITERATION)
 					break;
-				dfloat3 v = pvn->locr(indices[INPUT_VELOCITY]);
-				rc += s*float4::load(&v);
+				dfloat3 vs = pvn->locr(indices[INPUT_VELOCITY]);
+				float4 v = float4::load(&vs);
+				if(float4::dot3(v,v).get<0>() < 1e-5f)
+					break;
+				rc += s*v;//float4::load(&v);
 				//
 				//all the other inputs except the vector is evaluated only per-voxel
 				//TODO: advection data to info node (current iteration, distance etc)?

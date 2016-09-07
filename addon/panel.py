@@ -209,9 +209,8 @@ class ClParticleSystemPanel(bpy.types.Panel):
 
 	def draw(self, context):
 		#self.layout.row().prop(context.particle_system.droplet,"nodetree");
-		#context.particle_system.droplet.draw(context,self.layout);
+		context.particle_system.settings.droplet.draw(context,self.layout);
 		#context.particle_system.droplet[1]['type'].draw(context,self.layout); #wtf is this tuple nonsense
-		pass
 
 class ClLampProperties(bpy.types.PropertyGroup):
 	intensity = FloatProperty(name="Intensity",default=50.0,min=0.0);

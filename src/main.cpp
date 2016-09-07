@@ -183,20 +183,15 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
             return pbn;
         };
 
-        PyObject *proot = PyObject_CallMethod(pns1,"get","(s)","Surface Output");
-        /*PyObject *prins = PyObject_CallMethod(PyObject_GetAttrString(pdata,"inputs"),"values","");
-        PyList_GetItem(prins,Node::OutputNode::INPUT_SURFACE);*/
+		PyObject *pno = PyObject_GetAttrString(pnt1,"name");
+        Node::NodeTree *pntree = new Node::NodeTree(PyUnicode_AsUTF8(pno));
+		Py_DECREF(pno);
 
-        Node::NodeTree *pntree = new Node::NodeTree();
+		PyObject *proot = PyObject_CallMethod(pns1,"get","(s)","Surface Output");
         ntree(proot,0,pntree);
 
         pntree->SortNodes();
         pntree->ApplyBranchMask();
-
-        //coordinate node:
-        //outputs: vector
-        //-node0-group
-        //-internal node1 loop coordinate is given as a parameter to level-0 evaluation
 
         Py_hash_t h = PyObject_Hash(pnt1);
         ntm.insert(std::pair<Py_hash_t, Node::NodeTree *>(h,pntree));
@@ -244,10 +239,9 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 			}
 			Py_DECREF(pmto);
 
+			//TODO: node tree selection
 			std::unordered_map<Py_hash_t, Node::NodeTree *>::const_iterator m = ntm.begin();
             SceneData::SmokeCache *pprs = new SceneData::SmokeCache(m->second);
-			//TODO: get the params somehow
-			//
 		}
 		Py_DECREF(pmfs);
 
@@ -256,10 +250,21 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
         PyObject *ppsl = PyObject_CallMethod(ppro,"values","");
         uint prc = PyList_Size(ppsl);
         for(uint j = 0; j < prc; ++j){
-			std::unordered_map<Py_hash_t, Node::NodeTree *>::const_iterator m = ntm.begin();
-            SceneData::ParticleSystem *pprs = new SceneData::ParticleSystem(m->second); //TODO: reserve() the vector size
-
             PyObject *pps = PyList_GetItem(ppsl,j);
+			PyObject *pst = PyObject_GetAttrString(pps,"settings"); //settings.droplet?
+			PyObject *psd = PyObject_GetAttrString(pst,"droplet");
+			PyObject *ppn = PyObject_GetAttrString(psd,"nodetree");
+			const char *pname = PyUnicode_AsUTF8(ppn);
+
+			std::unordered_map<Py_hash_t, Node::NodeTree *>::const_iterator m = std::find_if(ntm.begin(),ntm.end(),[=](const std::unordered_map<Py_hash_t, Node::NodeTree *>::value_type &t)->bool{
+				return strcmp(t.second->name,pname) == 0;
+			}); //always assume that a node tree is found
+            SceneData::ParticleSystem *pprs = new SceneData::ParticleSystem(m->second); //TODO: reserve() the particle vector size
+
+			Py_DECREF(ppn);
+			Py_DECREF(psd);
+			Py_DECREF(pst);
+
 			//TODO: Get visibility status. There's some weird modifier class for this.
             PyObject *ppr = PyObject_GetAttrString(pps,"particles");
             PyObject *ppi = PyObject_GetIter(ppr);
@@ -318,9 +323,9 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
             Py_DECREF(pquat);
 
             PyObject *pdata = PyObject_GetAttrString(pobj,"data");
-            PyObject *pdrop = PyObject_GetAttrString(pdata,"droplet");
-            PyObject *pcolor = PyObject_GetAttrString(pdrop,"color");
-            float intensity = PyGetFloat(pdrop,"intensity");
+            PyObject *psd = PyObject_GetAttrString(pdata,"droplet");
+            PyObject *pcolor = PyObject_GetAttrString(psd,"color");
+            float intensity = PyGetFloat(psd,"intensity");
 
 			Light light;
             light.direction = dfloat3(-d);
@@ -328,18 +333,27 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
                 PyGetFloat(pcolor,"r"),
                 PyGetFloat(pcolor,"g"),
                 PyGetFloat(pcolor,"b"));
-            light.angle = PyGetFloat(pdrop,"angle");//0.7f; //0.98
+            light.angle = PyGetFloat(psd,"angle");//0.7f; //0.98
 
             Py_DECREF(pcolor);
-            Py_DECREF(pdrop);
+            Py_DECREF(psd);
             Py_DECREF(pdata);
 
 			lights.push_back(light);
 		}
 
         else if(strcasecmp(ptype1,"MESH") == 0){
-	        std::unordered_map<Py_hash_t, Node::NodeTree *>::const_iterator m = ntm.begin();
-	        SceneData::Surface *psobj = new SceneData::Surface(m->second);
+			PyObject *psd = PyObject_GetAttrString(pobj,"droplet");
+			PyObject *ppn = PyObject_GetAttrString(psd,"nodetree");
+			const char *pname = PyUnicode_AsUTF8(ppn);
+
+			std::unordered_map<Py_hash_t, Node::NodeTree *>::const_iterator m = std::find_if(ntm.begin(),ntm.end(),[=](const std::unordered_map<Py_hash_t, Node::NodeTree *>::value_type &t)->bool{
+				return strcmp(t.second->name,pname) == 0;
+			});
+            SceneData::Surface *psobj = new SceneData::Surface(m->second); //TODO: reserve() the vector size
+
+			Py_DECREF(ppn);
+			Py_DECREF(psd);
 
 	        XMMATRIX wm;
 			PyObject *pwm = PyObject_GetAttrString(pobj,"matrix_world");

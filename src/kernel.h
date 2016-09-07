@@ -14,15 +14,6 @@ class ParallelLeafList{
 public:
 	ParallelLeafList(){}
 	~ParallelLeafList(){}
-    /*inline uint GetMaxSize(uint r) const{
-		uint s = 0;
-		for(uint i = 0; i < BLCLOUD_VSIZE; ++i){
-			uint n = ls[r][i].size();
-			if(n > s)
-				s = n;
-		}
-		return s;
-    }*/
 
 	inline uint GetLeafCount(uint r, uint v) const{
 		return ls[r][v].size();
@@ -43,7 +34,6 @@ public:
     void Render(uint, uint, uint);
 	void Destroy();
 	//
-    //XMFLOAT4A *phb; //host buffer
     dfloat4 *phb; //host buffer
     const Scene *pscene;
 	struct ArHosekSkyModelState *pskyms;

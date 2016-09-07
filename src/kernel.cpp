@@ -423,7 +423,6 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
             qm = sfloat1::And(qm,rm);
 			qm = sfloat1::And(qm,sint1::Less(sint1(i),sint1::load(&leafcount)));
-            //if(sfloat1::AllTrue(sfloat1::EqualR(qm,zr)))
 			if(qm.AllFalse())
 				break;
 

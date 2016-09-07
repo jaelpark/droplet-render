@@ -1,8 +1,6 @@
 #ifndef NODE_H
 #define NODE_H
 
-//class PyObject;
-
 namespace Node{
 
 /*using ValueNodeParams = std::tuple<dfloat3 *, dfloat3 *, float, float>;
@@ -28,16 +26,11 @@ public:
 class NodeTree;
 
 class BaseNode{
-//protected: //should be protected
-    //BaseNode();
 protected:
     BaseNode(uint, NodeTree *);
-	//BaseNode();
 public:
     virtual ~BaseNode();
-    //virtual void SetConstants(const void *);
     virtual void Evaluate(const void *) = 0;
-    //virtual BaseNode * NewNode(void *, uint) const = 0;
     BaseNode *pnodes[12];
     NodeTree *pntree; //can be null
 	uint indices[12]; //index to the input node (pnodes[x]) output socket, per-socket-type basis
@@ -257,8 +250,6 @@ public:
 	virtual void Evaluate(const void *) = 0;
 	static IParticleInput * Create(uint, NodeTree *);
 	enum INPUT{
-		/*INPUT_RASTERIZATIONRES,
-		INPUT_WEIGHT,*/
 		INPUT_SIZE,
 		INPUT_CUTOFF,
 		INPUT_COUNT
@@ -367,23 +358,10 @@ public:
 	};
 };
 
-//fake proxy nodes to split material output tree into subtrees
-/*class SurfaceOutputNode : public BaseNode{
-public:
-    SurfaceOutputNode(NodeTree *);
-    ~SurfaceOutputNode();
-    void Evaluate(const void *);
-    enum INPUT{
-        INPUT_SURFACE,
-        INPUT_COUNT
-    };
-};*/
-
 class OutputNode : public BaseNode{
 public:
     OutputNode(NodeTree *);
     ~OutputNode();
-    //BaseNode * NewNode(void *, uint) const;
     void Evaluate(const void *);
     enum INPUT{
         //INPUT_SHADER,
@@ -394,41 +372,26 @@ public:
         INPUT_SURFACE,
         INPUT_COUNT,
     };
-    //static OutputNode *proot; //global root node
 };
 
 class NodeTree{
 public:
-    NodeTree();
+    NodeTree(const char *);
     ~NodeTree();
     void EvaluateNodes0(const void *, uint, uint);
     void EvaluateNodes1(const void *, uint, uint);
-    //void ApplyBranchMask(BaseNode *, uint);
     void ApplyBranchMask();
     void SortNodes();
     BaseNode * GetRoot() const;
     static void DeleteAll();
     std::vector<BaseNode *> nodes0; //low
     std::vector<BaseNode *> nodes1; //high
+	char name[256];
     static std::vector<NodeTree *> ntrees;
-    //OutputNode *proot; //hnodes.back()
 };
-
-//Instead of each class holding its own global node vector, one could use this to manage evaluation groups.
-//Pass it to constructor or something.
-/*class NodeEvaluationGroup{
-public:
-    NodeEvaluationGroup();
-    ~NodeEvaluationGroup();
-    //Collect()
-    std::vector<BaseNode *> nodes;
-};*/
 
 BaseNode * CreateNodeByType(const char *, const void *, uint, NodeTree *);
 BaseNode * CreateNodeBySocket(const char *, const void *, uint, NodeTree *);
-//void EvaluateValueGroup(uint);
-//void SortNodes();
-//void DeleteNodes();
 
 }
 
