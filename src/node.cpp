@@ -538,7 +538,11 @@ BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, No
 
 		return IAdvection::Create(level,pnt,flags);
     }else if(strcmp(pname,"ClNodeDisplacement") == 0){
-        return IDisplacement::Create(level,pnt);
+		PyObject *presf = PyObject_GetAttrString((PyObject*)pnode,"resf");
+		float resf = (float)PyFloat_AsDouble(presf);
+		Py_DECREF(presf);
+
+        return IDisplacement::Create(level,pnt,resf);
 	}else if(strcmp(pname,"ClNodeVectorFieldSampler") == 0){
 		return IVectorFieldSampler::Create(level,pnt);
     }else if(strcmp(pname,"ClNodeSurfaceOutput") == 0){

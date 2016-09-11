@@ -335,7 +335,7 @@ protected:
     ~IDisplacement();
 public:
     virtual void Evaluate(const void *) = 0;
-    static IDisplacement * Create(uint, NodeTree *);
+    static IDisplacement * Create(uint, NodeTree *, float);
     enum INPUT{
         INPUT_DISTANCE,
 		INPUT_MAXIMUM,

@@ -41,7 +41,7 @@ BaseFogNode * BaseFogNode::Create(uint level, NodeTree *pnt){
 
 BaseVectorFieldNode1::BaseVectorFieldNode1(uint _level, NodeTree *pnt) : BaseVectorFieldNode(_level,pnt), BaseNode(_level,pnt){
 	pvgrid = openvdb::Vec3SGrid::create();
-	pvgrid->setGridClass(openvdb::GRID_FOG_VOLUME); //this probably doesn't matter here
+	pvgrid->setGridClass(openvdb::GRID_FOG_VOLUME);
 }
 
 BaseVectorFieldNode1::~BaseVectorFieldNode1(){
@@ -89,9 +89,12 @@ ParticleInput::~ParticleInput(){
 
 void ParticleInput::Evaluate(const void *pp){
 	InputNodeParams *pd = (InputNodeParams*)pp;
-	SceneData::ParticleSystem *pps = dynamic_cast<SceneData::ParticleSystem*>(std::get<INP_OBJECT>(*pd));
-	if(!pps)
+	SceneData::BaseObject *pbob = std::get<INP_OBJECT>(*pd);
+	SceneData::ParticleSystem *pps = dynamic_cast<SceneData::ParticleSystem*>(pbob);
+	if(!pps){
+		DebugPrintf("Warning: Invalid use of ParticleInput where %s is expected. Input forced to empty.",typeid(pbob).name());
 		return;
+	}
 
 	BaseValueNode<float> *psizen = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_SIZE]); //should lifetime determine the size?
 	BaseValueNode<float> *pcoffn = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_CUTOFF]);
@@ -140,9 +143,12 @@ FieldInput::~FieldInput(){
 
 void FieldInput::Evaluate(const void *pp){
 	InputNodeParams *pd = (InputNodeParams*)pp;
-	SceneData::ParticleSystem *pps = dynamic_cast<SceneData::ParticleSystem*>(std::get<INP_OBJECT>(*pd));
-	if(!pps)
+	SceneData::BaseObject *pbob = std::get<INP_OBJECT>(*pd);
+	SceneData::ParticleSystem *pps = dynamic_cast<SceneData::ParticleSystem*>(pbob);
+	if(!pps){
+		DebugPrintf("Warning: Invalid use of FieldInput where %s is expected. Input forced to empty.",typeid(pbob).name());
 		return;
+	}
 
 	BaseValueNode<float> *prasres = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_RASTERIZATIONRES]);
 	BaseValueNode<float> *pweight = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_WEIGHT]);
@@ -257,9 +263,12 @@ SmokeCache::~SmokeCache(){
 
 void SmokeCache::Evaluate(const void *pp){
 	InputNodeParams *pd = (InputNodeParams*)pp;
-	SceneData::SmokeCache *psmc = dynamic_cast<SceneData::SmokeCache*>(std::get<INP_OBJECT>(*pd));
-	if(!psmc)
+	SceneData::BaseObject *pbob = std::get<INP_OBJECT>(*pd);
+	SceneData::SmokeCache *psmc = dynamic_cast<SceneData::SmokeCache*>(pbob);
+	if(!psmc){
+		DebugPrintf("Warning: Invalid use of ParticleInput where %s is expected. Input forced to empty.",typeid(pbob).name());
 		return;
+	}
 
 	//openvdb::io::File vdbc = openvdb::io::File("̛/tmp/fog_000142_00.vdb");
 	//openvdb::io::File vdbc("/home/jasper/Asiakirjat/3dcgi/clouds/blendcache_droplet_fluid_sim01/fog_000142_00.vdb");
@@ -298,9 +307,12 @@ FogPostInput::~FogPostInput(){
 
 void FogPostInput::Evaluate(const void *pp){
 	InputNodeParams *pd = (InputNodeParams*)pp;
-	SceneData::PostFog *ppf = dynamic_cast<SceneData::PostFog*>(std::get<INP_OBJECT>(*pd));
-	if(!ppf)
+	SceneData::BaseObject *pbob = std::get<INP_OBJECT>(*pd);
+	SceneData::PostFog *ppf = dynamic_cast<SceneData::PostFog*>(pbob);
+	if(!ppf){
+		DebugPrintf("Warning: Invalid use of PostFog where %s is expected. Input forced to empty.",typeid(pbob).name());
 		return;
+	}
 	pdgrid = ppf->pdgrid;
 }
 
@@ -345,7 +357,7 @@ void Composite::Evaluate(const void *pp){
             const openvdb::FloatGrid::ValueOnIter &m = r.iterator();
 
 			openvdb::Coord c = m.getCoord();
-			openvdb::math::Vec3s posw = pnode->pdgrid->transform().indexToWorld(c);
+			openvdb::math::Vec3s posw = pnode->pdgrid->transform().indexToWorld(c); //should use the same pgridtr as here
 
 			ValueNodeParams np1((dfloat3*)posw.asPointer(),&zr,0.0f,m.getValue(),psamplers);
 			pntree->EvaluateNodes0(&np1,level+1,emask);

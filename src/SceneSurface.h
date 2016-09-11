@@ -24,9 +24,10 @@ public:
 
 class Displacement : public BaseSurfaceNode1, public IDisplacement{
 public:
-    Displacement(uint _level, NodeTree *pnt);
+    Displacement(uint _level, NodeTree *pnt, float);
     ~Displacement();
     void Evaluate(const void *);
+	float resf;
 };
 
 }

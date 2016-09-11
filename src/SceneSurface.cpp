@@ -15,7 +15,6 @@ BaseSurfaceNode1::BaseSurfaceNode1(uint _level, NodeTree *pnt) : BaseSurfaceNode
     //
     pbgrid = openvdb::FloatGrid::create();
     pbgrid->setGridClass(openvdb::GRID_FOG_VOLUME);
-    //transform shouldn't matter here, only index coordinates are used
 }
 
 BaseSurfaceNode1::~BaseSurfaceNode1(){
@@ -43,15 +42,18 @@ SurfaceInput::~SurfaceInput(){
 void SurfaceInput::Evaluate(const void *pp){
     //DebugPrintf("---Surface::Evaluate()\n");
     InputNodeParams *pd = (InputNodeParams*)pp;
-    SceneData::Surface *pobj = dynamic_cast<SceneData::Surface*>(std::get<INP_OBJECT>(*pd));
+	SceneData::BaseObject *pbob = std::get<INP_OBJECT>(*pd);
+    SceneData::Surface *pobj = dynamic_cast<SceneData::Surface*>(pbob);
 
     //clear possible data from previous evaluation
     vl.clear();
     tl.clear();
     ql.clear();
 
-	if(!pobj)
+	if(!pobj){
+		DebugPrintf("Warning: Invalid use of SurfaceInput where %s is expected. Input forced to empty.",typeid(pbob).name());
 		return;
+	}
 
     vl.reserve(pobj->vl.size());
     for(uint i = 0; i < pobj->vl.size(); ++i){
@@ -69,7 +71,7 @@ Node::ISurfaceInput * ISurfaceInput::Create(uint level, NodeTree *pnt){
     return new SurfaceInput(level,pnt);
 }
 
-Displacement::Displacement(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt), BaseSurfaceNode1(_level,pnt), BaseNode(_level,pnt), IDisplacement(_level,pnt){
+Displacement::Displacement(uint _level, NodeTree *pnt, float _resf) : BaseSurfaceNode(_level,pnt), BaseSurfaceNode1(_level,pnt), BaseNode(_level,pnt), IDisplacement(_level,pnt), resf(_resf){
     //
     //DebugPrintf(">> Displacement()\n");
 }
@@ -95,6 +97,12 @@ void Displacement::Evaluate(const void *pp){
     float amp = pmaxn->locr(indices[INPUT_MAXIMUM]);
 
     openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);//openvdb::math::Transform::createLinearTransform(s);
+	if(resf < 1.0f){
+		pgridtr = pgridtr->copy();
+		pgridtr->preScale(1.0f/resf);
+	}
+	pbgrid->setTransform(pgridtr);
+
     openvdb::FloatGrid::Ptr psgrid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,pnode->vl,pnode->tl,pnode->ql,ceilf(amp/pgridtr->voxelSize().x()+lff),lff);
 
     DebugPrintf("Allocated disp. exterior narrow band for amp = %f+%f (%u voxels)\n",amp,pgridtr->voxelSize().x()*lff,(uint)ceilf(amp/pgridtr->voxelSize().x()+lff));
@@ -129,7 +137,7 @@ void Displacement::Evaluate(const void *pp){
     //openvdb::tools::compSum(*psgrid,*std::get<0>(*m));
     openvdb::FloatGrid::Accessor sgrida = psgrid->getAccessor();
     openvdb::FloatGrid::Accessor bgrida = pbgrid->getAccessor();
-    openvdb::FloatGrid::ConstAccessor dgrida0 = pnode->pbgrid->getConstAccessor();
+	FloatGridBoxSampler bsampler(*pnode->pbgrid); //TODO: may use the cached version for the single threaded portion below
     for(tbb::enumerable_thread_specific<FloatGridT>::const_iterator q = tgrida.begin(); q != tgrida.end(); ++q){
         //
         for(openvdb::FloatGrid::ValueOnIter m = std::get<0>(*q)->beginValueOn(); m.test(); ++m){
@@ -138,9 +146,15 @@ void Displacement::Evaluate(const void *pp){
             float d = sgrida.getValue(c);
             float f = m.getValue();
 
-            f *= powf(std::min(dgrida0.getValue(c),1.0f),pbilln->locr(indices[INPUT_BILLOW])); //this is here because of the normalization
-			bgrida.setValue(c,2.0f*f/amp); //bgrida.setValue(c,f/amp);
+            //f *= powf(std::min(dgrida0.getValue(c),1.0f),pbilln->locr(indices[INPUT_BILLOW])); //this is here because of the normalization
+			//bgrida.setValue(c,2.0f*f/amp); //bgrida.setValue(c,f/amp);
+			float b = pbilln->locr(indices[INPUT_BILLOW]);
+			if(b > 0.0f){
+				openvdb::math::Vec3s posw = pgridtr->indexToWorld(c);
+				f *= powf(std::min(bsampler.wsSample(posw),1.0f),b);
+			}
 
+			bgrida.setValue(c,2.0f*f/amp);
             sgrida.setValue(c,d-f);
 
             //if(omask & (1<<OUTPUT_GRID))
@@ -153,8 +167,8 @@ void Displacement::Evaluate(const void *pp){
     openvdb::tools::volumeToMesh<openvdb::FloatGrid>(*psgrid,vl,tl,ql,0.0);
 }
 
-Node::IDisplacement * IDisplacement::Create(uint level, NodeTree *pnt){
-    return new Displacement(level,pnt);
+Node::IDisplacement * IDisplacement::Create(uint level, NodeTree *pnt, float resf){
+    return new Displacement(level,pnt,resf);
 }
 
 }

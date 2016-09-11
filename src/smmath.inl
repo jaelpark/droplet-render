@@ -913,7 +913,7 @@ public:
 		__m128i m1 = _mm_set1_epi32(m);
 		__m128i v1 = _mm_set1_epi32(1);
 		__m128i q = _mm_sll_epi32(v1,_mm_set_epi32(3,2,1,0));
-		return _mm_cmpgt_epi32(q,_mm_setzero_si128());
+		return _mm_cmpgt_epi32(_mm_and_si128(m1,q),_mm_setzero_si128());
 	}
 
 	static inline sint1 falseI(){

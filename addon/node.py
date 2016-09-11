@@ -365,6 +365,8 @@ class ClNodeDisplacement(bpy.types.Node):
 
 	#props = PointerProperty(type=ClPropertyDisplacement);
 	#props = PointerProperty(type=ClPropertyEmpty);
+	resf = FloatProperty(name="Res.%",default=1.0,min=0.1,max=1.0,description="Percentage of the resolution (detail size) at which the displacement is performed. Choosing a lower fraction for low frequency displacement details will result in improved construction performance without significant loss of quality (especially for high amplitudes). In future builds choosing the optimal value may be done automatically.");
+	#detail = res/resf
 
 	def init(self, context):
 		self.inputs.new("ClNodeFloatSocket","Distance");
@@ -372,6 +374,12 @@ class ClNodeDisplacement(bpy.types.Node):
 		self.inputs.new("ClNodeFloatSocket","Billow");
 		self.inputs.new("ClNodeSurfaceSocket","Surface");
 		self.outputs.new("ClNodeSurfaceSocket","Surface");
+
+	def draw_buttons(self, context, layout):
+		layout.prop(self,"resf");
+		#s = layout.split();
+		#s.column().row().prop(self,"resf");
+		#s.column().row().label("0.0001");
 
 #^^this alternative is still unoptimal, as all (noise) nodes of the tree would be evaluated (above level+1), even if only was was needed for current displacement node.
 # class ClNodefBmPerlinNoise(bpy.types.Node):

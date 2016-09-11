@@ -2,6 +2,9 @@
 #include "node.h"
 #include "noise.h"
 
+#define USE_SSE2
+#include "sse_mathfun.h"
+
 //http://mrl.nyu.edu/~perlin/noise/
 namespace PerlinNoise{
 
@@ -74,12 +77,39 @@ sfloat1 noise(const sfloat4 &_pos){
 
 }
 
+namespace HashNoise{
+
+sfloat1 hash(sfloat1 n){
+	sfloat1 t = sin_ps(n)*43758.5453f;
+	return t-sfloat1::floor(t);
+}
+
+sfloat1 noise(const sfloat4 &_pos){
+	sfloat4 F = sfloat4::floor(_pos);
+    sfloat4 pos = _pos-F; //frac
+
+	sfloat4 fad = pos*pos*(sfloat4(sfloat1(3.0f))-sfloat4(sfloat1(2.0f))*pos);
+	sfloat1 n = F.v[0]+57.0f*F.v[1]+113.0f*F.v[2];
+	return sfloat1::lerp(
+		sfloat1::lerp(sfloat1::lerp(hash(n),
+	                                 hash(n+sfloat1(1.0f)),fad.v[0]),
+	                   sfloat1::lerp(hash(n+sfloat1(57.0f)),
+	                                 hash(n+sfloat1(58.0f)),fad.v[0]),fad.v[1]),
+	    sfloat1::lerp(sfloat1::lerp(hash(n+sfloat1(113.0f)),
+	                                 hash(n+sfloat1(114.0f)),fad.v[0]),
+	                   sfloat1::lerp(hash(n+sfloat1(170.0f)),
+	                                 hash(n+sfloat1(171.0f)),fad.v[0]),fad.v[1]),fad.v[2]);
+}
+
+}
+
 namespace fBm{
 
 sfloat1 noise(const sfloat4 &_pos, uint octaves, float freq, float amp, float fjump, float gain){
     sfloat1 s = sfloat1::zero();
     for(uint i = 0; i < octaves; ++i){
-        s += PerlinNoise::noise(_pos*freq)*amp;
+		s += PerlinNoise::noise(_pos*freq)*amp;
+        //s += HashNoise::noise(_pos*freq)*amp;
         freq *= fjump;
         amp *= gain;
     }
@@ -120,7 +150,7 @@ void FbmNoise::Evaluate(const void *pp){
 		sfloat1(0.0f),
 		sfloat1(1.0f,0.0f,0.0f,0.0f), //TODO: module the offset somehow
 		sfloat1(0.0f,1.0f,0.0f,0.0f),
-		sfloat1(0.0f,0.0f,1.0f,0.0f));
+		sfloat1(0.0f,0.0f,1.0f,0.0f))*sfloat1(154.7f);
 
 	sfloat1 f = fBm::noise(sposw,poctn->locr(indices[INPUT_OCTAVES]),pfreqn->locr(indices[INPUT_FREQ]),
 		pampn->locr(indices[INPUT_AMP]),pfjumpn->locr(indices[INPUT_FJUMP]),pgainn->locr(indices[INPUT_GAIN]));
