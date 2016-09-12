@@ -183,6 +183,14 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
             return pbn;
         };
 
+		PyObject *pidn = PyObject_GetAttrString(pnt1,"bl_idname"); //TODO: give enum id
+		const char *pn = PyUnicode_AsUTF8(pidn);
+		if(strcmp(pn,"ClNodeTree") != 0){
+			Py_DECREF(pidn);
+			continue;
+		}
+		Py_DECREF(pidn);
+
 		PyObject *pno = PyObject_GetAttrString(pnt1,"name");
         Node::NodeTree *pntree = new Node::NodeTree(PyUnicode_AsUTF8(pno));
 		Py_DECREF(pno);
