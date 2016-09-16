@@ -66,19 +66,19 @@ class ClNodeVectorSocket(bpy.types.NodeSocket):
 	def draw_color(self, context, node):
 		return (0.3,0.3,0.3,1);
 
-class ClNodeShaderSocket(bpy.types.NodeSocket):
-	bl_idname = "ClNodeShaderSocket";
-	bl_label = "Shader socket";
-
-	value = FloatProperty(name="",default=0);
-	type = 'SHADER';
-
-	def draw(self, context, layout, node, x):
-		layout.label(self.name);
-
-	def draw_color(self, context, node):
-		return (0.4,1,0.4,1);
-		#return (0.9,0.9,0.2,1);
+# class ClNodeShaderSocket(bpy.types.NodeSocket):
+# 	bl_idname = "ClNodeShaderSocket";
+# 	bl_label = "Shader socket";
+#
+# 	value = FloatProperty(name="",default=0);
+# 	type = 'SHADER';
+#
+# 	def draw(self, context, layout, node, x):
+# 		layout.label(self.name);
+#
+# 	def draw_color(self, context, node):
+# 		return (0.4,1,0.4,1);
+# 		#return (0.9,0.9,0.2,1);
 
 class ClNodeFogSocket(bpy.types.NodeSocket):
 	bl_idname = "ClNodeFogSocket";

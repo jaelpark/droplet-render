@@ -270,7 +270,6 @@ void BaseFogNode::Evaluate(const void *pp){
 
 BaseSurfaceNode::BaseSurfaceNode(uint level, NodeTree *pnt) : BaseNode(level,pnt){
     //DebugPrintf(">> BaseSurfaceNode(level)\n");
-    //nodes.push_back(this);
     pnt->nodes1.push_back(this);
 }
 
@@ -408,7 +407,6 @@ IVectorFieldSampler::~IVectorFieldSampler(){
 
 OutputNode::OutputNode(NodeTree *pnt) : BaseNode(0,pnt){
     pnt->nodes1.push_back(this);
-    //proot = this; //hack
 }
 
 OutputNode::~OutputNode(){
@@ -525,7 +523,6 @@ BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, No
 	}else if(strcmp(pname,"ClNodeComposite") == 0){
 		return IComposite::Create(level,pnt);
 	}else if(strcmp(pname,"ClNodeAdvection") == 0){
-		//TODO: query surface bool
 		uint flags = 0;
 
 		PyObject *pfi = PyObject_GetAttrString((PyObject*)pnode,"break_iter");
@@ -560,10 +557,8 @@ BaseNode * CreateNodeBySocket(const char *pname, const void *pvalue, uint level,
         return new BaseValueNode<int>(v,level,pnt);
 	}else if(strcmp(pname,"ClNodeVectorSocket") == 0)
 		return new BaseValueNode<dfloat3>(dfloat3(0.0f),level,pnt);
-    else if(strcmp(pname,"ClNodeShaderSocket") == 0)
-        return BaseSurfaceNode::Create(level,pnt);//return new BaseSurfaceNode(level);//BaseNode(level);
-    //else if(strcmp(pname,"ClNodeGridSocket") == 0)
-        //return BaseSurfaceNode::Create(level);//return new BaseSurfaceNode(level);
+    //else if(strcmp(pname,"ClNodeShaderSocket") == 0)
+        //return BaseSurfaceNode::Create(level,pnt);//return new BaseSurfaceNode(level);//BaseNode(level);
     else if(strcmp(pname,"ClNodeFogSocket") == 0)
         return BaseFogNode::Create(level,pnt);
     else if(strcmp(pname,"ClNodeSurfaceSocket") == 0)
@@ -586,12 +581,6 @@ template class MinNode<float>;
 template class MaxNode<float>;
 
 template class BaseValueNode<int>;
-//template<> std::vector<BaseValueNode<int> *> BaseValueNode<int>::nodes = std::vector<BaseValueNode<int> *>();
-/*template class AddNode<int>;
-template class SubNode<int>;
-template class MulNode<int>;
-template class DivNode<int>;
-template class PowNode<int>;*/
 
 template class BaseValueNode<dfloat3>;
 

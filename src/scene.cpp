@@ -356,7 +356,6 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
         //dynamic cast to BaseSurfaceNode1 - getting empty
         Node::BaseSurfaceNode1 *pdsn = dynamic_cast<Node::BaseSurfaceNode1*>(SceneData::Surface::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_SURFACE]);
         if(pdsn->vl.size() > 0){
-            //openvdb::FloatGrid::Ptr ptgrid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,pdsn->vl,pdsn->tl,pdsn->ql,lff,lff);
 			openvdb::FloatGrid::Ptr ptgrid = pdsn->ComputeLevelSet(pgridtr,lff);
 
             for(uint j = 0; j < pdsn->vl.size(); ++j){
@@ -676,7 +675,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
             DebugPrintf("Attempt to read VDB-cache failed. Writing to a new one.\n");
             cm = SCENE_CACHE_WRITE;
         }
-		
+
         S_Create(s,lff,pgrid,this);
 		if(pgrid[VOLUME_BUFFER_SDF])
         	pgrid[VOLUME_BUFFER_SDF]->setName("surface-levelset");

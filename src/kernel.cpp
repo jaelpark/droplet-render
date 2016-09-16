@@ -102,7 +102,6 @@ inline sfloat4 mul(const sfloat4 &v, const matrix44 &m){
 	return r;
 }
 
-//inline __device__ __host__ bool IntersectSphere(float3 p, float3 r, float3 sp, float sr, float *ptr0, float *ptr1){
 inline sfloat1 IntersectSphere(const sfloat4 &pp, const sfloat4 &r, const sfloat1 &sp, float sr){
     sfloat4 p = pp-sfloat4(sp);
     sfloat1 b = sfloat4::dot3(r,p);
@@ -201,7 +200,7 @@ static uint OctreeNextNode(const dfloat3 &tm, const duint3 &xyz){
 }
 
 static void OctreeProcessSubtree(const dfloat3 &t0, const dfloat3 &t1, uint a, OctreeStructure *pob, uint n, uint l, std::vector<uint> *pls){
-	//n: node index, l: octree level, h: leaf hit counter
+	//n: node index, l: octree level
 	if(t1.x < 0.0f || t1.y < 0.0f || t1.z < 0.0f || (n == 0 && l > 0))
 		return;
 	//if(level == mlevel){... return;} //leaf, volume index != ~0
@@ -209,7 +208,7 @@ static void OctreeProcessSubtree(const dfloat3 &t0, const dfloat3 &t1, uint a, O
 		pls->push_back(n);
         return; //true: stop
 	}
-	//float3 tm = 0.5f*(t0+t1);
+	//dfloat3 tm = 0.5f*(t0+t1);
     dfloat3 tm = dfloat3(
 		0.5f*(t0.x+t1.x),
 		0.5f*(t0.y+t1.y),
@@ -404,10 +403,13 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
     //sfloat1 msigmas = sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(2.9f);//sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(2.9f);
 	//0.5, 1.2, 1.9
 	sfloat1 msigmas = sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(1.9f);//sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(2.9f);*/
+#if 1
 	sfloat1 msigmaa = sfloat1(pkernel->msigmaa);//sfloat1(0.05f);
 	sfloat1 msigmas = sfloat1(pkernel->msigmas);//sfloat1(7.11f);
-	//sfloat1 msigmaa = sfloat1(2.3f)*expf(-2.0f*(float)r)+sfloat1(0.02f);
-	//sfloat1 msigmas = sfloat1(8.0f)*expf(-2.0f*(float)r)+sfloat1(4.0f);
+#else
+	sfloat1 msigmaa = sfloat1(pkernel->msigmaa)*expf(-2.0f*(float)r)+sfloat1(0.02f);
+	sfloat1 msigmas = sfloat1(pkernel->msigmas)*expf(-2.0f*(float)r)+sfloat1(2.9f);
+#endif
     sfloat1 msigmae = msigmaa+msigmas;
 
     for(uint s = 0; s < samples; ++s){
@@ -551,7 +553,6 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 		//sample E(rc)/T here
 		//T should be the value at rc; T(rc)
 
-        //directional lights (needs better sampling - currently too much variance for small lights)
         sfloat4 lc = sfloat1::zero();
 		sfloat4 ll;
 		//if(!sfloat1::AnyTrue(sfloat1::EqualR(rm,zr))){ //skip (sky)lighting calculations if all incident rays scatter
@@ -612,7 +613,9 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 	            sfloat1 miem = (sfloat1::one()+raym)/sfloat1::pow(sfloat1::one()+caf[8]*caf[8]-sfloat1(2.0f)*caf[8]*gacs,sfloat1(1.5f));
 	            sfloat1 zenh = sfloat1::sqrt(thcs);
 	            ca.v[i] = (sfloat1::one()+caf[0]*exp_ps(caf[1]/(thcs+sfloat1(0.01f))))*(caf[2]+caf[3]*expm+caf[5]*raym+caf[6]*miem+caf[7]*zenh);
-				ca.v[i] *= 0.028f*pkernel->pskyms->radiances[i];
+				//ca.v[i] *= 0.028f*pkernel->pskyms->radiances[i];
+				ca.v[i] *= pkernel->pskyms->radiances[i];
+				ca.v[i] = 0.00035f*sfloat1::pow(ca.v[i],2.2f); //convert to linear and adjust exposure
 			}
 	        ca.v[3] = sfloat1::zero();
 
@@ -631,7 +634,6 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
             //pdfs for the balance heuristic w_x = p_x/sum(p_i,i=0..N)
             sfloat1 p1 = HG_Phase(sfloat4::dot3(srd,rd));
             sfloat1 p2 = L_Pdf(lrd,la);
-            //sfloat1 ps = p1+p2;
 
             //need two samples - with the phase sampling keep on the recursion while for the light do only single scattering
             sfloat1 gm1 = sfloat1::AndNot(rm,sint1::trueI());
@@ -641,24 +643,23 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
             //estimator S(1)*f1*w1/p1+S(2)*f2*w2/p2 /= woodcock pdf
 
+			//TODO: should support additional lights
 			sfloat4 s1 = SampleVolume(rc,srd,gm1,pkernel,prs,ls,r+1,1,&rq);
 			sfloat4 s2 = SampleVolume(rc,lrd,gm1,pkernel,prs,ls,BLCLOUD_MAX_RECURSION-1,1,&rq);
 
-			//(HG_Phase(X)*SampleVolume(X)*p1/(p1+L_Pdf(X)))/p1 = (HG_Phase(X)=p1)*SampleVolume(X)/(p1+L_Pdf(X)) = p1*SampleVolume(X)/(p1+L_Pdf(X))
-			//(HG_Phase(Y)*SampleVolume(Y)*p2/(HG_Phase(Y)+p2))/p2 = HG_phase(Y)*SampleVolume(Y)/(HG_Phase(Y)+p2)
-			sfloat1 p3 = HG_Phase(sfloat4::dot3(lrd,rd));
+			//(HG_Phase(X)*SampleVolume(X)*p1/(p1+L_Pdf(X)))/p1 => (HG_Phase(X)=p1)*SampleVolume(X)/(p1+L_Pdf(X)) = p1*SampleVolume(X)/(p1+L_Pdf(X))
+			//(HG_Phase(Y)*SampleVolume(Y)*p2/(HG_Phase(Y)+p2))/p2 => HG_phase(Y)*SampleVolume(Y)/(HG_Phase(Y)+p2)
+			sfloat1 p3 = HG_Phase(sfloat4::dot3(lrd,rd)); //TODO: try MIE phase? So that ... MIE_Phase(dot(lrd,rd))/(p3+p2)
 			sfloat4 cm = s1*p1/(p1+L_Pdf(srd,la))+s2*p3/(p3+p2);
 			cm *= msigmas/msigmae;
 
 			//s1=HG_Phase(X)*SampleVolume(X)
 			//s1*p1/(p1+L_Pdf(X))
-
-			//if phase pdf SampleVolume didn't recurse further, sample towards light with r = Max
 #else
-			/*sfloat1 rq;
+			sfloat1 rq;
             //phase function sampling
             sfloat4 srd = HG_Sample(rd,prs);
-            sfloat4 cm = SampleVolume(rc,srd,sfloat1::AndNot(rm,sint1::trueI()),pkernel,prs,ls,r+1,1,&rq)*msigmas/msigmae;*/
+            sfloat4 cm = SampleVolume(rc,srd,sfloat1::AndNot(rm,sint1::trueI()),pkernel,prs,ls,r+1,1,&rq)*msigmas/msigmae;
             //phase/pdf(=phase)=1
 
             //light sampling, obviously won't alone result in any sky lighting
@@ -666,28 +667,6 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
             sfloat4 lrd = L_Sample(sfloat1(float4::load(&pkernel->plights[0].direction)),la,prs);
             sfloat4 cm = SampleVolume(rc,lrd,sfloat1::AndNot(rm,sint1::trueI()),pkernel,prs,ls,r+1,1)*HG_Phase(sfloat4::dot3(lrd,rd))*msigmas
                 /(msigmae*L_Pdf(lrd,la));*/
-
-			sfloat1 la = sfloat1(pkernel->plights[0].angle);
-            sfloat4 srd = HG_Sample(rd,prs);
-            sfloat4 lrd = L_Sample(sfloat1(float4::load(&pkernel->plights[0].direction)),la,prs);
-
-			//pdfs for the balance heuristic w_x = p_x/sum(p_i,i=0..N)
-            sfloat1 p1 = HG_Phase(sfloat4::dot3(srd,rd));
-            sfloat1 p2 = L_Pdf(lrd,la);
-
-			sfloat1 gm1 = sfloat1::AndNot(rm,sint1::trueI()), rq1, rq2;
-            sfloat4 s1 = SampleVolume(rc,srd,gm1,pkernel,prs,ls,r+1,1,&rq1);
-			sfloat4 s2 = SampleVolume(rc,lrd,gm1,pkernel,prs,ls,BLCLOUD_MAX_RECURSION-1,1,&rq2);
-			//sfloat4 s2 = !sfloat1::AllTrue(rq1)?SampleVolume(rc,lrd,gm1,pkernel,prs,ls,BLCLOUD_MAX_RECURSION-1,1,&rq2):zr;
-
-			sfloat1 p3 = HG_Phase(sfloat4::dot3(lrd,rd));
-			sfloat4 cf = s1*p1/(p1+L_Pdf(srd,la))+s2*p3/(p3+p2);
-
-			sfloat4 cm;
-			cm.v[0] = sfloat1::Or(sfloat1::And(rq1,s1.v[0]),sfloat1::AndNot(rq1,cf.v[0]));
-			cm.v[1] = sfloat1::Or(sfloat1::And(rq1,s1.v[1]),sfloat1::AndNot(rq1,cf.v[1]));
-			cm.v[2] = sfloat1::Or(sfloat1::And(rq1,s1.v[2]),sfloat1::AndNot(rq1,cf.v[2]));
-			cm *= msigmas/msigmae;
 #endif
 			*prq = sint1::trueI();
             c.v[0] += sfloat1::Or(sfloat1::And(rm,ll.v[0]),sfloat1::AndNot(rm,cm.v[0]));
@@ -713,7 +692,6 @@ static void K_Render(dmatrix44 *pviewi, dmatrix44 *pproji, RenderKernel *pkernel
     tbb::enumerable_thread_specific<ParallelLeafList> leafs; //list here to avoid memory allocations
 #define BLCLOUD_MT
 #ifdef BLCLOUD_MT
-    //tbb::parallel_for(tbb::blocked_range2d<size_t>(y0,y0+ry,x0,x0+rx/BLCLOUD_VSIZE),[&](const tbb::blocked_range2d<size_t> &nr){
     tbb::parallel_for(tbb::blocked_range2d<size_t>(y0,y0+ry/BLCLOUD_VY,x0,x0+rx/BLCLOUD_VX),[&](const tbb::blocked_range2d<size_t> &nr){
 		for(uint y = nr.rows().begin(); y < nr.rows().end(); ++y){
 			for(uint x = nr.cols().begin(); x < nr.cols().end(); ++x){
@@ -723,8 +701,6 @@ static void K_Render(dmatrix44 *pviewi, dmatrix44 *pproji, RenderKernel *pkernel
 			for(uint x = x0; x < x0+rx/BLCLOUD_VSIZE; ++x){
 #endif
 				sfloat4 posh;
-                /*posh.v[0] = -(sfloat1(2.0f)*(sfloat1((float)(BLCLOUD_VSIZE*(x-x0)+x0)+0.5f)+sfloat1(0,1,2,3))/sfloat1((float)w)-sfloat1::one());
-                posh.v[1] = -sfloat1(2.0f*((float)y+0.5f)/(float)h-1.0f);*/
                 posh.v[0] = -(2.0f*(sfloat1((float)(BLCLOUD_VX*(x-x0)+x0)+0.5f)+sfloat1(0,1,0,1))/sfloat1((float)w)-sfloat1::one());
                 posh.v[1] = -(2.0f*(sfloat1((float)(BLCLOUD_VY*(y-y0)+y0)+0.5f)+sfloat1(0,0,1,1))/sfloat1((float)h)-sfloat1::one());
                 posh.v[2] = sfloat1::zero();

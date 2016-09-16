@@ -3,14 +3,6 @@
 
 namespace Node{
 
-/*using ValueNodeParams = std::tuple<dfloat3 *, dfloat3 *, float, float>;
-enum VNP{
-	VNP_VOXPOSW,
-	VNP_CPTPOSW,
-	VNP_DISTANCE,
-	VNP_DENSITY
-};*/
-
 class IValueNodeParams{
 public:
 	IValueNodeParams();
@@ -85,8 +77,6 @@ public:
     MulNode(uint, NodeTree *);
     ~MulNode();
     void Evaluate(const void *);
-    //BaseNode * NewNode() const;
-    //T result;
 };
 
 template<class T>
@@ -364,11 +354,8 @@ public:
     ~OutputNode();
     void Evaluate(const void *);
     enum INPUT{
-        //INPUT_SHADER,
-        //INPUT_FIELD,
         INPUT_FOG,
 		INPUT_FOGPOST,
-        //INPUT_FIELD,
         INPUT_SURFACE,
         INPUT_COUNT,
     };
@@ -384,8 +371,8 @@ public:
     void SortNodes();
     BaseNode * GetRoot() const;
     static void DeleteAll();
-    std::vector<BaseNode *> nodes0; //low
-    std::vector<BaseNode *> nodes1; //high
+    std::vector<BaseNode *> nodes0; //low-level nodes (math, info nodes, values etc)
+    std::vector<BaseNode *> nodes1; //high-level nodes (surface and fog operations)
 	char name[256];
     static std::vector<NodeTree *> ntrees;
 };
