@@ -616,6 +616,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 				//ca.v[i] *= 0.028f*pkernel->pskyms->radiances[i];
 				ca.v[i] *= pkernel->pskyms->radiances[i];
 				ca.v[i] = 0.00035f*sfloat1::pow(ca.v[i],2.2f); //convert to linear and adjust exposure
+				//TODO: use CIE version?
 			}
 	        ca.v[3] = sfloat1::zero();
 

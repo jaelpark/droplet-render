@@ -41,11 +41,11 @@ float ValueNodeParams::GetLocalDensity() const{
 }
 
 float ValueNodeParams::SampleGlobalDistance(const dfloat3 &p) const{
-	return psampler[VOLUME_BUFFER_SDF]->wsSample(*(openvdb::Vec3f*)&p);
+	return psampler[VOLUME_BUFFER_SDF]?psampler[VOLUME_BUFFER_SDF]->wsSample(*(openvdb::Vec3f*)&p):FLT_MAX;
 }
 
 float ValueNodeParams::SampleGlobalDensity(const dfloat3 &p) const{
-	return psampler[VOLUME_BUFFER_FOG]->wsSample(*(openvdb::Vec3f*)&p);
+	return psampler[VOLUME_BUFFER_FOG]?psampler[VOLUME_BUFFER_FOG]->wsSample(*(openvdb::Vec3f*)&p):0.0f;
 }
 
 }
