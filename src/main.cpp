@@ -59,14 +59,6 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	Py_DECREF(pquat);
 	Py_DECREF(pcdt);
 
-    /*dfloat3 sp;
-    float4::store(&sp,p);
-    dfloat4 sq;
-    float4::store(&sq,q);
-    dfloat3 sd;
-    float4::store(&sd,d);
-    DebugPrintf("p: %f, %f, %f\nq: %f, %f, %f, %f\nd: %f, %f, %f\nfov: %f",sp.x,sp.y,sp.z,sq.x,sq.y,sq.z,sq.w,sd.x,sd.y,sd.z,fov);*/
-
     XMMATRIX view = XMMatrixLookToRH(p.v,d.v,u.v);
     XMMATRIX proj = XMMatrixPerspectiveFovRH(fov,(float)w/(float)h,zmin,zmax);
 
@@ -341,11 +333,23 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
                 PyGetFloat(pcolor,"r"),
                 PyGetFloat(pcolor,"g"),
                 PyGetFloat(pcolor,"b"));
-            light.angle = PyGetFloat(psd,"angle");//0.7f; //0.98
+            light.angle = PyGetFloat(psd,"angle");
 
             Py_DECREF(pcolor);
             Py_DECREF(psd);
             Py_DECREF(pdata);
+
+			PyObject *ppf = PyObject_GetAttrString(psd,"phasef");
+			const char *ppfs = PyUnicode_AsUTF8(ppf);
+			switch(ppfs[0]){
+			case 'H':
+				light.ppf = &HGPhase::ghg;
+				break;
+			case 'M':
+				light.ppf = &MiePhase::gmie;
+				break;
+			}
+			Py_DECREF(ppf);
 
 			lights.push_back(light);
 		}
@@ -358,7 +362,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 			std::unordered_map<Py_hash_t, Node::NodeTree *>::const_iterator m = std::find_if(ntm.begin(),ntm.end(),[=](const std::unordered_map<Py_hash_t, Node::NodeTree *>::value_type &t)->bool{
 				return strcmp(t.second->name,pname) == 0;
 			});
-            SceneData::Surface *psobj = new SceneData::Surface(m->second); //TODO: reserve() the vector size
+            SceneData::Surface *psobj = new SceneData::Surface(m->second);
 
 			Py_DECREF(ppn);
 			Py_DECREF(psd);
@@ -384,7 +388,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 			PyObject_CallMethod(pbm,"from_object","OO",pobj,pscene);
 
 			/*PyObject *pfs = PyObject_GetAttrString(pbm,"faces");
-			PyObject_CallMethod(pbmops,"triangulate","O{s,O}",pbm,"faces",pfs); //doesn't work*/
+			PyObject_CallMethod(pbmops,"triangulate","O{s,O}",pbm,"faces",pfs); //fail*/
 
 			PyObject *pfa = PyObject_GetAttrString(pbm,"faces");
 			PyObject *pag = Py_BuildValue("(O)",pbm);
@@ -396,8 +400,6 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 			Py_DECREF(pfa);
 			Py_DECREF(ptm);
 			Py_DECREF(pkw);
-
-	        //uint vca = verts.size();
 
 			PyObject *pvs = PyObject_GetAttrString(pbm,"verts");
 			PyObject *pvi = PyObject_GetIter(pvs);

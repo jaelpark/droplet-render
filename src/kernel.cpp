@@ -265,21 +265,55 @@ inline void SamplingBasis(const sfloat4 &iv, sfloat4 *pb1, sfloat4 *pb2){
     *pb2 = sfloat4::cross3(iv,*pb1);
 }
 
-#define PHASE_G 0.35f//0.88f //0.32f
+/*#define PHASE_G 0.35f//0.88f //0.32f
 inline sfloat1 HG_Phase(const sfloat1 &ct){
-    sfloat1 t = sfloat1(2.0f);
     sfloat1 g = sfloat1(PHASE_G);
     sfloat1 e = sfloat1(1.50f);
-    return (1.0f-g*g)/(4.0f*XM_PI*sfloat1::pow(1.0f+g*g-t*g*ct,e));
+    return (1.0f-g*g)/(4.0f*XM_PI*sfloat1::pow(1.0f+g*g-2.0f*g*ct,e));
 }
 
 inline sfloat4 HG_Sample(const sfloat4 &iv, sint4 *prs){
-    sfloat1 t = sfloat1(2.0f);
     sfloat1 g = sfloat1(PHASE_G);
-    sfloat1 sq = (1.0f-g*g)/(1.0f-g+t*g*RNG_Sample(prs));
-    sfloat1 ct = (1.0f+g*g-sq*sq)/(t*g);
+    sfloat1 sq = (1.0f-g*g)/(1.0f-g+2.0f*g*RNG_Sample(prs));
+    sfloat1 ct = (1.0f+g*g-sq*sq)/(2.0f*g);
     sfloat1 st = sfloat1::sqrt(sfloat1::max(1.0f-ct*ct,sfloat1::zero()));
-    sfloat1 ph = 4.0f*XM_PI*RNG_Sample(prs);
+    sfloat1 ph = 2.0f*XM_PI*RNG_Sample(prs);
+
+    sfloat4 b1, b2;
+    SamplingBasis(iv,&b1,&b2);
+    sfloat1 sph, cph;
+    sincos_ps(ph.v,&sph.v,&cph.v);
+    return b1*st*cph+b2*st*sph+iv*ct;
+}*/
+
+PhaseFunction::PhaseFunction(){
+	//
+}
+
+PhaseFunction::~PhaseFunction(){
+	//
+}
+
+HGPhase::HGPhase(float _g) : g1(_g){
+	//
+}
+
+HGPhase::~HGPhase(){
+	//
+}
+
+sfloat1 HGPhase::Evaluate(const sfloat1 &ct) const{
+    sfloat1 g = sfloat1(g1);
+    sfloat1 e = sfloat1(1.50f);
+    return (1.0f-g*g)/(4.0f*XM_PI*sfloat1::pow(1.0f+g*g-2.0f*g*ct,e));
+}
+
+sfloat4 HGPhase::Sample(const sfloat4 &iv, sint4 *prs) const{
+    sfloat1 g = sfloat1(g1);
+    sfloat1 sq = (1.0f-g*g)/(1.0f-g+2.0f*g*RNG_Sample(prs));
+    sfloat1 ct = (1.0f+g*g-sq*sq)/(2.0f*g);
+    sfloat1 st = sfloat1::sqrt(sfloat1::max(1.0f-ct*ct,sfloat1::zero()));
+    sfloat1 ph = 2.0f*XM_PI*RNG_Sample(prs);
 
     sfloat4 b1, b2;
     SamplingBasis(iv,&b1,&b2);
@@ -287,6 +321,28 @@ inline sfloat4 HG_Sample(const sfloat4 &iv, sint4 *prs){
     sincos_ps(ph.v,&sph.v,&cph.v);
     return b1*st*cph+b2*st*sph+iv*ct;
 }
+
+HGPhase HGPhase::ghg(0.35f);
+
+MiePhase::MiePhase(){
+	//
+}
+
+MiePhase::~MiePhase(){
+	//
+}
+
+sfloat1 MiePhase::Evaluate(const sfloat1 &ct) const{
+	//
+	return sfloat1(0.0f);
+}
+
+sfloat4 MiePhase::Sample(const sfloat4 &iv, sint4 *prs) const{
+	//
+	return sfloat1(0.0f);
+}
+
+MiePhase MiePhase::gmie;
 
 inline sfloat1 L_Pdf(const sfloat4 &iv, const sfloat1 &la){
     sfloat1 ctm = sfloat1::sqrt(1.0f-la*la);
@@ -628,12 +684,12 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 #define BLCLOUD_MULTIPLE_IMPORTANCE
 #ifdef BLCLOUD_MULTIPLE_IMPORTANCE
             //sample the phase function and lights
-			sfloat1 la = sfloat1(pkernel->plights[0].angle);
-            sfloat4 srd = HG_Sample(rd,prs);
+			sfloat1 la = sfloat1(pkernel->plights[0].angle); //TODO: choose randomly one the lights. Multiply the final estimate (s2) with the total number of lights (ref776).
+            sfloat4 srd = pkernel->plights[0].ppf->Sample(rd,prs);//HG_Sample(rd,prs);
             sfloat4 lrd = L_Sample(sfloat4(float4::load(&pkernel->plights[0].direction)),la,prs);
 
             //pdfs for the balance heuristic w_x = p_x/sum(p_i,i=0..N)
-            sfloat1 p1 = HG_Phase(sfloat4::dot3(srd,rd));
+            sfloat1 p1 = pkernel->plights[0].ppf->Evaluate(sfloat4::dot3(srd,rd));//HG_Phase(sfloat4::dot3(srd,rd));
             sfloat1 p2 = L_Pdf(lrd,la);
 
             //need two samples - with the phase sampling keep on the recursion while for the light do only single scattering
@@ -650,7 +706,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
 			//(HG_Phase(X)*SampleVolume(X)*p1/(p1+L_Pdf(X)))/p1 => (HG_Phase(X)=p1)*SampleVolume(X)/(p1+L_Pdf(X)) = p1*SampleVolume(X)/(p1+L_Pdf(X))
 			//(HG_Phase(Y)*SampleVolume(Y)*p2/(HG_Phase(Y)+p2))/p2 => HG_phase(Y)*SampleVolume(Y)/(HG_Phase(Y)+p2)
-			sfloat1 p3 = HG_Phase(sfloat4::dot3(lrd,rd)); //TODO: try MIE phase? So that ... MIE_Phase(dot(lrd,rd))/(p3+p2)
+			sfloat1 p3 = pkernel->plights[0].ppf->Evaluate(sfloat4::dot3(lrd,rd));//HG_Phase(sfloat4::dot3(lrd,rd));
 			sfloat4 cm = s1*p1/(p1+L_Pdf(srd,la))+s2*p3/(p3+p2);
 			cm *= msigmas/msigmae;
 

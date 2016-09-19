@@ -8,8 +8,6 @@ __attribute__ ((aligned(16)))
 #include "smmath.inl"
 #include "smport.inl"
 
-#define _CRT_RAND_S
-
 #include <vector>
 #include <atomic>
 

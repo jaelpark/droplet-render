@@ -212,14 +212,24 @@ class ClParticleSystemPanel(bpy.types.Panel):
 		context.particle_system.settings.droplet.draw(context,self.layout);
 		#context.particle_system.droplet[1]['type'].draw(context,self.layout); #wtf is this tuple nonsense
 
+def TextureSelection(self, context):
+	return [(m.name,m.name,m.name,"TEXTURE",x) for x, m in enumerate(bpy.data.images)];
+
 class ClLampProperties(bpy.types.PropertyGroup):
 	intensity = FloatProperty(name="Intensity",default=50.0,min=0.0);
 	color = FloatVectorProperty(name="Color",default=[1,1,1],subtype='COLOR',size=3);
 	angle = FloatProperty(name="Angle",default=0.95,min=0.0,max=1.0,precision=3);
 	#color = FloatVectorProperty(name="Color",default=[1,1,1]);
 	#cr = FloatProperty(name="Red",default=1.0,min=0.0,max=1.0);
+	phasef = EnumProperty(name="Phase function",default="H",items=(
+		("H","Henyey-Greenstein","Henyey-Greenstein phase function"),
+		("M","Mie","Precomputed Mie phase function for typical cloud droplets")));
+		#("c","Curve","Custom curve created with the curve editor [0,pi]"),
+	#phasetex = EnumProperty(name="Phase Texture",items=TextureSelection,description="A four-channel texture describing a custom phase function (normalized probability distribution function). Texture resolution must be 1024x1 which is the mapped to [0,pi].");
+	#phasesax = BoolProperty(name="Spectral approximation",default=False,description="The phase function evaluates all color channels of the texture instead of just the first one. However, since spectral rendering isn't explicitly supported, light paths are still sampled using only the first channel. This is done by the assumption that the PDF variation between channels is small.");
+	#hgparam = FloatProperty(name="Anisotropy",min=0.001,max=1,default=0.35);
 
-	def draw(self, context, layout):
+	def draw1(self, context, layout):
 		s = layout.split();
 		c = s.column();
 		c.row().prop(self,"intensity");
@@ -227,6 +237,11 @@ class ClLampProperties(bpy.types.PropertyGroup):
 
 		c = s.column();
 		c.row().prop(self,"color");
+
+	def draw2(self, context, layout):
+		layout.row().prop(self,"phasef",expand=False);
+		#if self.phasefunc == 'H':
+			#layout.row().prop(self,"hgparam");
 
 class ClLampPanel(bpy.types.Panel):
 	bl_idname = "ClLampPanel";
@@ -240,5 +255,20 @@ class ClLampPanel(bpy.types.Panel):
 		return context.scene.render.engine == config.dre_engineid and context.active_object.type == 'LAMP';
 
 	def draw(self, context):
-		context.object.data.droplet.draw(context,self.layout);
-		#self.layout.row().label("Lamp objects need custom data."); #or might be better to use cycles data
+		context.object.data.droplet.draw1(context,self.layout);
+
+#class ClPhaseProperties(bpy.types.PropertyGroup):
+
+class ClPhasePanel(bpy.types.Panel):
+	bl_idname = "ClPhasePanel";
+	bl_label = "Phase";
+	bl_space_type = "PROPERTIES";
+	bl_region_type = "WINDOW";
+	bl_context = "data";
+
+	@classmethod
+	def poll(cls, context):
+		return context.scene.render.engine == config.dre_engineid and context.active_object.type == 'LAMP';
+
+	def draw(self, context):
+		context.object.data.droplet.draw2(context,self.layout);
