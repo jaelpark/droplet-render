@@ -8,6 +8,8 @@
 #define FL_PERMUTE(v,c) _mm_shuffle_ps(v,v,c)
 #define IL_PERMUTE(v,c) _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(v),_mm_castsi128_ps(v),c))//_mm_shuffle_epi32(v,c)
 
+#define SM_PI 3.14159265358979f
+
 class dfloatN{
 public:
 	dfloatN(){}
@@ -421,6 +423,22 @@ public:
             powf(a[3],b[3]));
         return r;
     }
+
+	static inline sfloat1 acos(const sfloat1 &s){
+		//http://http.developer.nvidia.com/Cg/index_stdlib.html
+		sfloat1 x = sfloat1::abs(s);
+		sfloat1 r = ((((sfloat1(-0.0187293f)*x)+0.0742610f)*x-0.2121144f)*x+1.5707288f)*sfloat1::sqrt(sfloat1(1.0f)-x);
+		sfloat1 n = sfloat1::Less(x,sfloat1::zero());
+		r = r-sfloat1::And(sfloat1(2.0f)*r,n);
+		return sfloat1::And(sfloat1(SM_PI),n)+r;
+	}
+
+	static inline sfloat1 asin(const sfloat1 &s){
+		sfloat1 x = sfloat1::abs(s);
+		sfloat1 r = sfloat1(0.5f*SM_PI)-((((sfloat1(-0.0187293f)*x)+0.0742610f)*x-0.2121144f)*x+1.5707288f)*sfloat1::sqrt(sfloat1(1.0f)-x);
+		sfloat1 n = sfloat1::Less(x,sfloat1::zero());
+		return r-sfloat1::And(sfloat1(2.0f)*r,n);
+	}
 
     static inline sfloat1 abs(const sfloat1 &s){
         sfloat1 r;
