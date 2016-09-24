@@ -636,7 +636,6 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
     openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT];// = {0};
 	FloatGridBoxSampler *psampler[VOLUME_BUFFER_COUNT];
 
-    //openvdb::io::File vdbc = openvdb::io::File("/tmp/droplet-fileid.vdb");
 	openvdb::io::File vdbc("/tmp/droplet-fileid.vdb");
     try{
         if(cm != SCENE_CACHE_READ)
@@ -648,18 +647,19 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
         vdbc.close();
 
         {
-            /*FILE *pf = fopen("/tmp/droplet-fileid.bin","rb");
+            FILE *pf = fopen("/tmp/droplet-fileid.bin","rb");
             if(!pf)
                 throw(0);
             fread(&index,1,4,pf);
             fread(&leafx[VOLUME_BUFFER_SDF],1,4,pf);
 			leafx[VOLUME_BUFFER_FOG] = 0;
 
-            uint pobl = (index+1)*sizeof(OctreeStructure);
-            pob = (OctreeStructure*)_mm_malloc(pobl,16);
-            fread(pob,1,pobl,pf);
+			uint pobl = index+1;
+			ob.grow_to_at_least(pobl);
+			for(uint i = 0; i < pobl; ++i)
+				fread(&ob[i],1,sizeof(OctreeStructure),pf);
 
-            fclose(pf);*/
+            fclose(pf);
         }
 
     }catch(...){
@@ -673,16 +673,18 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
         	pgrid[VOLUME_BUFFER_SDF]->setName("surface-levelset");
 
         if(cm == SCENE_CACHE_WRITE){
-            /*openvdb::GridCPtrVec gvec{pgrid[VOLUME_BUFFER_SDF]}; //include the fog grid also
+            openvdb::GridCPtrVec gvec{pgrid[VOLUME_BUFFER_SDF]}; //include the fog grid also
             vdbc.write(gvec);
             vdbc.close();
 
             FILE *pf = fopen("/tmp/droplet-fileid.bin","wb");
             fwrite(&index,1,4,pf);
             fwrite(&leafx[VOLUME_BUFFER_SDF],1,4,pf);
-            fwrite(pob,1,(index+1)*sizeof(OctreeStructure),pf);
+            //fwrite(pob,1,(index+1)*sizeof(OctreeStructure),pf);
+			for(uint i = 0; i < index+1; ++i)
+				fwrite(&ob[i],1,sizeof(OctreeStructure),pf);
 
-            fclose(pf);*/
+            fclose(pf);
         }
     }
 
@@ -765,6 +767,5 @@ void Scene::Destroy(){
 	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
 		if(pbuf[i])
     		delete []pbuf[i];
-    //_mm_free(ob);
 	ob.clear();
 }
