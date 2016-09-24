@@ -3,6 +3,10 @@
 
 #define RENDER_TRANSPARENT 0x1
 
+namespace KernelSampler{
+class PhaseFunction;
+}
+
 struct Light{
     dfloat3 direction;
     dfloat3 color; //color*intensity
@@ -30,7 +34,7 @@ class RenderKernel{
 public:
 	RenderKernel();
 	~RenderKernel();
-    bool Initialize(const Scene *, const dmatrix44 *, const dmatrix44 *, const std::vector<Light> *, uint, float, float, uint, uint, uint, uint, uint);
+    bool Initialize(const Scene *, const dmatrix44 *, const dmatrix44 *, const std::vector<Light> *, KernelSampler::PhaseFunction *, uint, float, float, uint, uint, uint, uint, uint);
     void Render(uint, uint, uint);
 	void Destroy();
 	//
@@ -38,6 +42,7 @@ public:
     const Scene *pscene;
 	struct ArHosekSkyModelState *pskyms;
 	Light *plights;
+	KernelSampler::PhaseFunction *ppf;
 	uint lightc;
     dmatrix44 viewi;
     dmatrix44 proji;

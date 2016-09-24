@@ -45,9 +45,9 @@ class ClSamplingProperties(bpy.types.PropertyGroup):
 	scatterevs = IntProperty(name="Scattering",default=12,min=0,max=32,description="Maximum volume scattering events.");
 	msigmas = FloatProperty(name="Sigma.S",default=7.11,min=0.0,description="Macroscopic scattering cross section for maximum density.");
 	msigmaa = FloatProperty(name="Sigma.A",default=0.03,min=0.0,description="Macroscopic absorption cross section for maximum density.");
-	phasef = EnumProperty(name="Phase function",default="H",items=(
+	phasef = EnumProperty(name="Phase function",default="M",items=(
 		("H","Henyey-Greenstein","Henyey-Greenstein phase function with anisotropy g=0.35. A fast approximation with plausible results."),
-		("M","Mie","Precomputed RGB Mie phase function for typical cloud droplets. Being the most accurate phase function this is also the most inefficient due to rejection sampling. Note that spectral rendering is required to correctly sample for different wavelengths.")));
+		("M","Mie","Precomputed RGB Mie phase function for typical cloud droplets. Being the most accurate phase function this is also the most inefficient due to unvectorized table lookups. Note that spectral rendering is required to correctly sample for different wavelengths.")));
 
 	def draw(self, context, layout):
 		s = layout.split();

@@ -439,45 +439,48 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 
     Py_DECREF(poat);
 
-    PyObject *prender = PyObject_GetAttrString(pscene,"blcloudrender");
-    PyObject *ptransparent = PyObject_GetAttrString(prender,"transparent");
-    uint flags = PyObject_IsTrue(ptransparent) & RENDER_TRANSPARENT;
-    Py_DECREF(ptransparent);
-    Py_DECREF(prender);
+    PyObject *pyrender = PyObject_GetAttrString(pscene,"blcloudrender");
+    PyObject *pytransparent = PyObject_GetAttrString(pyrender,"transparent");
+    uint flags = PyObject_IsTrue(pytransparent) & RENDER_TRANSPARENT;
+    Py_DECREF(pytransparent);
+    Py_DECREF(pyrender);
 
-    PyObject *psampling = PyObject_GetAttrString(pscene,"blcloudsampling");
-    PyObject *pscattevs = PyObject_GetAttrString(psampling,"scatterevs");
-    uint scattevs = (uint)PyLong_AsLong(pscattevs);
-	float msigmas = PyGetFloat(psampling,"msigmas");
-	float msigmaa = PyGetFloat(psampling,"msigmaa");
-	/*PyObject *ppf = PyObject_GetAttrString(psampling,"phasef");
-	const char *ppfs = PyUnicode_AsUTF8(ppf);
-	switch(ppfs[0]){
+    PyObject *pysampling = PyObject_GetAttrString(pscene,"blcloudsampling");
+    PyObject *pyscattevs = PyObject_GetAttrString(pysampling,"scatterevs");
+    uint scattevs = (uint)PyLong_AsLong(pyscattevs);
+	float msigmas = PyGetFloat(pysampling,"msigmas");
+	float msigmaa = PyGetFloat(pysampling,"msigmaa");
+	PyObject *pypf = PyObject_GetAttrString(pysampling,"phasef");
+	const char *pypfs = PyUnicode_AsUTF8(pypf);
+	KernelSampler::PhaseFunction *ppf;
+	switch(pypfs[0]){
 	case 'H':
-		light.ppf = &HGPhase::ghg;
+		ppf = &KernelSampler::HGPhase::ghg;
+		DebugPrintf("Using Henyey-Greenstein phase.\n");
 		break;
 	case 'M':
-		light.ppf = &MiePhase::gmie;
+		ppf = &KernelSampler::MiePhase::gmie;
+		DebugPrintf("Using Mie phase.\n");
 		break;
 	}
-	Py_DECREF(ppf);*/
-    Py_DECREF(pscattevs);
-    Py_DECREF(psampling);
+	Py_DECREF(pypf);
+    Py_DECREF(pyscattevs);
+    Py_DECREF(pysampling);
 
-    PyObject *pgrid = PyObject_GetAttrString(pscene,"blcloudgrid");
-    PyObject *pdsize = PyObject_GetAttrString(pgrid,"detailsize");
-    float dsize = (float)PyFloat_AsDouble(pdsize);
+    PyObject *pygrid = PyObject_GetAttrString(pscene,"blcloudgrid");
+    PyObject *pydsize = PyObject_GetAttrString(pygrid,"detailsize");
+    float dsize = (float)PyFloat_AsDouble(pydsize);
 
-    Py_DECREF(pdsize);
-    Py_DECREF(pgrid);
+    Py_DECREF(pydsize);
+    Py_DECREF(pygrid);
 
-    PyObject *pperf = PyObject_GetAttrString(pscene,"blcloudperf");
-    PyObject *pcache = PyObject_GetAttrString(pperf,"cache");
-    const char *pcms = PyUnicode_AsUTF8(pcache);
+    PyObject *pyperf = PyObject_GetAttrString(pscene,"blcloudperf");
+    PyObject *pycache = PyObject_GetAttrString(pyperf,"cache");
+    const char *pcms = PyUnicode_AsUTF8(pycache);
     SCENE_CACHE_MODE cm = (pcms[0] == 'R'?SCENE_CACHE_READ:pcms[0] == 'W'?SCENE_CACHE_WRITE:SCENE_CACHE_DISABLED);
 
-    Py_DECREF(pcache);
-    Py_DECREF(pperf);
+    Py_DECREF(pycache);
+    Py_DECREF(pyperf);
 
     //TODO: cache postfix from bpy.path.basename(bpy.data.filepath)
 
@@ -486,7 +489,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	//gpscene->BuildScene();
 
 	gpkernel = new RenderKernel();
-    gpkernel->Initialize(gpscene,&sviewi,&sproji,&lights,scattevs,msigmas,msigmaa,rx,ry,w,h,flags);
+    gpkernel->Initialize(gpscene,&sviewi,&sproji,&lights,ppf,scattevs,msigmas,msigmaa,rx,ry,w,h,flags);
 
 	return Py_None;
 }

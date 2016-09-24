@@ -630,11 +630,12 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
             //sample the phase function and lights
 			sfloat1 la = sfloat1(pkernel->plights[0].angle); //TODO: choose randomly one the lights. Multiply the final estimate (s2) with the total number of lights (ref776).
 			sfloat1 u1 = RNG_Sample(prs), u2 = RNG_Sample(prs);
-            sfloat4 srd = KernelSampler::HGPhase::ghg.Sample(rd,u1,u2);//HG_Sample(rd,prs);
+            //sfloat4 srd = KernelSampler::HGPhase::ghg.Sample(rd,u1,u2);//pkernel->ppf->Sample(rd,u1,u2);//HG_Sample(rd,prs);
+			sfloat4 srd = pkernel->ppf->Sample(rd,u1,u2);//HG_Sample(rd,prs);
             sfloat4 lrd = L_Sample(sfloat4(float4::load(&pkernel->plights[0].direction)),la,prs);
 
             //pdfs for the balance heuristic w_x = p_x/sum(p_i,i=0..N)
-            sfloat1 p1 = KernelSampler::HGPhase::ghg.Evaluate(sfloat4::dot3(srd,rd));//HG_Phase(sfloat4::dot3(srd,rd));
+            sfloat1 p1 = pkernel->ppf->Evaluate(sfloat4::dot3(srd,rd));//HG_Phase(sfloat4::dot3(srd,rd));
             sfloat1 p2 = L_Pdf(lrd,la);
 
             //need two samples - with the phase sampling keep on the recursion while for the light do only single scattering
@@ -651,7 +652,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
 			//(HG_Phase(X)*SampleVolume(X)*p1/(p1+L_Pdf(X)))/p1 => (HG_Phase(X)=p1)*SampleVolume(X)/(p1+L_Pdf(X)) = p1*SampleVolume(X)/(p1+L_Pdf(X))
 			//(HG_Phase(Y)*SampleVolume(Y)*p2/(HG_Phase(Y)+p2))/p2 => HG_phase(Y)*SampleVolume(Y)/(HG_Phase(Y)+p2)
-			sfloat1 p3 = KernelSampler::HGPhase::ghg.Evaluate(sfloat4::dot3(lrd,rd));//HG_Phase(sfloat4::dot3(lrd,rd));
+			sfloat1 p3 = pkernel->ppf->Evaluate(sfloat4::dot3(lrd,rd));//HG_Phase(sfloat4::dot3(lrd,rd));
 			sfloat4 cm = s1*p1/(p1+L_Pdf(srd,la))+s2*p3/(p3+p2);
 			cm *= msigmas/msigmae;
 
@@ -754,7 +755,7 @@ RenderKernel::~RenderKernel(){
 	//
 }
 
-bool RenderKernel::Initialize(const Scene *pscene, const dmatrix44 *pviewi, const dmatrix44 *pproji, const std::vector<Light> *plights, uint scattevs,
+bool RenderKernel::Initialize(const Scene *pscene, const dmatrix44 *pviewi, const dmatrix44 *pproji, const std::vector<Light> *plights, KernelSampler::PhaseFunction *ppf, uint scattevs,
     float msigmas, float msigmaa, uint rx, uint ry, uint w, uint h, uint flags){
     if(!(phb = (dfloat4*)_mm_malloc(rx*ry*16,16))){
         //DebugPrintf("Framebuffer allocation failure.\n");
@@ -776,6 +777,8 @@ bool RenderKernel::Initialize(const Scene *pscene, const dmatrix44 *pviewi, cons
 	this->lightc = plights->size();
 	this->plights = new Light[this->lightc];
 	memcpy(this->plights,plights->data(),this->lightc*sizeof(Light));
+
+	this->ppf = ppf;
 
     //dfloat3 sdir = dfloat3(0.0f,0.0f,1.0f);
     float th = 0.0f;//acosf(sdir.z);
