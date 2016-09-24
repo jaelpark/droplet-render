@@ -10,7 +10,9 @@
 #include "SceneSurface.h"
 #include "SceneDensity.h"
 
+#include <tbb/concurrent_vector.h>
 #include <tbb/parallel_for.h>
+#include <tbb/scalable_allocator.h>
 
 namespace Node{
 
@@ -63,7 +65,7 @@ BoundingBox::~BoundingBox(){
     //
 }
 
-//Some intersection code ripped (borrowed) from DirectXCollision library
+//Some intersection code ripped from DirectXCollision library
 const uint32_t XM_PERMUTE_0X = 0;
 const uint32_t XM_PERMUTE_0Y = 1;
 const uint32_t XM_PERMUTE_0Z = 2;
@@ -216,13 +218,24 @@ bool BoundingBox::Intersects(const BoundingBox &bb) const{
     float4 bmaxb = cb+eb;
 
     float4 dj = float4::Or(float4::Greater(bmina,bmaxb),float4::Greater(bminb,bmaxa));
-    //return !float4::AnyTrue(float4::EqualR(float4::swizzle(dj,0,1,2,0),float4::trueI()));
-    //return !float4::AnyTrue(float4::EqualR(dj.swizzle<0,1,2,0>(),sint1::trueI()));
 	return dj.swizzle<0,1,2,0>().AllFalse();
+}
+
+OctreeStructure::OctreeStructure(){
+	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
+		volx[i] = ~0u;
+}
+
+OctreeStructure::~OctreeStructure(){
+	//
 }
 
 Octree::Octree(uint _x) : x(_x){//, lock(ATOMIC_FLAG_INIT){
 	memset(pch,0,sizeof(pch));
+}
+
+Octree::Octree(){
+	//memset(pch,0,sizeof(pch));
 }
 
 Octree::~Octree(){
@@ -230,17 +243,17 @@ Octree::~Octree(){
 }
 
 //Some template setup to combine BoundingBox/Triangle cases?
-void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &c1, const float4 &e1, uint level, uint mlevel, std::atomic<uint> *pindex, std::atomic<uint> *pleafx, Octree *proot, OctreeStructure *pob, VOLUME_BUFFER bx){
-    float4::store(&pob[x].ce,float4::select(c,e,float4::selectctrl(0,0,0,1)));
-    memset(pob[x].qval,0,sizeof(pob[x].qval)); //these are set during the resampling phase
+void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &c1, const float4 &e1, uint level, uint mlevel, std::atomic<uint> *pindex, std::atomic<uint> *pleafx, tbb::concurrent_vector<Octree> *proot, tbb::concurrent_vector<OctreeStructure> *pob, VOLUME_BUFFER bx){
+    float4::store(&(*pob)[x].ce,float4::select(c,e,float4::selectctrl(0,0,0,1)));
+    memset((*pob)[x].qval,0,sizeof((*pob)[x].qval)); //these are set during the resampling phase
 
     if(level >= mlevel-1){
         m.lock();//for(; lock.test_and_set(std::memory_order_acquire););
-        if(pob[x].volx[bx] == ~0u)
-            pob[x].volx[bx] = pleafx->fetch_add(1);
+        if((*pob)[x].volx[bx] == ~0u)
+            (*pob)[x].volx[bx] = pleafx->fetch_add(1);
         m.unlock();//lock.clear(std::memory_order_release);
         return;
-    }//else pob[x].volx = ~0;
+    }//else (*pob)[x].volx = ~0;
 
     BoundingBox aabb1(c1,e1);
 
@@ -255,8 +268,11 @@ void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &c1, const
             m.lock();//for(; lock.test_and_set(std::memory_order_acquire););
             if(!pch[i]){
                 uint index = pindex->fetch_add(1)+1;
-                pch[i] = new(proot+index) Octree(index);
-                pob[x].chn[i] = index;
+				pob->grow_to_at_least(index+1);
+
+                //pch[i] = new(proot+index) Octree(index);
+				pch[i] = new(scalable_malloc(sizeof(Octree))) Octree(index);//new(&(*proot)[index]) Octree(index);
+                (*pob)[x].chn[i] = index;
             }
             m.unlock();//lock.clear(std::memory_order_release);
 
@@ -265,17 +281,17 @@ void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &c1, const
     }
 }
 
-void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &v0, const float4 &v1, const float4 &v2, uint level, uint mlevel, std::atomic<uint> *pindex, std::atomic<uint> *pleafx, Octree *proot, OctreeStructure *pob, VOLUME_BUFFER bx){
-    float4::store(&pob[x].ce,float4::select(c,e,float4::selectctrl(0,0,0,1)));
-    memset(pob[x].qval,0,sizeof(pob[x].qval)); //these are set during the resampling phase
+void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &v0, const float4 &v1, const float4 &v2, uint level, uint mlevel, std::atomic<uint> *pindex, std::atomic<uint> *pleafx, tbb::concurrent_vector<Octree> *proot, tbb::concurrent_vector<OctreeStructure> *pob, VOLUME_BUFFER bx){
+    float4::store(&(*pob)[x].ce,float4::select(c,e,float4::selectctrl(0,0,0,1)));
+    memset((*pob)[x].qval,0,sizeof((*pob)[x].qval)); //these are set during the resampling phase
 
     if(level >= mlevel-1){
         m.lock();//for(; lock.test_and_set(std::memory_order_acquire););
-        if(pob[x].volx[bx] == ~0u)
-            pob[x].volx[bx] = pleafx->fetch_add(1);
+        if((*pob)[x].volx[bx] == ~0u)
+            (*pob)[x].volx[bx] = pleafx->fetch_add(1);
         m.unlock();//lock.clear(std::memory_order_release);
         return;
-    }//else pob[x].volx = ~0;
+    }//else (*pob)[x].volx = ~0;
 
     float4 ee = 0.5f*e;
     for(uint i = 0; i < 8; ++i){
@@ -287,8 +303,10 @@ void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &v0, const
             m.lock();//for(; lock.test_and_set(std::memory_order_acquire););
             if(!pch[i]){
                 uint index = pindex->fetch_add(1)+1;
-                pch[i] = new(proot+index) Octree(index);
-                pob[x].chn[i] = index;
+				pob->grow_to_at_least(index+1);
+
+				pch[i] = new(scalable_malloc(sizeof(Octree))) Octree(index);//pch[i] = new(&(*proot)[index]) Octree(index);
+                (*pob)[x].chn[i] = index;
             }
             m.unlock();//lock.clear(std::memory_order_release);
 
@@ -297,34 +315,13 @@ void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &v0, const
     }
 }
 
-/*class ParticleList{
-public:
-	typedef openvdb::Vec3R value_type;
-	ParticleList(openvdb::Real rscale1 = 1.0f, openvdb::Real vscale1 = 1.0f) : rscale(rscale1), vscale(vscale1){}
-	ParticleList(std::vector<openvdb::Vec4s> *psph1) : psph(psph1), rscale(1.0f), vscale(1.0f){}
-
-	size_t size() const{
-		return psph->size();
-	}
-
-	void getPos(size_t n, openvdb::Vec3R &p) const{
-		p = (*psph)[n].getVec3();
-	}
-
-	void getPosRad(size_t n, openvdb::Vec3R &p, openvdb::Real &r) const{
-		p = (*psph)[n].getVec3();
-		r = (*psph)[n].w()*rscale;
-	}
-
-	void getAtt(size_t n, openvdb::Int32 &a){
-		a = openvdb::Int32(n);
-	}
-
-protected:
-	std::vector<openvdb::Vec4s> *psph;
-	openvdb::Real rscale;
-	openvdb::Real vscale;
-};*/
+void Octree::FreeRecursive(){
+	for(uint i = 0; i < 8; ++i)
+		if(pch[i]){
+			pch[i]->FreeRecursive();
+			scalable_free(pch[i]);
+		}
+}
 
 using PostFogParams = std::tuple<SceneData::BaseObject *, openvdb::FloatGrid::Ptr>;
 enum PFP{
@@ -512,18 +509,10 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
     DebugPrintf("Center = (%f, %f, %f)\nExtents = (%f, %f, %f) (max w = %f)\n",scaabb.sc.x,scaabb.sc.y,scaabb.sc.z,scaabb.se.x,scaabb.se.y,scaabb.se.z,d);
     DebugPrintf("> Constructing octree (depth = %u, voxel = %f, sparse res = %u^3)...\n",mlevel,d/r,(uint)r);
 
-#define BLCLOUD_MAXNODES 500000 //there should be some user-defined limit here or some way to estimate this
-    uint octl = BLCLOUD_MAXNODES*sizeof(Octree);
-    Octree *proot = (Octree*)_mm_malloc(octl,16);
-    new(proot) Octree(0);
+	Octree *proot = new(scalable_malloc(sizeof(Octree))) Octree(0);
 
-    uint pobl = BLCLOUD_MAXNODES*sizeof(OctreeStructure);
-    pscene->pob = (OctreeStructure*)_mm_malloc(pobl,16);
-    memset(pscene->pob,0,pobl);
-
-    for(uint i = 0; i < pobl/sizeof(OctreeStructure); ++i)
-		for(uint j = 0; j < VOLUME_BUFFER_COUNT; ++j)
-        	pscene->pob[i].volx[j] = ~0u;
+	pscene->ob.reserve(500000);
+	pscene->ob.emplace_back();
 
     std::atomic<uint> indexa(0);
     std::atomic<uint> leafxa(0); //sdf
@@ -533,7 +522,7 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
             float4 v0 = float4::load(&vl[tl[i].x]);
             float4 v1 = float4::load(&vl[tl[i].y]);
             float4 v2 = float4::load(&vl[tl[i].z]);
-            proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,proot,pscene->pob,VOLUME_BUFFER_SDF);
+            proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,&pscene->root,&pscene->ob,VOLUME_BUFFER_SDF);
         }
     });
 
@@ -544,12 +533,12 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
             v0 = float4::load(&vl[ql[i].x]);
             v1 = float4::load(&vl[ql[i].y]);
             v2 = float4::load(&vl[ql[i].z]);
-            proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,proot,pscene->pob,VOLUME_BUFFER_SDF);
+            proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,&pscene->root,&pscene->ob,VOLUME_BUFFER_SDF);
 
             v0 = float4::load(&vl[ql[i].z]);
             v1 = float4::load(&vl[ql[i].w]);
             v2 = float4::load(&vl[ql[i].x]);
-            proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,proot,pscene->pob,VOLUME_BUFFER_SDF);
+            proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,&pscene->root,&pscene->ob,VOLUME_BUFFER_SDF);
         }
     });
 
@@ -557,11 +546,14 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
         for(uint i = nr.begin(); i < nr.end(); ++i){
 			float4 c1 = float4::load(&fogbvs[i].sc);
 			float4 e1 = float4::load(&fogbvs[i].se);
-            proot->BuildPath(c,a,c1,e1,0,mlevel,&indexa,&leafxb,proot,pscene->pob,VOLUME_BUFFER_FOG);
+            proot->BuildPath(c,a,c1,e1,0,mlevel,&indexa,&leafxb,&pscene->root,&pscene->ob,VOLUME_BUFFER_FOG);
         }
     });
 
-    _mm_free(proot);
+	proot->FreeRecursive();
+	scalable_free(proot);
+	//
+	//pscene->ob.compact(); //make continuous
 
 	pscene->index = indexa;
 	pscene->leafx[VOLUME_BUFFER_SDF] = leafxa;
@@ -656,7 +648,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
         vdbc.close();
 
         {
-            FILE *pf = fopen("/tmp/droplet-fileid.bin","rb");
+            /*FILE *pf = fopen("/tmp/droplet-fileid.bin","rb");
             if(!pf)
                 throw(0);
             fread(&index,1,4,pf);
@@ -667,7 +659,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
             pob = (OctreeStructure*)_mm_malloc(pobl,16);
             fread(pob,1,pobl,pf);
 
-            fclose(pf);
+            fclose(pf);*/
         }
 
     }catch(...){
@@ -681,7 +673,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
         	pgrid[VOLUME_BUFFER_SDF]->setName("surface-levelset");
 
         if(cm == SCENE_CACHE_WRITE){
-            openvdb::GridCPtrVec gvec{pgrid[VOLUME_BUFFER_SDF]}; //include the fog grid also
+            /*openvdb::GridCPtrVec gvec{pgrid[VOLUME_BUFFER_SDF]}; //include the fog grid also
             vdbc.write(gvec);
             vdbc.close();
 
@@ -690,7 +682,7 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
             fwrite(&leafx[VOLUME_BUFFER_SDF],1,4,pf);
             fwrite(pob,1,(index+1)*sizeof(OctreeStructure),pf);
 
-            fclose(pf);
+            fclose(pf);*/
         }
     }
 
@@ -721,39 +713,39 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
         //FastGridSampler &ffs = fsampler.local();
 		openvdb::Vec3f posw;
 		for(uint i = nr.begin(); i < nr.end(); ++i){
-			if(pob[i].volx[VOLUME_BUFFER_SDF] == ~0u){
-				if(pob[i].volx[VOLUME_BUFFER_FOG] == ~0u)
+			if(ob[i].volx[VOLUME_BUFFER_SDF] == ~0u){
+				if(ob[i].volx[VOLUME_BUFFER_FOG] == ~0u)
 					continue; //not a leaf; exit early
 				if(psampler[VOLUME_BUFFER_SDF]){
-					float d = psampler[VOLUME_BUFFER_SDF]->wsSample(*(openvdb::Vec3f*)&pob[i].ce);
+					float d = psampler[VOLUME_BUFFER_SDF]->wsSample(*(openvdb::Vec3f*)&ob[i].ce);
 					if(d < 0.0f){
 						//If the fog leaf is completely inside the sdf surface (no overlapping sdf leaf -> volx == ~0u),
-						//remove it. It's useless there, and it causes incorrect space skipping.
-						pob[i].volx[VOLUME_BUFFER_FOG] = ~0u;
+						//remove it. It's useless there, and removing it simplifies the space skipping algorithm.
+						ob[i].volx[VOLUME_BUFFER_FOG] = ~0u;
 						continue;
 					}
 				}
 			}
 			//
-            float4 nc = float4::load(&pob[i].ce);
+            float4 nc = float4::load(&ob[i].ce);
             float4 ne = nc.splat<3>();
             //
-			pob[i].qval[VOLUME_BUFFER_SDF] = FLT_MAX;
-			pob[i].qval[VOLUME_BUFFER_FOG] = 0.0f;
+			ob[i].qval[VOLUME_BUFFER_SDF] = FLT_MAX;
+			ob[i].qval[VOLUME_BUFFER_FOG] = 0.0f;
 			//
             for(uint j = 0; j < uN*uN*uN; ++j){
                 float4 nn = (nv-2.0f*float4((float)(j%uN),(float)((j/uN)%uN),(float)(j/(uN*uN)),1.0f)-float4::one())/(nv-float4::one());
                 float4 nw = nc-ne*nn;
                 float4::store((dfloat3*)posw.asPointer(),nw);
 
-				if(pob[i].volx[VOLUME_BUFFER_SDF] != ~0u){
-	                pbuf[VOLUME_BUFFER_SDF][pob[i].volx[VOLUME_BUFFER_SDF]].pvol[j] = psampler[VOLUME_BUFFER_SDF]->wsSample(posw);
-					pob[i].qval[VOLUME_BUFFER_SDF] = openvdb::math::Min(pob[i].qval[VOLUME_BUFFER_SDF],pbuf[VOLUME_BUFFER_SDF][pob[i].volx[VOLUME_BUFFER_SDF]].pvol[j]);
+				if(ob[i].volx[VOLUME_BUFFER_SDF] != ~0u){
+	                pbuf[VOLUME_BUFFER_SDF][ob[i].volx[VOLUME_BUFFER_SDF]].pvol[j] = psampler[VOLUME_BUFFER_SDF]->wsSample(posw);
+					ob[i].qval[VOLUME_BUFFER_SDF] = openvdb::math::Min(ob[i].qval[VOLUME_BUFFER_SDF],pbuf[VOLUME_BUFFER_SDF][ob[i].volx[VOLUME_BUFFER_SDF]].pvol[j]);
 				}
 
-				if(pob[i].volx[VOLUME_BUFFER_FOG] != ~0u){
-					pbuf[VOLUME_BUFFER_FOG][pob[i].volx[VOLUME_BUFFER_FOG]].pvol[j] = openvdb::math::Min(psampler[VOLUME_BUFFER_FOG]->wsSample(posw),1.0f);
-					pob[i].qval[VOLUME_BUFFER_FOG] = openvdb::math::Max(pob[i].qval[VOLUME_BUFFER_FOG],pbuf[VOLUME_BUFFER_FOG][pob[i].volx[VOLUME_BUFFER_FOG]].pvol[j]);
+				if(ob[i].volx[VOLUME_BUFFER_FOG] != ~0u){
+					pbuf[VOLUME_BUFFER_FOG][ob[i].volx[VOLUME_BUFFER_FOG]].pvol[j] = openvdb::math::Min(psampler[VOLUME_BUFFER_FOG]->wsSample(posw),1.0f);
+					ob[i].qval[VOLUME_BUFFER_FOG] = openvdb::math::Max(ob[i].qval[VOLUME_BUFFER_FOG],pbuf[VOLUME_BUFFER_FOG][ob[i].volx[VOLUME_BUFFER_FOG]].pvol[j]);
 				}
 			}
 		}
@@ -770,11 +762,9 @@ void Scene::Initialize(float s, SCENE_CACHE_MODE cm){
 }
 
 void Scene::Destroy(){
-#if 0
-	_aligned_free(pvolume);
-#endif
 	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
 		if(pbuf[i])
     		delete []pbuf[i];
-    _mm_free(pob);
+    //_mm_free(ob);
+	ob.clear();
 }

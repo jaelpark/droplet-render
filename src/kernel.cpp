@@ -200,12 +200,12 @@ static uint OctreeNextNode(const dfloat3 &tm, const duint3 &xyz){
 	return xyz.z;
 }
 
-static void OctreeProcessSubtree(const dfloat3 &t0, const dfloat3 &t1, uint a, OctreeStructure *pob, uint n, uint l, std::vector<uint> *pls){
+static void OctreeProcessSubtree(const dfloat3 &t0, const dfloat3 &t1, uint a, const tbb::concurrent_vector<OctreeStructure> *pob, uint n, uint l, std::vector<uint> *pls){
 	//n: node index, l: octree level
 	if(t1.x < 0.0f || t1.y < 0.0f || t1.z < 0.0f || (n == 0 && l > 0))
 		return;
 	//if(level == mlevel){... return;} //leaf, volume index != ~0
-    if(pob[n].volx[VOLUME_BUFFER_SDF] != ~0u || pob[n].volx[VOLUME_BUFFER_FOG] != ~0u){
+    if((*pob)[n].volx[VOLUME_BUFFER_SDF] != ~0u || (*pob)[n].volx[VOLUME_BUFFER_FOG] != ~0u){
 		pls->push_back(n);
         return; //true: stop
 	}
@@ -221,35 +221,35 @@ static void OctreeProcessSubtree(const dfloat3 &t0, const dfloat3 &t1, uint a, O
 		const uint nla[] = {0,4,2,6,1,5,3,7};
 		switch(tn){
 		case 0:
-			OctreeProcessSubtree(t0,tm,a,pob,pob[n].chn[nla[a]],l+1,pls);
+			OctreeProcessSubtree(t0,tm,a,pob,(*pob)[n].chn[nla[a]],l+1,pls);
             tn = OctreeNextNode(tm,duint3(4,2,1));
 			break;
 		case 1:
-            OctreeProcessSubtree(dfloat3(t0.x,t0.y,tm.z),dfloat3(tm.x,tm.y,t1.z),a,pob,pob[n].chn[nla[1^a]],l+1,pls);
+            OctreeProcessSubtree(dfloat3(t0.x,t0.y,tm.z),dfloat3(tm.x,tm.y,t1.z),a,pob,(*pob)[n].chn[nla[1^a]],l+1,pls);
             tn = OctreeNextNode(dfloat3(tm.x,tm.y,t1.z),duint3(5,3,8));
 			break;
 		case 2:
-            OctreeProcessSubtree(dfloat3(t0.x,tm.y,t0.z),dfloat3(tm.x,t1.y,tm.z),a,pob,pob[n].chn[nla[2^a]],l+1,pls);
+            OctreeProcessSubtree(dfloat3(t0.x,tm.y,t0.z),dfloat3(tm.x,t1.y,tm.z),a,pob,(*pob)[n].chn[nla[2^a]],l+1,pls);
             tn = OctreeNextNode(dfloat3(tm.x,t1.y,tm.z),duint3(6,8,3));
 			break;
 		case 3:
-            OctreeProcessSubtree(dfloat3(t0.x,tm.y,tm.z),dfloat3(tm.x,t1.y,t1.z),a,pob,pob[n].chn[nla[3^a]],l+1,pls);
+            OctreeProcessSubtree(dfloat3(t0.x,tm.y,tm.z),dfloat3(tm.x,t1.y,t1.z),a,pob,(*pob)[n].chn[nla[3^a]],l+1,pls);
             tn = OctreeNextNode(dfloat3(tm.x,t1.y,t1.z),duint3(7,8,8));
 			break;
 		case 4:
-            OctreeProcessSubtree(dfloat3(tm.x,t0.y,t0.z),dfloat3(t1.x,tm.y,tm.z),a,pob,pob[n].chn[nla[4^a]],l+1,pls);
+            OctreeProcessSubtree(dfloat3(tm.x,t0.y,t0.z),dfloat3(t1.x,tm.y,tm.z),a,pob,(*pob)[n].chn[nla[4^a]],l+1,pls);
             tn = OctreeNextNode(dfloat3(t1.x,tm.y,tm.z),duint3(8,6,5));
 			break;
 		case 5:
-            OctreeProcessSubtree(dfloat3(tm.x,t0.y,tm.z),dfloat3(t1.x,tm.y,t1.z),a,pob,pob[n].chn[nla[5^a]],l+1,pls);
+            OctreeProcessSubtree(dfloat3(tm.x,t0.y,tm.z),dfloat3(t1.x,tm.y,t1.z),a,pob,(*pob)[n].chn[nla[5^a]],l+1,pls);
             tn = OctreeNextNode(dfloat3(t1.x,tm.y,t1.z),duint3(8,7,8));
 			break;
 		case 6:
-            OctreeProcessSubtree(dfloat3(tm.x,tm.y,t0.z),dfloat3(t1.x,t1.y,tm.z),a,pob,pob[n].chn[nla[6^a]],l+1,pls);
+            OctreeProcessSubtree(dfloat3(tm.x,tm.y,t0.z),dfloat3(t1.x,t1.y,tm.z),a,pob,(*pob)[n].chn[nla[6^a]],l+1,pls);
             tn = OctreeNextNode(dfloat3(t1.x,t1.y,tm.z),duint3(8,8,7));
 			break;
 		case 7:
-            OctreeProcessSubtree(dfloat3(tm.x,tm.y,tm.z),dfloat3(t1.x,t1.y,t1.z),a,pob,pob[n].chn[nla[7^a]],l+1,pls);
+            OctreeProcessSubtree(dfloat3(tm.x,tm.y,tm.z),dfloat3(t1.x,t1.y,t1.z),a,pob,(*pob)[n].chn[nla[7^a]],l+1,pls);
 			tn = 8;
 			break;
 		}
@@ -310,13 +310,11 @@ inline sfloat4 L_Sample(const sfloat4 &iv, const sfloat1 &la, sint4 *prs){
 }
 
 static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pkernel, sint4 *prs, ParallelLeafList &ls, uint r, uint samples, sfloat1 *prq){
-	OctreeStructure *pob = pkernel->pscene->pob;
-
 	dintN sgm = dintN(gm);
 	for(uint i = 0; i < BLCLOUD_VSIZE; ++i){
 		if(sgm.v[i] == 0)
 			continue;
-        float4 ce = float4::load(&pob[0].ce);
+        float4 ce = float4::load(&pkernel->pscene->ob[0].ce);
         float4 ro1 = ro.get(i)-ce+ce.splat<3>();
         float4 rd1 = rd.get(i);
         float4 scaabbmin = float4::zero();
@@ -327,17 +325,17 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
 		uint a = 0;
 		if(rds.x < 0.0f){
-			ros.x = 2.0f*pob[0].ce.w-ros.x;
+			ros.x = 2.0f*pkernel->pscene->ob[0].ce.w-ros.x;
 			rds.x = -rds.x;
 			a |= 4;
 		}
 		if(rds.y < 0.0f){
-			ros.y = 2.0f*pob[0].ce.w-ros.y;
+			ros.y = 2.0f*pkernel->pscene->ob[0].ce.w-ros.y;
 			rds.y = -rds.y;
 			a |= 2;
 		}
 		if(rds.z < 0.0f){
-			ros.z = 2.0f*pob[0].ce.w-ros.z;
+			ros.z = 2.0f*pkernel->pscene->ob[0].ce.w-ros.z;
 			rds.z = -rds.z;
 			a |= 1;
 		}
@@ -345,8 +343,8 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
         ro1 = float4::load(&ros);
         rd1 = float4::load(&rds);
 
-		//float3 t0 = (make_float3(*(float4*)&pob[0].ce)-make_float3(pob[0].ce.w)-ro)*invrd;
-		//float3 t1 = (make_float3(*(float4*)&pob[0].ce)+make_float3(pob[0].ce.w)-ro)*invrd;
+		//float3 t0 = (make_float3(*(float4*)&ob[0].ce)-make_float3(ob[0].ce.w)-ro)*invrd;
+		//float3 t1 = (make_float3(*(float4*)&ob[0].ce)+make_float3(ob[0].ce.w)-ro)*invrd;
         float4 t0 = (scaabbmin-ro1)/rd1;
         float4 t1 = (scaabbmax-ro1)/rd1;
 
@@ -354,7 +352,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
         dfloat3 t1s = dfloat3(t1);
 
         if(std::max(std::max(t0s.x,t0s.y),t0s.z) < std::min(std::min(t1s.x,t1s.y),t1s.z))
-			OctreeProcessSubtree(t0s,t1s,a,pob,0,0,&ls.ls[r][i]);
+			OctreeProcessSubtree(t0s,t1s,a,&pkernel->pscene->ob,0,0,&ls.ls[r][i]);
 	}
 
     sfloat4 c = sfloat1::zero();
@@ -430,7 +428,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
             sfloat4 ce = sfloat1::zero();
 			for(uint j = 0; j < BLCLOUD_VSIZE; ++j)
 				if(i < ls.GetLeafCount(r,j))
-                    ce.set(j,float4::load(&pob[ls.GetLeaf(r,j,i)].ce));
+                    ce.set(j,float4::load(&pkernel->pscene->ob[ls.GetLeaf(r,j,i)].ce));
 
 			sfloat4 lo = rc; //local origin
 
@@ -451,16 +449,16 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 			dintN VM; //true: next leaf is a sole fog; false: sdf exists, but fog may not
 			for(uint j = 0; j < BLCLOUD_VSIZE; ++j){
 				if(QM.v[j] != 0){
-					if(pob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_SDF] != ~0u){
+					if(pkernel->pscene->ob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_SDF] != ~0u){
 						smax1.v[j] = 1.0f;
 						VM.v[j] = 0;
 					}else{
-						smax1.v[j] = pob[ls.GetLeaf(r,j,i)].qval[VOLUME_BUFFER_FOG];
+						smax1.v[j] = pkernel->pscene->ob[ls.GetLeaf(r,j,i)].qval[VOLUME_BUFFER_FOG];
 						VM.v[j] = 1;
 					}
 
 					if(SM.v[j] != 0 && VM.v[j] == 0)
-						dist1.v[j] = SampleVoxelSpace(r0.get(j),&pkernel->pscene->pbuf[VOLUME_BUFFER_SDF][pob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_SDF]],ce.get(j));
+						dist1.v[j] = SampleVoxelSpace(r0.get(j),&pkernel->pscene->pbuf[VOLUME_BUFFER_SDF][pkernel->pscene->ob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_SDF]],ce.get(j));
 					else dist1.v[j] = 1.0f;
 				}else VM.v[j] = 0;
 			}
@@ -507,7 +505,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
                 /*sh = sfloat1::And(sm,rm);
 				dintN SH = dintN(sh);
 				for(uint j = 0; j < BLCLOUD_VSIZE; ++j)
-					dist1.v[j] = SH.v[j] != 0?SampleVoxelSpace(rc.get(j),&pvol[pob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_SDF]],ce.get(j)):1.0f;
+					dist1.v[j] = SH.v[j] != 0?SampleVoxelSpace(rc.get(j),&pvol[ob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_SDF]],ce.get(j)):1.0f;
 				sfloat1 d = sfloat1::load(&dist1);
 
 				rm = sfloat1::And(rm,sfloat1::Greater(d,zr));*/
@@ -517,14 +515,14 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 				for(uint j = 0; j < BLCLOUD_VSIZE; ++j){
 					if(SH.v[j] != 0){
 						if(VM.v[j] == 0){
-							dist1.v[j] = SampleVoxelSpace(rc.get(j),&pkernel->pscene->pbuf[VOLUME_BUFFER_SDF][pob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_SDF]],ce.get(j));
+							dist1.v[j] = SampleVoxelSpace(rc.get(j),&pkernel->pscene->pbuf[VOLUME_BUFFER_SDF][pkernel->pscene->ob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_SDF]],ce.get(j));
 							//have to check if fog exists
-							if(dist1.v[j] > 0.0f && pob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_FOG] != ~0u)
-								rho1.v[j] = SampleVoxelSpace(rc.get(j),&pkernel->pscene->pbuf[VOLUME_BUFFER_FOG][pob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_FOG]],ce.get(j));
+							if(dist1.v[j] > 0.0f && pkernel->pscene->ob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_FOG] != ~0u)
+								rho1.v[j] = SampleVoxelSpace(rc.get(j),&pkernel->pscene->pbuf[VOLUME_BUFFER_FOG][pkernel->pscene->ob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_FOG]],ce.get(j));
 							else rho1.v[j] = -1.0f;
 						}else{
 							dist1.v[j] = 1.0f;
-							rho1.v[j] = SampleVoxelSpace(rc.get(j),&pkernel->pscene->pbuf[VOLUME_BUFFER_FOG][pob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_FOG]],ce.get(j));
+							rho1.v[j] = SampleVoxelSpace(rc.get(j),&pkernel->pscene->pbuf[VOLUME_BUFFER_FOG][pkernel->pscene->ob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_FOG]],ce.get(j));
 						}
 					}else{
 						dist1.v[j] = 1.0f;
@@ -540,10 +538,10 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
                 /*sh = sfloat1::And(sm,rm);
                 sfloat1 p = sfloat1(
-                    sh.get<0>() != 0.0f?SampleVoxelSpace<1>(rc.get(0),&pvol[pob[ls.GetLeaf(r,0,i)].volx],ce.get(0)):-1.0f,
-                    sh.get<1>() != 0.0f?SampleVoxelSpace<1>(rc.get(1),&pvol[pob[ls.GetLeaf(r,1,i)].volx],ce.get(1)):-1.0f,
-                    sh.get<2>() != 0.0f?SampleVoxelSpace<1>(rc.get(2),&pvol[pob[ls.GetLeaf(r,2,i)].volx],ce.get(2)):-1.0f,
-                    sh.get<3>() != 0.0f?SampleVoxelSpace<1>(rc.get(3),&pvol[pob[ls.GetLeaf(r,3,i)].volx],ce.get(3)):-1.0f);
+                    sh.get<0>() != 0.0f?SampleVoxelSpace<1>(rc.get(0),&pvol[ob[ls.GetLeaf(r,0,i)].volx],ce.get(0)):-1.0f,
+                    sh.get<1>() != 0.0f?SampleVoxelSpace<1>(rc.get(1),&pvol[ob[ls.GetLeaf(r,1,i)].volx],ce.get(1)):-1.0f,
+                    sh.get<2>() != 0.0f?SampleVoxelSpace<1>(rc.get(2),&pvol[ob[ls.GetLeaf(r,2,i)].volx],ce.get(2)):-1.0f,
+                    sh.get<3>() != 0.0f?SampleVoxelSpace<1>(rc.get(3),&pvol[ob[ls.GetLeaf(r,3,i)].volx],ce.get(3)):-1.0f);
                 sfloat1 q = RNG_Sample(prs);
                 rm = sfloat1::And(rm,sfloat1::Less(p,q));*/
 			}
@@ -795,7 +793,7 @@ void RenderKernel::Render(uint x0, uint y0, uint samples){
     //Wrapper to launch gpu-kernels (there have been a few tests).
     /*dim3 db = dim3(8,8,1); //[numthreads(...)]
     dim3 dg = dim3(rx/8,ry/8,1); //Dispatch
-	K_Render<<<db,dg>>>(*(matrix*)&viewi,*(matrix*)&proji,pob,x0,y0,w,h,prt);
+	K_Render<<<db,dg>>>(*(matrix*)&viewi,*(matrix*)&proji,ob,x0,y0,w,h,prt);
 
 	if(cudaMemcpy(phb,prt,rx*ry*16,cudaMemcpyDeviceToHost) != cudaSuccess)
 		printf("cudaMemcpy() failure\n");*/
@@ -805,7 +803,7 @@ void RenderKernel::Render(uint x0, uint y0, uint samples){
 
 void RenderKernel::Destroy(){
 	arhosekskymodelstate_free(pskyms);
-	/*cudaFree(pob);
+	/*cudaFree(ob);
 	cudaFree(prt);*/
 	delete []plights;
     _mm_free(phb);

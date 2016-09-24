@@ -26,7 +26,10 @@ public:
     dfloat3 se;
 };
 
-struct OctreeStructure{
+class OctreeStructure{
+public:
+	OctreeStructure();
+	~OctreeStructure();
     dfloat4 ce; //(center.xyz,extent)
 	uint chn[8];
 	uint volx[VOLUME_BUFFER_COUNT]; //leaf volume index
@@ -39,9 +42,11 @@ struct OctreeStructure{
 class Octree{
 public:
 	Octree(uint);
+	Octree(); //should only used by concurrent_vector initial allocator
 	~Octree();
-	void BuildPath(const float4 &, const float4 &, const float4 &, const float4 &, uint, uint, std::atomic<uint> *, std::atomic<uint> *, Octree *, OctreeStructure *, VOLUME_BUFFER);
-    void BuildPath(const float4 &, const float4 &, const float4 &, const float4 &, const float4 &, uint, uint, std::atomic<uint> *, std::atomic<uint> *, Octree *, OctreeStructure *, VOLUME_BUFFER);
+	void BuildPath(const float4 &, const float4 &, const float4 &, const float4 &, uint, uint, std::atomic<uint> *, std::atomic<uint> *, tbb::concurrent_vector<Octree> *, tbb::concurrent_vector<OctreeStructure> *, VOLUME_BUFFER);
+    void BuildPath(const float4 &, const float4 &, const float4 &, const float4 &, const float4 &, uint, uint, std::atomic<uint> *, std::atomic<uint> *, tbb::concurrent_vector<Octree> *, tbb::concurrent_vector<OctreeStructure> *, VOLUME_BUFFER);
+	void FreeRecursive();
 	Octree *pch[8];
 	uint x; //node index
     //std::atomic_flag lock; //MT node write-access
@@ -142,10 +147,11 @@ public:
 	//void AddObject();
 	//void BuildScene();
 	void Destroy();
-	OctreeStructure *pob;
     LeafVolume *pbuf[VOLUME_BUFFER_COUNT]; //-> psdfb, pfogb
     uint index;
     uint leafx[VOLUME_BUFFER_COUNT];
+	tbb::concurrent_vector<Octree> root;
+	tbb::concurrent_vector<OctreeStructure> ob;
     //uint octreesize;
     /*enum CACHE_MODE{
         //

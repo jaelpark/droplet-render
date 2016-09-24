@@ -23,5 +23,4 @@ add_definitions(-DDROPLET_CPU)
 file(GLOB SOURCES src/*.cpp)
 
 add_library(droplet SHARED ${SOURCES})
-TARGET_LINK_LIBRARIES(droplet tbb openvdb)
-
+TARGET_LINK_LIBRARIES(droplet tbb tbbmalloc openvdb)
