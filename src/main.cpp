@@ -2,6 +2,7 @@
 #include "node.h"
 #include "scene.h"
 #include "kernel.h"
+#include "KernelSampler.h"
 #include <python3.5m/Python.h>
 
 #include <unordered_map>
@@ -339,18 +340,6 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
             Py_DECREF(psd);
             Py_DECREF(pdata);
 
-			PyObject *ppf = PyObject_GetAttrString(psd,"phasef");
-			const char *ppfs = PyUnicode_AsUTF8(ppf);
-			switch(ppfs[0]){
-			case 'H':
-				light.ppf = &HGPhase::ghg;
-				break;
-			case 'M':
-				light.ppf = &MiePhase::gmie;
-				break;
-			}
-			Py_DECREF(ppf);
-
 			lights.push_back(light);
 		}
 
@@ -461,7 +450,17 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
     uint scattevs = (uint)PyLong_AsLong(pscattevs);
 	float msigmas = PyGetFloat(psampling,"msigmas");
 	float msigmaa = PyGetFloat(psampling,"msigmaa");
-    //
+	/*PyObject *ppf = PyObject_GetAttrString(psampling,"phasef");
+	const char *ppfs = PyUnicode_AsUTF8(ppf);
+	switch(ppfs[0]){
+	case 'H':
+		light.ppf = &HGPhase::ghg;
+		break;
+	case 'M':
+		light.ppf = &MiePhase::gmie;
+		break;
+	}
+	Py_DECREF(ppf);*/
     Py_DECREF(pscattevs);
     Py_DECREF(psampling);
 

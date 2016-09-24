@@ -1,6 +1,7 @@
 #include "main.h"
 #include "scene.h"
 #include "kernel.h"
+#include "KernelSampler.h"
 
 #include <random>
 
@@ -62,9 +63,9 @@ inline __m128 RNG_Sample(sint4 *prs){
 
 inline sfloat4 RNG_SampleDir(sint4 *prs){
     //__m128 tt = _mm_set1_ps(2.0f);
-    //__m128 tp = _mm_set1_ps(XM_PI);
-    __m128 t = 2.0f*XM_PI*RNG_Sample(prs);
-    __m128 p = XM_PI*RNG_Sample(prs);
+    //__m128 tp = _mm_set1_ps(SM_PI);
+    __m128 t = 2.0f*SM_PI*RNG_Sample(prs);
+    __m128 p = SM_PI*RNG_Sample(prs);
     //__m128 r = sin_ps(p);//XMVectorSin(p);
 	sfloat4 rd;
     __m128 sp, cp, st, ct;
@@ -269,7 +270,7 @@ inline void SamplingBasis(const sfloat4 &iv, sfloat4 *pb1, sfloat4 *pb2){
 inline sfloat1 HG_Phase(const sfloat1 &ct){
     sfloat1 g = sfloat1(PHASE_G);
     sfloat1 e = sfloat1(1.50f);
-    return (1.0f-g*g)/(4.0f*XM_PI*sfloat1::pow(1.0f+g*g-2.0f*g*ct,e));
+    return (1.0f-g*g)/(4.0f*SM_PI*sfloat1::pow(1.0f+g*g-2.0f*g*ct,e));
 }
 
 inline sfloat4 HG_Sample(const sfloat4 &iv, sint4 *prs){
@@ -277,7 +278,7 @@ inline sfloat4 HG_Sample(const sfloat4 &iv, sint4 *prs){
     sfloat1 sq = (1.0f-g*g)/(1.0f-g+2.0f*g*RNG_Sample(prs));
     sfloat1 ct = (1.0f+g*g-sq*sq)/(2.0f*g);
     sfloat1 st = sfloat1::sqrt(sfloat1::max(1.0f-ct*ct,sfloat1::zero()));
-    sfloat1 ph = 2.0f*XM_PI*RNG_Sample(prs);
+    sfloat1 ph = 2.0f*SM_PI*RNG_Sample(prs);
 
     sfloat4 b1, b2;
     SamplingBasis(iv,&b1,&b2);
@@ -286,67 +287,9 @@ inline sfloat4 HG_Sample(const sfloat4 &iv, sint4 *prs){
     return b1*st*cph+b2*st*sph+iv*ct;
 }*/
 
-PhaseFunction::PhaseFunction(){
-	//
-}
-
-PhaseFunction::~PhaseFunction(){
-	//
-}
-
-HGPhase::HGPhase(float _g) : g1(_g){
-	//
-}
-
-HGPhase::~HGPhase(){
-	//
-}
-
-sfloat1 HGPhase::Evaluate(const sfloat1 &ct) const{
-    sfloat1 g = sfloat1(g1);
-    sfloat1 e = sfloat1(1.50f);
-    return (1.0f-g*g)/(4.0f*XM_PI*sfloat1::pow(1.0f+g*g-2.0f*g*ct,e));
-}
-
-sfloat4 HGPhase::Sample(const sfloat4 &iv, sint4 *prs) const{
-    sfloat1 g = sfloat1(g1);
-    sfloat1 sq = (1.0f-g*g)/(1.0f-g+2.0f*g*RNG_Sample(prs));
-    sfloat1 ct = (1.0f+g*g-sq*sq)/(2.0f*g);
-    sfloat1 st = sfloat1::sqrt(sfloat1::max(1.0f-ct*ct,sfloat1::zero()));
-    sfloat1 ph = 2.0f*XM_PI*RNG_Sample(prs);
-
-    sfloat4 b1, b2;
-    SamplingBasis(iv,&b1,&b2);
-    sfloat1 sph, cph;
-    sincos_ps(ph.v,&sph.v,&cph.v);
-    return b1*st*cph+b2*st*sph+iv*ct;
-}
-
-HGPhase HGPhase::ghg(0.35f);
-
-MiePhase::MiePhase(){
-	//
-}
-
-MiePhase::~MiePhase(){
-	//
-}
-
-sfloat1 MiePhase::Evaluate(const sfloat1 &ct) const{
-	//
-	return sfloat1(0.0f);
-}
-
-sfloat4 MiePhase::Sample(const sfloat4 &iv, sint4 *prs) const{
-	//
-	return sfloat1(0.0f);
-}
-
-MiePhase MiePhase::gmie;
-
 inline sfloat1 L_Pdf(const sfloat4 &iv, const sfloat1 &la){
     sfloat1 ctm = sfloat1::sqrt(1.0f-la*la);
-    return sfloat1(1.0f/(2.0f*XM_PI*(1.0f-ctm)));
+    return sfloat1(1.0f/(2.0f*SM_PI*(1.0f-ctm)));
 }
 
 inline sfloat4 L_Sample(const sfloat4 &iv, const sfloat1 &la, sint4 *prs){
@@ -357,7 +300,7 @@ inline sfloat4 L_Sample(const sfloat4 &iv, const sfloat1 &la, sint4 *prs){
     sfloat1 ctm = sfloat1::sqrt(1.0f-la*la);
     sfloat1 ct = (1.0f-u1)+u1*ctm;
     sfloat1 st = sfloat1::sqrt(1.0f-ct*ct);
-    sfloat1 ph = 2.0f*XM_PI*RNG_Sample(prs);
+    sfloat1 ph = 2.0f*SM_PI*RNG_Sample(prs);
 
     sfloat4 b1, b2;
     SamplingBasis(iv,&b1,&b2);
@@ -618,6 +561,8 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 	            sfloat1 lt = sfloat1::Greater(sfloat4::dot3(rd,sfloat4(float4::load(&pkernel->plights[i].direction))),sfloat1(pkernel->plights[i].angle));
 	            //lm = sfloat1::Or(lm,lt); //0.995f
 
+				//!!!!!!!!! bug - not additive
+				//replace with lc += BaseLight::Evaluate
 	            float4 c = float4::load(&pkernel->plights[i].color);
 	            lc.v[0] = sfloat1::Or(sfloat1::And(lt,c.splat<0>()),sfloat1::AndNot(lt,lc.v[0]));
 	            lc.v[1] = sfloat1::Or(sfloat1::And(lt,c.splat<1>()),sfloat1::AndNot(lt,lc.v[1]));
@@ -648,14 +593,15 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 	        //sfloat1 cc2 = sfloat1::Less(cph,-sfloat1::one());
 	        //sfloat1 ga = sfloat1::acos(cph);
 	        /*ga = sfloat1::Or(sfloat1::And(cc1,zr),sfloat1::AndNot(cc1,ga));
-	        ga = sfloat1::Or(sfloat1::And(cc2,sfloat1(XM_PI)),sfloat1::AndNot(cc2,ga));*/
+	        ga = sfloat1::Or(sfloat1::And(cc2,sfloat1(SM_PI)),sfloat1::AndNot(cc2,ga));*/
 
 	        //th = sfloat1::min(th,sfloat1(XM_PIDIV2-0.001f));
 
 	        //sfloat1 gacs = cos_ps(ga);
 	        //sfloat1 thcs = cos_ps(th);
-	        sfloat1 gmma = 1.570796808f+(-0.7107710905f+(-0.9654782056e-5f+
-	             (-2.721495228f+(0.2766071913e-4f+(5.591013086f+(-0.1860396098e-4f-3.690226730f*cph)*cph)*cph)*cph)*cph)*cph)*cph; //acos minimax
+	        //sfloat1 gmma = 1.570796808f+(-0.7107710905f+(-0.9654782056e-5f+
+	             //(-2.721495228f+(0.2766071913e-4f+(5.591013086f+(-0.1860396098e-4f-3.690226730f*cph)*cph)*cph)*cph)*cph)*cph)*cph; //acos minimax
+			sfloat1 gmma = sfloat1::acos(cph);
 	        sfloat1 gacs = sfloat1::saturate(cph);
 	        sfloat1 thcs = sfloat1::max(rdz,sfloat1::zero());
 	        sfloat1 raym = gacs*gacs;
@@ -685,11 +631,12 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 #ifdef BLCLOUD_MULTIPLE_IMPORTANCE
             //sample the phase function and lights
 			sfloat1 la = sfloat1(pkernel->plights[0].angle); //TODO: choose randomly one the lights. Multiply the final estimate (s2) with the total number of lights (ref776).
-            sfloat4 srd = pkernel->plights[0].ppf->Sample(rd,prs);//HG_Sample(rd,prs);
+			sfloat1 u1 = RNG_Sample(prs), u2 = RNG_Sample(prs);
+            sfloat4 srd = KernelSampler::HGPhase::ghg.Sample(rd,u1,u2);//HG_Sample(rd,prs);
             sfloat4 lrd = L_Sample(sfloat4(float4::load(&pkernel->plights[0].direction)),la,prs);
 
             //pdfs for the balance heuristic w_x = p_x/sum(p_i,i=0..N)
-            sfloat1 p1 = pkernel->plights[0].ppf->Evaluate(sfloat4::dot3(srd,rd));//HG_Phase(sfloat4::dot3(srd,rd));
+            sfloat1 p1 = KernelSampler::HGPhase::ghg.Evaluate(sfloat4::dot3(srd,rd));//HG_Phase(sfloat4::dot3(srd,rd));
             sfloat1 p2 = L_Pdf(lrd,la);
 
             //need two samples - with the phase sampling keep on the recursion while for the light do only single scattering
@@ -706,7 +653,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
 			//(HG_Phase(X)*SampleVolume(X)*p1/(p1+L_Pdf(X)))/p1 => (HG_Phase(X)=p1)*SampleVolume(X)/(p1+L_Pdf(X)) = p1*SampleVolume(X)/(p1+L_Pdf(X))
 			//(HG_Phase(Y)*SampleVolume(Y)*p2/(HG_Phase(Y)+p2))/p2 => HG_phase(Y)*SampleVolume(Y)/(HG_Phase(Y)+p2)
-			sfloat1 p3 = pkernel->plights[0].ppf->Evaluate(sfloat4::dot3(lrd,rd));//HG_Phase(sfloat4::dot3(lrd,rd));
+			sfloat1 p3 = KernelSampler::HGPhase::ghg.Evaluate(sfloat4::dot3(lrd,rd));//HG_Phase(sfloat4::dot3(lrd,rd));
 			sfloat4 cm = s1*p1/(p1+L_Pdf(srd,la))+s2*p3/(p3+p2);
 			cm *= msigmas/msigmae;
 
