@@ -585,7 +585,9 @@ MiePhase::~MiePhase(){
 }
 
 sfloat1 MiePhase::Evaluate(const sfloat1 &ct) const{
-	sfloat1 a = sfloat1::acos(ct)/SM_PI;
+	//sfloat1 a = sfloat1::acos(ct)/SM_PI;
+	sfloat1 ct1 = sfloat1::saturate(ct); //hack rare abs(ct) > 1 cases
+	sfloat1 a = sfloat1::acos(ct1)/SM_PI;
 	sfloat1 b = sfloat1((float)miedl*a);
 	sfloat1 c = sfloat1::floor(b);
 	c = sfloat1::min(c,(float)(miedl-1));
@@ -600,20 +602,36 @@ sfloat1 MiePhase::Evaluate(const sfloat1 &ct) const{
 	sfloat1 mb = sfloat1::load(&MB);
 
 	return sfloat1::lerp(ma,mb,t);
+	//return HGPhase::ghg.Evaluate(ct);
 }
 
 sfloat4 MiePhase::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2) const{
-	sfloat1 th;
+#if 1
+	sfloat1 th = sfloat1::zero();
 	for(uint i = 0; i < miedl-1; ++i){
 		//sfloat1 cdf0 = sfloat1(miecdf[i+0].x);
 		sfloat1 cdf1 = sfloat1(miecdf[i+1].x);
 		//sfloat1 t = u1-cdf0;
 		//sfloat1 b = sfloat1((float)miedl*u1);
-		sfloat1 m = sfloat1::Less(u1,cdf1);
+		sfloat1 m = sfloat1::Less(cdf1,u1);
 		sfloat1 s = sfloat1((float)i/(float)miedl);
 		th = sfloat1::Or(sfloat1::And(m,s),sfloat1::AndNot(m,th)); //TODO: interpolation
 		if(m.AllFalse())
 			break;
+		/*sfloat1 cdf0 = sfloat1(miecdf[i+0].x);
+		sfloat1 cdf1 = sfloat1(miecdf[i+1].x);
+		//sfloat1 t = u1-cdf0;
+		sfloat1 b = sfloat1((float)miedl*u1);
+		b = sfloat1::max(b,(float)i);
+		sfloat1 c = sfloat1::floor(b);
+		c = sfloat1::min(c,(float)(miedl-1));
+		sfloat1 t = b-c;
+		sfloat1 cdf = sfloat1::lerp(cdf0,cdf1,t);
+		sfloat1 m = sfloat1::Less(cdf,u1);
+		sfloat1 s = sfloat1((float)i/(float)miedl)+t/(float)miedl;
+		th = sfloat1::Or(sfloat1::And(m,s),sfloat1::AndNot(m,th));
+		if(m.AllFalse())
+			break;*/
 	}
 	th *= sfloat1(SM_PI);
 	sfloat1 ph = 2.0f*SM_PI*u2;
@@ -625,6 +643,9 @@ sfloat4 MiePhase::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2
     sfloat1 sph, cph;
     sincos_ps(ph.v,&sph.v,&cph.v);
     return b1*st*cph+b2*st*sph+iv*ct;
+#else
+	return HGPhase::ghg.Sample(iv,u1,u2);
+#endif
 }
 
 MiePhase MiePhase::gmie;

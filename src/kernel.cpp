@@ -661,7 +661,8 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 #else
 			sfloat1 rq;
             //phase function sampling
-            sfloat4 srd = HG_Sample(rd,prs);
+			sfloat1 u1 = RNG_Sample(prs), u2 = RNG_Sample(prs);
+            sfloat4 srd = pkernel->ppf->Sample(rd,u1,u2);
             sfloat4 cm = SampleVolume(rc,srd,sfloat1::AndNot(rm,sint1::trueI()),pkernel,prs,ls,r+1,1,&rq)*msigmas/msigmae;
             //phase/pdf(=phase)=1
 
