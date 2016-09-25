@@ -93,7 +93,8 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 			dd = 0;
 			for i in range(0,sc):
 				if self.test_break():
-					break; #TODO: end_result to keep all the work
+					self.end_result(result);
+					break;
 				self.update_stats("Path tracing tile ("+str((nx*ny)-len(tl))+"/"+str(nx*ny)+")",str(dd)+"/"+str(st)+" samples");
 				d1 = min(st-i*sr,sr);
 

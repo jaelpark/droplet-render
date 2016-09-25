@@ -2,15 +2,15 @@
 #include "scene.h"
 #include "kernel.h"
 #include "KernelSampler.h"
+#include "ArHosekSkyModel.h"
 
 #include <random>
+#include <fenv.h>
 
 #include <tbb/parallel_for.h>
 
 #define USE_SSE2
 #include "sse_mathfun.h"
-
-#include "ArHosekSkyModel.h"
 
 //http://developer.nvidia.com/GPUGems3/gpugems3_ch37.html
 //vectorized version
@@ -672,6 +672,11 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
             sfloat4 cm = SampleVolume(rc,lrd,sfloat1::AndNot(rm,sint1::trueI()),pkernel,prs,ls,r+1,1)*HG_Phase(sfloat4::dot3(lrd,rd))*msigmas
                 /(msigmae*L_Pdf(lrd,la));*/
 #endif
+			sfloat1 hm = sfloat1::Greater(cm.v[0],sfloat1(1e5f)); //temp hack to deal with some bug, will be properly fixed later
+			cm.v[0] = sfloat1::Or(sfloat1::And(hm,c.v[0]/(float)(s+1)),sfloat1::AndNot(hm,cm.v[0]));
+			cm.v[1] = sfloat1::Or(sfloat1::And(hm,c.v[1]/(float)(s+1)),sfloat1::AndNot(hm,cm.v[1]));
+			cm.v[2] = sfloat1::Or(sfloat1::And(hm,c.v[2]/(float)(s+1)),sfloat1::AndNot(hm,cm.v[2]));
+
 			*prq = sint1::trueI();
             c.v[0] += sfloat1::Or(sfloat1::And(rm,ll.v[0]),sfloat1::AndNot(rm,cm.v[0]));
             c.v[1] += sfloat1::Or(sfloat1::And(rm,ll.v[1]),sfloat1::AndNot(rm,cm.v[1]));
@@ -693,6 +698,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 }
 
 static void K_Render(dmatrix44 *pviewi, dmatrix44 *pproji, RenderKernel *pkernel, uint x0, uint y0, uint rx, uint ry, uint w, uint h, uint samples, dfloat4 *pout){
+	feenableexcept(FE_ALL_EXCEPT&~FE_INEXACT);
     tbb::enumerable_thread_specific<ParallelLeafList> leafs; //list here to avoid memory allocations
 #define BLCLOUD_MT
 #ifdef BLCLOUD_MT
@@ -746,6 +752,7 @@ static void K_Render(dmatrix44 *pviewi, dmatrix44 *pproji, RenderKernel *pkernel
 #else
 	}
 #endif
+	fedisableexcept(FE_ALL_EXCEPT&~FE_INEXACT);
 }
 
 RenderKernel::RenderKernel(){

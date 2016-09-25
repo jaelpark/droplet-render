@@ -244,8 +244,10 @@ Octree::~Octree(){
 
 //Some template setup to combine BoundingBox/Triangle cases?
 void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &c1, const float4 &e1, uint level, uint mlevel, std::atomic<uint> *pindex, std::atomic<uint> *pleafx, tbb::concurrent_vector<Octree> *proot, tbb::concurrent_vector<OctreeStructure> *pob, VOLUME_BUFFER bx){
+	m.lock();
     float4::store(&(*pob)[x].ce,float4::select(c,e,float4::selectctrl(0,0,0,1)));
     memset((*pob)[x].qval,0,sizeof((*pob)[x].qval)); //these are set during the resampling phase
+	m.unlock();
 
     if(level >= mlevel-1){
         m.lock();//for(; lock.test_and_set(std::memory_order_acquire););
@@ -282,8 +284,10 @@ void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &c1, const
 }
 
 void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &v0, const float4 &v1, const float4 &v2, uint level, uint mlevel, std::atomic<uint> *pindex, std::atomic<uint> *pleafx, tbb::concurrent_vector<Octree> *proot, tbb::concurrent_vector<OctreeStructure> *pob, VOLUME_BUFFER bx){
+	m.lock();
     float4::store(&(*pob)[x].ce,float4::select(c,e,float4::selectctrl(0,0,0,1)));
     memset((*pob)[x].qval,0,sizeof((*pob)[x].qval)); //these are set during the resampling phase
+	m.unlock();
 
     if(level >= mlevel-1){
         m.lock();//for(; lock.test_and_set(std::memory_order_acquire););
@@ -517,6 +521,8 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
     std::atomic<uint> indexa(0);
     std::atomic<uint> leafxa(0); //sdf
 	std::atomic<uint> leafxb(0); //fog
+
+#if 0
     tbb::parallel_for(tbb::blocked_range<size_t>(0,tl.size()),[&](const tbb::blocked_range<size_t> &nr){
         for(uint i = nr.begin(); i < nr.end(); ++i){
             float4 v0 = float4::load(&vl[tl[i].x]);
@@ -549,6 +555,34 @@ static void S_Create(float s, float lff, openvdb::FloatGrid::Ptr pgrid[VOLUME_BU
             proot->BuildPath(c,a,c1,e1,0,mlevel,&indexa,&leafxb,&pscene->root,&pscene->ob,VOLUME_BUFFER_FOG);
         }
     });
+#else
+	for(uint i = 0; i < tl.size(); ++i){
+		float4 v0 = float4::load(&vl[tl[i].x]);
+		float4 v1 = float4::load(&vl[tl[i].y]);
+		float4 v2 = float4::load(&vl[tl[i].z]);
+		proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,&pscene->root,&pscene->ob,VOLUME_BUFFER_SDF);
+	}
+
+	for(uint i = 0; i < ql.size(); ++i){
+		float4 v0, v1, v2;
+
+		v0 = float4::load(&vl[ql[i].x]);
+		v1 = float4::load(&vl[ql[i].y]);
+		v2 = float4::load(&vl[ql[i].z]);
+		proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,&pscene->root,&pscene->ob,VOLUME_BUFFER_SDF);
+
+		v0 = float4::load(&vl[ql[i].z]);
+		v1 = float4::load(&vl[ql[i].w]);
+		v2 = float4::load(&vl[ql[i].x]);
+		proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,&pscene->root,&pscene->ob,VOLUME_BUFFER_SDF);
+	}
+
+	for(uint i = 0; i < fogbvs.size(); ++i){
+		float4 c1 = float4::load(&fogbvs[i].sc);
+		float4 e1 = float4::load(&fogbvs[i].se);
+		proot->BuildPath(c,a,c1,e1,0,mlevel,&indexa,&leafxb,&pscene->root,&pscene->ob,VOLUME_BUFFER_FOG);
+	}
+#endif
 
 	proot->FreeRecursive();
 	scalable_free(proot);
