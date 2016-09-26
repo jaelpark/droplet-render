@@ -678,12 +678,20 @@ sfloat4 MiePhase::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2
 MiePhase MiePhase::gmie;
 
 BaseLight::BaseLight(){
-	//
+	lights.push_back(this);
 }
 
 BaseLight::~BaseLight(){
 	//
 }
+
+void BaseLight::DeleteAll(){
+	for(uint i = 0; i < lights.size(); ++i)
+		delete lights[i];
+	lights.clear();
+}
+
+std::vector<BaseLight *> BaseLight::lights;
 
 SunLight::SunLight(const dfloat3 *pd, const dfloat3 *pc, float _angle) : direction(*pd), color(*pc), angle(_angle){
 	//
@@ -721,10 +729,11 @@ sfloat4 SunLight::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2
     sfloat1 ph = 2.0f*SM_PI*u2;
 
     sfloat4 b1, b2;
-    SamplingBasis(iv,&b1,&b2);
+	sfloat4 lrd = sfloat4(float4::load(&direction));
+    SamplingBasis(lrd,&b1,&b2);
     sfloat1 sph, cph;
     sincos_ps(ph.v,&sph.v,&cph.v);
-    return b1*st*cph+b2*st*sph+iv*ct;
+    return b1*st*cph+b2*st*sph+lrd*ct;
 }
 
 }

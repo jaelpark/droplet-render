@@ -7,12 +7,6 @@ namespace KernelSampler{
 class PhaseFunction;
 }
 
-struct Light{
-    dfloat3 direction;
-    dfloat3 color; //color*intensity
-    float angle;
-};
-
 #define BLCLOUD_MAX_RECURSION 32 //BLCLOUD_MAX_RECURSION
 class ParallelLeafList{
 public:
@@ -34,16 +28,14 @@ class RenderKernel{
 public:
 	RenderKernel();
 	~RenderKernel();
-    bool Initialize(const Scene *, const dmatrix44 *, const dmatrix44 *, const std::vector<Light> *, KernelSampler::PhaseFunction *, uint, float, float, uint, uint, uint, uint, uint);
+    bool Initialize(const Scene *, const dmatrix44 *, const dmatrix44 *, KernelSampler::PhaseFunction *, uint, float, float, uint, uint, uint, uint, uint);
     void Render(uint, uint, uint);
 	void Destroy();
 	//
     dfloat4 *phb; //host buffer
     const Scene *pscene;
 	struct ArHosekSkyModelState *pskyms;
-	Light *plights;
 	KernelSampler::PhaseFunction *ppf;
-	uint lightc;
     dmatrix44 viewi;
     dmatrix44 proji;
     //uint samples;

@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <functional> //std::function
 
-#include <time.h>
+#include <time.h> //logging gimmick
 #include <stdarg.h>
 
 static RenderKernel *gpkernel = 0;
@@ -221,8 +221,6 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 
     Py_DECREF(pngn);
 
-	std::vector<Light> lights;
-
 	PyObject *pbmeshn = PyUnicode_FromString("bmesh");
 	PyObject *pbmesh = PyImport_Import(pbmeshn);
 
@@ -346,19 +344,17 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
             PyObject *pcolor = PyObject_GetAttrString(psd,"color");
             float intensity = PyGetFloat(psd,"intensity");
 
-			Light light;
-            light.direction = dfloat3(-d);
-            light.color = intensity*dfloat3(
+			dfloat3 D = dfloat3(-d);
+			dfloat3 c = intensity*dfloat3(
                 PyGetFloat(pcolor,"r"),
                 PyGetFloat(pcolor,"g"),
                 PyGetFloat(pcolor,"b"));
-            light.angle = PyGetFloat(psd,"angle");
+			float angle = PyGetFloat(psd,"angle");
+			KernelSampler::BaseLight *pl = new KernelSampler::SunLight(&D,&c,angle);
 
             Py_DECREF(pcolor);
             Py_DECREF(psd);
             Py_DECREF(pdata);
-
-			lights.push_back(light);
 		}
 
         else if(strcasecmp(ptype1,"MESH") == 0){
@@ -507,7 +503,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	//gpscene->BuildScene();
 
 	gpkernel = new RenderKernel();
-    gpkernel->Initialize(gpscene,&sviewi,&sproji,&lights,ppf,scattevs,msigmas,msigmaa,rx,ry,w,h,flags);
+    gpkernel->Initialize(gpscene,&sviewi,&sproji,ppf,scattevs,msigmas,msigmaa,rx,ry,w,h,flags);
 
 	SceneData::SmokeCache::DeleteAll();
     SceneData::ParticleSystem::DeleteAll();
@@ -537,6 +533,8 @@ static PyObject * DRE_Render(PyObject *pself, PyObject *pargs){
 }
 
 static PyObject * DRE_EndRender(PyObject *pself, PyObject *pargs){
+	KernelSampler::BaseLight::DeleteAll();
+
     gpkernel->Destroy();
 	delete gpkernel;
 	gpkernel = 0;

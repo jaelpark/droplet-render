@@ -266,49 +266,6 @@ inline void SamplingBasis(const sfloat4 &iv, sfloat4 *pb1, sfloat4 *pb2){
     *pb2 = sfloat4::cross3(iv,*pb1);
 }
 
-/*#define PHASE_G 0.35f//0.88f //0.32f
-inline sfloat1 HG_Phase(const sfloat1 &ct){
-    sfloat1 g = sfloat1(PHASE_G);
-    sfloat1 e = sfloat1(1.50f);
-    return (1.0f-g*g)/(4.0f*SM_PI*sfloat1::pow(1.0f+g*g-2.0f*g*ct,e));
-}
-
-inline sfloat4 HG_Sample(const sfloat4 &iv, sint4 *prs){
-    sfloat1 g = sfloat1(PHASE_G);
-    sfloat1 sq = (1.0f-g*g)/(1.0f-g+2.0f*g*RNG_Sample(prs));
-    sfloat1 ct = (1.0f+g*g-sq*sq)/(2.0f*g);
-    sfloat1 st = sfloat1::sqrt(sfloat1::max(1.0f-ct*ct,sfloat1::zero()));
-    sfloat1 ph = 2.0f*SM_PI*RNG_Sample(prs);
-
-    sfloat4 b1, b2;
-    SamplingBasis(iv,&b1,&b2);
-    sfloat1 sph, cph;
-    sincos_ps(ph.v,&sph.v,&cph.v);
-    return b1*st*cph+b2*st*sph+iv*ct;
-}*/
-
-inline sfloat1 L_Pdf(const sfloat4 &iv, const sfloat1 &la){
-    sfloat1 ctm = sfloat1::sqrt(1.0f-la*la);
-    return sfloat1(1.0f/(2.0f*SM_PI*(1.0f-ctm)));
-}
-
-inline sfloat4 L_Sample(const sfloat4 &iv, const sfloat1 &la, sint4 *prs){
-    //iv: light vector in this case
-    //t = asin(theta = r/d)
-    //cos(asin(t)) = sqrt(1-(r/d)^2)
-    sfloat1 u1 = RNG_Sample(prs);
-    sfloat1 ctm = sfloat1::sqrt(1.0f-la*la);
-    sfloat1 ct = (1.0f-u1)+u1*ctm;
-    sfloat1 st = sfloat1::sqrt(1.0f-ct*ct);
-    sfloat1 ph = 2.0f*SM_PI*RNG_Sample(prs);
-
-    sfloat4 b1, b2;
-    SamplingBasis(iv,&b1,&b2);
-    sfloat1 sph, cph;
-    sincos_ps(ph.v,&sph.v,&cph.v);
-    return b1*st*cph+b2*st*sph+iv*ct;
-}
-
 static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pkernel, sint4 *prs, ParallelLeafList &ls, uint r, uint samples, sfloat1 *prq){
 	dintN sgm = dintN(gm);
 	for(uint i = 0; i < BLCLOUD_VSIZE; ++i){
@@ -535,15 +492,6 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
 				//if(p > q || d < 0) break;
 				rm = sfloat1::And(rm,sfloat1::And(sfloat1::Less(p/smax,q),sfloat1::Greater(d,zr)));
-
-                /*sh = sfloat1::And(sm,rm);
-                sfloat1 p = sfloat1(
-                    sh.get<0>() != 0.0f?SampleVoxelSpace<1>(rc.get(0),&pvol[ob[ls.GetLeaf(r,0,i)].volx],ce.get(0)):-1.0f,
-                    sh.get<1>() != 0.0f?SampleVoxelSpace<1>(rc.get(1),&pvol[ob[ls.GetLeaf(r,1,i)].volx],ce.get(1)):-1.0f,
-                    sh.get<2>() != 0.0f?SampleVoxelSpace<1>(rc.get(2),&pvol[ob[ls.GetLeaf(r,2,i)].volx],ce.get(2)):-1.0f,
-                    sh.get<3>() != 0.0f?SampleVoxelSpace<1>(rc.get(3),&pvol[ob[ls.GetLeaf(r,3,i)].volx],ce.get(3)):-1.0f);
-                sfloat1 q = RNG_Sample(prs);
-                rm = sfloat1::And(rm,sfloat1::Less(p,q));*/
 			}
 		}
 
@@ -553,19 +501,9 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
         sfloat4 lc = sfloat1::zero();
 		sfloat4 ll;
 		//if(!sfloat1::AnyTrue(sfloat1::EqualR(rm,zr))){ //skip (sky)lighting calculations if all incident rays scatter
-		if(rm.AnyTrue()){ //skip (sky)lighting calculations if all incident rays scatter (at least one of rm != 0)
-	        for(uint i = 0; i < pkernel->lightc; ++i){
-	            //sfloat1 lt = sfloat1::Greater(sfloat4::dot3(rd,sfloat4(float4::load(&pkernel->plights[i].direction))),sfloat1(0.96f));
-	            sfloat1 lt = sfloat1::Greater(sfloat4::dot3(rd,sfloat4(float4::load(&pkernel->plights[i].direction))),sfloat1(pkernel->plights[i].angle));
-	            //lm = sfloat1::Or(lm,lt); //0.995f
-
-				//!!!!!!!!! bug - not additive
-				//replace with lc += BaseLight::Evaluate
-	            float4 c = float4::load(&pkernel->plights[i].color);
-	            lc.v[0] = sfloat1::Or(sfloat1::And(lt,c.splat<0>()),sfloat1::AndNot(lt,lc.v[0]));
-	            lc.v[1] = sfloat1::Or(sfloat1::And(lt,c.splat<1>()),sfloat1::AndNot(lt,lc.v[1]));
-	            lc.v[2] = sfloat1::Or(sfloat1::And(lt,c.splat<2>()),sfloat1::AndNot(lt,lc.v[2]));
-	        }
+		if(rm.AnyTrue()){ //skip (sky)lighting calculations if all incident rays scatter (didn't reach sun or sky) (at least one of rm != 0)
+			for(uint i = 0; i < KernelSampler::BaseLight::lights.size(); ++i)
+				lc += KernelSampler::BaseLight::lights[i]->Evaluate(rd);
 
 	        //skylighting
 	        //sfloat1 th = sfloat1::acos(rd.v[2]); //add/remove abs to remove/get ground
@@ -628,15 +566,17 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 #define BLCLOUD_MULTIPLE_IMPORTANCE
 #ifdef BLCLOUD_MULTIPLE_IMPORTANCE
             //sample the phase function and lights
-			sfloat1 la = sfloat1(pkernel->plights[0].angle); //TODO: choose randomly one the lights. Multiply the final estimate (s2) with the total number of lights (ref776).
+			//sfloat1 la = sfloat1(pkernel->plights[0].angle); //TODO: choose randomly one the lights. Multiply the final estimate (s2) with the total number of lights (ref776).
 			sfloat1 u1 = RNG_Sample(prs), u2 = RNG_Sample(prs);
-            //sfloat4 srd = KernelSampler::HGPhase::ghg.Sample(rd,u1,u2);//pkernel->ppf->Sample(rd,u1,u2);//HG_Sample(rd,prs);
 			sfloat4 srd = pkernel->ppf->Sample(rd,u1,u2);//HG_Sample(rd,prs);
-            sfloat4 lrd = L_Sample(sfloat4(float4::load(&pkernel->plights[0].direction)),la,prs);
+
+            //sfloat4 lrd = L_Sample(sfloat4(float4::load(&pkernel->plights[0].direction)),la,prs);
+			sfloat1 u3 = RNG_Sample(prs), u4 = RNG_Sample(prs);
+			sfloat4 lrd = KernelSampler::BaseLight::lights[0]->Sample(rd,u3,u4);
 
             //pdfs for the balance heuristic w_x = p_x/sum(p_i,i=0..N)
             sfloat4 p1 = pkernel->ppf->EvaluateRGB(sfloat4::dot3(srd,rd));//HG_Phase(sfloat4::dot3(srd,rd));
-            sfloat1 p2 = L_Pdf(lrd,la);
+            sfloat1 p2 = KernelSampler::BaseLight::lights[0]->Pdf(lrd);//L_Pdf(lrd,la);
 
             //need two samples - with the phase sampling keep on the recursion while for the light do only single scattering
             sfloat1 gm1 = sfloat1::AndNot(rm,sint1::trueI());
@@ -653,7 +593,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 			//(HG_Phase(X)*SampleVolume(X)*p1/(p1+L_Pdf(X)))/p1 => (HG_Phase(X)=p1)*SampleVolume(X)/(p1+L_Pdf(X)) = p1*SampleVolume(X)/(p1+L_Pdf(X))
 			//(HG_Phase(Y)*SampleVolume(Y)*p2/(HG_Phase(Y)+p2))/p2 => HG_phase(Y)*SampleVolume(Y)/(HG_Phase(Y)+p2)
 			sfloat4 p3 = pkernel->ppf->EvaluateRGB(sfloat4::dot3(lrd,rd));//HG_Phase(sfloat4::dot3(lrd,rd));
-			sfloat4 cm = s1*p1/(p1+L_Pdf(srd,la))+s2*p3/(p3+p2);
+			sfloat4 cm = s1*p1/(p1+KernelSampler::BaseLight::lights[0]->Pdf(srd))+s2*p3/(p3+p2);//s1*p1/(p1+L_Pdf(srd,la))+s2*p3/(p3+p2);
 			cm *= msigmas/msigmae;
 
 			//s1=HG_Phase(X)*SampleVolume(X)
@@ -763,7 +703,7 @@ RenderKernel::~RenderKernel(){
 	//
 }
 
-bool RenderKernel::Initialize(const Scene *pscene, const dmatrix44 *pviewi, const dmatrix44 *pproji, const std::vector<Light> *plights, KernelSampler::PhaseFunction *ppf, uint scattevs,
+bool RenderKernel::Initialize(const Scene *pscene, const dmatrix44 *pviewi, const dmatrix44 *pproji, KernelSampler::PhaseFunction *ppf, uint scattevs,
     float msigmas, float msigmaa, uint rx, uint ry, uint w, uint h, uint flags){
     if(!(phb = (dfloat4*)_mm_malloc(rx*ry*16,16))){
         //DebugPrintf("Framebuffer allocation failure.\n");
@@ -782,10 +722,6 @@ bool RenderKernel::Initialize(const Scene *pscene, const dmatrix44 *pviewi, cons
     viewi = *pviewi;
 	proji = *pproji;
 
-	this->lightc = plights->size();
-	this->plights = new Light[this->lightc];
-	memcpy(this->plights,plights->data(),this->lightc*sizeof(Light));
-
 	this->ppf = ppf;
 
     //dfloat3 sdir = dfloat3(0.0f,0.0f,1.0f);
@@ -801,7 +737,6 @@ bool RenderKernel::Initialize(const Scene *pscene, const dmatrix44 *pviewi, cons
 }
 
 void RenderKernel::Render(uint x0, uint y0, uint samples){
-    //Wrapper to launch gpu-kernels (there have been a few tests).
     /*dim3 db = dim3(8,8,1); //[numthreads(...)]
     dim3 dg = dim3(rx/8,ry/8,1); //Dispatch
 	K_Render<<<db,dg>>>(*(matrix*)&viewi,*(matrix*)&proji,ob,x0,y0,w,h,prt);
@@ -814,8 +749,5 @@ void RenderKernel::Render(uint x0, uint y0, uint samples){
 
 void RenderKernel::Destroy(){
 	arhosekskymodelstate_free(pskyms);
-	/*cudaFree(ob);
-	cudaFree(prt);*/
-	delete []plights;
     _mm_free(phb);
 }

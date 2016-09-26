@@ -45,6 +45,8 @@ public:
 	virtual sfloat4 Evaluate(const sfloat4 &) const = 0; //evaluate radiance for some direction
 	virtual sfloat1 Pdf(const sfloat4 &) const = 0;
 	virtual sfloat4 Sample(const sfloat4 &, const sfloat1 &, const sfloat1 &) const = 0;
+	static void DeleteAll();
+	static std::vector<BaseLight *> lights;
 };
 
 class SunLight : public BaseLight{
@@ -55,7 +57,7 @@ public:
 	sfloat1 Pdf(const sfloat4 &) const;
 	sfloat4 Sample(const sfloat4 &, const sfloat1 &, const sfloat1 &) const;
 	dfloat3 direction;
-	dfloat3 color;
+	dfloat3 color; //color*intensity
 	float angle; //cross-section angle
 };
 
