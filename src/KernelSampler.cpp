@@ -560,6 +560,10 @@ sfloat1 HGPhase::Evaluate(const sfloat1 &ct) const{
     return (1.0f-g*g)/(4.0f*SM_PI*sfloat1::pow(1.0f+g*g-2.0f*g*ct,e));
 }
 
+sfloat4 HGPhase::EvaluateRGB(const sfloat1 &ct) const{
+    return sfloat4(HGPhase::Evaluate(ct));
+}
+
 sfloat4 HGPhase::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2) const{
     sfloat1 g = sfloat1(g1);
     sfloat1 sq = (1.0f-g*g)/(1.0f-g+2.0f*g*u1);
@@ -600,16 +604,39 @@ sfloat1 MiePhase::Evaluate(const sfloat1 &ct) const{
 	}
 	sfloat1 ma = sfloat1::load(&MA);
 	sfloat1 mb = sfloat1::load(&MB);
-
 	return sfloat1::lerp(ma,mb,t);
-	//return HGPhase::ghg.Evaluate(ct);
+}
+
+sfloat4 MiePhase::EvaluateRGB(const sfloat1 &ct) const{
+	//sfloat1 a = sfloat1::acos(ct)/SM_PI;
+	sfloat1 ct1 = sfloat1::saturate(ct); //hack rare abs(ct) > 1 cases
+	sfloat1 a = sfloat1::acos(ct1)/SM_PI;
+	sfloat1 b = sfloat1((float)miedl*a);
+	sfloat1 c = sfloat1::floor(b);
+	c = sfloat1::min(c,(float)(miedl-1));
+	sfloat1 t = b-c; //frac(b)
+	dfloatN X = dfloatN(c);
+	sfloat4 ph;
+	for(uint i = 0; i < 3; ++i){
+		dfloatN MA, MB;
+		for(uint j = 0; j < BLCLOUD_VSIZE; ++j){
+			MA.v[j] = mied[(uint)X.v[j]+0][i];
+			MB.v[j] = mied[(uint)X.v[j]+1][i];
+		}
+		sfloat1 ma = sfloat1::load(&MA);
+		sfloat1 mb = sfloat1::load(&MB);
+		ph.v[i] = sfloat1::lerp(ma,mb,t);
+	}
+	ph.v[3] = sfloat1::one();
+
+	return ph;
 }
 
 sfloat4 MiePhase::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2) const{
 #if 1
 	sfloat1 th = sfloat1::zero();
 	for(uint i = 0; i < miedl-1; ++i){
-		//sfloat1 cdf0 = sfloat1(miecdf[i+0].x);
+		/*//sfloat1 cdf0 = sfloat1(miecdf[i+0].x);
 		sfloat1 cdf1 = sfloat1(miecdf[i+1].x);
 		//sfloat1 t = u1-cdf0;
 		//sfloat1 b = sfloat1((float)miedl*u1);
@@ -617,8 +644,8 @@ sfloat4 MiePhase::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2
 		sfloat1 s = sfloat1((float)i/(float)miedl);
 		th = sfloat1::Or(sfloat1::And(m,s),sfloat1::AndNot(m,th)); //TODO: interpolation
 		if(m.AllFalse())
-			break;
-		/*sfloat1 cdf0 = sfloat1(miecdf[i+0].x);
+			break;*/
+		sfloat1 cdf0 = sfloat1(miecdf[i+0].x);
 		sfloat1 cdf1 = sfloat1(miecdf[i+1].x);
 		//sfloat1 t = u1-cdf0;
 		sfloat1 b = sfloat1((float)miedl*u1);
@@ -631,7 +658,7 @@ sfloat4 MiePhase::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2
 		sfloat1 s = sfloat1((float)i/(float)miedl)+t/(float)miedl;
 		th = sfloat1::Or(sfloat1::And(m,s),sfloat1::AndNot(m,th));
 		if(m.AllFalse())
-			break;*/
+			break;
 	}
 	th *= sfloat1(SM_PI);
 	sfloat1 ph = 2.0f*SM_PI*u2;

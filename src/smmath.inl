@@ -40,6 +40,10 @@ public:
 		return dfloat3(x/r,y/r,z/r);
 	}
 
+	inline float operator[](uint i) const{
+		return ((float*)&x)[i];
+	}
+
     float x, y, z;
 } __attribute__((aligned(16)));
 
@@ -64,6 +68,10 @@ public:
 
 	inline dfloat4 operator/(float r) const{
 		return dfloat4(x/r,y/r,z/r,w/r);
+	}
+
+	inline float operator[](uint i) const{
+		return ((float*)&x)[i];
 	}
 
     float x, y, z, w;

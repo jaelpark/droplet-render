@@ -15,6 +15,7 @@ __attribute__ ((aligned(16)))
 
 typedef unsigned int uint;
 
-#define DebugPrintf printf
+//#define DebugPrintf printf
+void DebugPrintf(const char *, ...);
 
 #endif

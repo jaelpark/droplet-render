@@ -388,8 +388,8 @@ inline XMMATRIX XMMatrixPerspectiveFovRH
 )
 {
 	float hva = 0.5f*FovAngleY;
-    float SinFov = sinf(0.5f*hva);
-    float CosFov = cosf(0.5f*hva);
+    float SinFov = sinf(hva);
+    float CosFov = cosf(hva);
     //XMScalarSinCos(&SinFov, &CosFov, 0.5f * FovAngleY);
     float fRange = FarZ / (NearZ-FarZ);
     // Note: This is recorded on the stack

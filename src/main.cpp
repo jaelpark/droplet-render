@@ -8,12 +8,30 @@
 #include <unordered_map>
 #include <functional> //std::function
 
+#include <time.h>
+#include <stdarg.h>
+
 static RenderKernel *gpkernel = 0;
 static Scene *gpscene = 0;
 
 #ifndef __unix__
 #define strcasecmp stricmp
 #endif
+
+void DebugPrintf(const char *pfmt, ...){
+	time_t rt;
+	time(&rt);
+	const struct tm *pti = localtime(&rt);
+
+	char tbuf[256];
+	strftime(tbuf,sizeof(tbuf),"[Droplet %F %T]",pti);
+	printf("%s ",tbuf);
+
+	va_list args;
+	va_start(args,pfmt);
+	vprintf(pfmt,args);
+	va_end(args);
+}
 
 static inline float PyGetFloat(PyObject *pb, const char *pn){
     PyObject *pa = PyObject_GetAttrString(pb,pn);
@@ -491,6 +509,11 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	gpkernel = new RenderKernel();
     gpkernel->Initialize(gpscene,&sviewi,&sproji,&lights,ppf,scattevs,msigmas,msigmaa,rx,ry,w,h,flags);
 
+	SceneData::SmokeCache::DeleteAll();
+    SceneData::ParticleSystem::DeleteAll();
+    SceneData::Surface::DeleteAll();
+    Node::NodeTree::DeleteAll();
+
 	return Py_None;
 }
 
@@ -514,11 +537,6 @@ static PyObject * DRE_Render(PyObject *pself, PyObject *pargs){
 }
 
 static PyObject * DRE_EndRender(PyObject *pself, PyObject *pargs){
-	SceneData::SmokeCache::DeleteAll();
-    SceneData::ParticleSystem::DeleteAll();
-    SceneData::Surface::DeleteAll();
-    Node::NodeTree::DeleteAll();
-
     gpkernel->Destroy();
 	delete gpkernel;
 	gpkernel = 0;

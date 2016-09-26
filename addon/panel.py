@@ -47,7 +47,7 @@ class ClSamplingProperties(bpy.types.PropertyGroup):
 	msigmaa = FloatProperty(name="Sigma.A",default=0.03,min=0.0,description="Macroscopic absorption cross section for maximum density.");
 	phasef = EnumProperty(name="Phase function",default="M",items=(
 		("H","Henyey-Greenstein","Henyey-Greenstein phase function with anisotropy g=0.35. A fast approximation with plausible results."),
-		("M","Mie","Precomputed RGB Mie phase function for typical cloud droplets. Being the most accurate this is also the most inefficient due to partly unvectorized table lookups. Note that spectral rendering is required to correctly sample for different wavelengths, although in case of Mie, the dispersion is small enough to be approximated without separating the RGB channels.")));
+		("M","Mie","Precomputed RGB Mie phase function for typical cloud droplets. Being the most accurate this is also the most inefficient due to partly unvectorized table lookups. Note that spectral rendering is required to correctly sample for different wavelengths, although in case of Mie the dispersion is small enough to be approximated without separating the RGB channels.")));
 
 	def draw(self, context, layout):
 		s = layout.split();

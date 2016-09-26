@@ -635,7 +635,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
             sfloat4 lrd = L_Sample(sfloat4(float4::load(&pkernel->plights[0].direction)),la,prs);
 
             //pdfs for the balance heuristic w_x = p_x/sum(p_i,i=0..N)
-            sfloat1 p1 = pkernel->ppf->Evaluate(sfloat4::dot3(srd,rd));//HG_Phase(sfloat4::dot3(srd,rd));
+            sfloat4 p1 = pkernel->ppf->EvaluateRGB(sfloat4::dot3(srd,rd));//HG_Phase(sfloat4::dot3(srd,rd));
             sfloat1 p2 = L_Pdf(lrd,la);
 
             //need two samples - with the phase sampling keep on the recursion while for the light do only single scattering
@@ -652,7 +652,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
 			//(HG_Phase(X)*SampleVolume(X)*p1/(p1+L_Pdf(X)))/p1 => (HG_Phase(X)=p1)*SampleVolume(X)/(p1+L_Pdf(X)) = p1*SampleVolume(X)/(p1+L_Pdf(X))
 			//(HG_Phase(Y)*SampleVolume(Y)*p2/(HG_Phase(Y)+p2))/p2 => HG_phase(Y)*SampleVolume(Y)/(HG_Phase(Y)+p2)
-			sfloat1 p3 = pkernel->ppf->Evaluate(sfloat4::dot3(lrd,rd));//HG_Phase(sfloat4::dot3(lrd,rd));
+			sfloat4 p3 = pkernel->ppf->EvaluateRGB(sfloat4::dot3(lrd,rd));//HG_Phase(sfloat4::dot3(lrd,rd));
 			sfloat4 cm = s1*p1/(p1+L_Pdf(srd,la))+s2*p3/(p3+p2);
 			cm *= msigmas/msigmae;
 

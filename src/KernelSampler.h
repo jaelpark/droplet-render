@@ -9,6 +9,7 @@ public:
 	~PhaseFunction();
 	//TODO: color channel parameter for both below
 	virtual sfloat1 Evaluate(const sfloat1 &) const = 0; //phase = pdf
+	virtual sfloat4 EvaluateRGB(const sfloat1 &) const = 0;
 	virtual sfloat4 Sample(const sfloat4 &, const sfloat1 &, const sfloat1 &) const = 0;
 };
 
@@ -17,6 +18,7 @@ public:
 	HGPhase(float);
 	~HGPhase();
 	sfloat1 Evaluate(const sfloat1 &) const;
+	sfloat4 EvaluateRGB(const sfloat1 &) const;
 	sfloat4 Sample(const sfloat4 &, const sfloat1 &, const sfloat1 &) const;
 	static HGPhase ghg;
 private:
@@ -28,6 +30,7 @@ public:
 	MiePhase();
 	~MiePhase();
 	sfloat1 Evaluate(const sfloat1 &) const;
+	sfloat4 EvaluateRGB(const sfloat1 &) const;
 	sfloat4 Sample(const sfloat4 &, const sfloat1 &, const sfloat1 &) const; //sample from data relative to incident vector, then uniformly sample an azimuthal angle
 	//Note: spectral rendering is not supported. To get MIE effects (for example), color channels need to be rendered separately with different
 	//phase functions. Alternatively approximate the effect by assuming the different channels of the PDF to be close to each other, so that only
