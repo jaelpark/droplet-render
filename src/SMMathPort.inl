@@ -1,8 +1,7 @@
-#ifndef SMPORT_INL
-#define SMPORT_INL
+#ifndef SMMATH_PORT_INL
+#define SMMATH_PORT_INL
 
-//Some stuff ported from DirectXMath - temporary placeholders for some other standard-compatible library.
-//Probably have to dump these anyway, at least when the AVX implementation comes.
+//Some stuff ported from DirectXMath - temporary placeholders for some other replacement library.
 //------------------------------------------------------------------------------
 
 const float XM_PI           = 3.141592654f;
@@ -45,18 +44,6 @@ inline XMVECTOR XMVector3Dot
 #if defined(USE_SSE4)
     return _mm_dp_ps(V1,V2,0x7f);
 #else
-    /*// Perform the dot product
-    XMVECTOR vDot = _mm_mul_ps(V1,V2);
-    // x=Dot.vector4_f32[1], y=Dot.vector4_f32[2]
-    XMVECTOR vTemp = XM_PERMUTE_PS(vDot,_MM_SHUFFLE(2,1,2,1));
-    // Result.vector4_f32[0] = x+y
-    vDot = _mm_add_ss(vDot,vTemp);
-    // x=Dot.vector4_f32[2]
-    vTemp = XM_PERMUTE_PS(vTemp,_MM_SHUFFLE(1,1,1,1));
-    // Result.vector4_f32[0] = (x+y)+z
-    vDot = _mm_add_ss(vDot,vTemp);
-    // Splat x
-    return XM_PERMUTE_PS(vDot,_MM_SHUFFLE(0,0,0,0));*/
     XMVECTOR vTemp = _mm_mul_ps(V1,V2);
     vTemp = _mm_and_ps( vTemp, g_XMMask3 );
     vTemp = _mm_hadd_ps(vTemp,vTemp);
@@ -91,13 +78,6 @@ inline XMVECTOR XMVector4Dot
 #if defined(USE_SSE4)
     return _mm_dp_ps(V1,V2,0xff);
 #else
-    /*XMVECTOR vTemp2 = V2;
-    XMVECTOR vTemp = _mm_mul_ps(V1,vTemp2);
-    vTemp2 = _mm_shuffle_ps(vTemp2,vTemp,_MM_SHUFFLE(1,0,0,0)); // Copy X to the Z position and Y to the W position
-    vTemp2 = _mm_add_ps(vTemp2,vTemp);          // Add Z = X+Z; W = Y+W;
-    vTemp = _mm_shuffle_ps(vTemp,vTemp2,_MM_SHUFFLE(0,3,0,0));  // Copy W to the Z position
-    vTemp = _mm_add_ps(vTemp,vTemp2);           // Add Z and W together
-    return XM_PERMUTE_PS(vTemp,_MM_SHUFFLE(2,2,2,2));    // Splat Z and return*/
     XMVECTOR r = _mm_mul_ps(V1,V2);
     r = _mm_hadd_ps(r,r);
     return _mm_hadd_ps(r,r);
@@ -245,53 +225,6 @@ inline XMVECTOR XMVector3Rotate
 }
 
 //------------------------------------------------------------------------------
-
-inline void XMScalarSinCos
-(
-    float* pSin,
-    float* pCos,
-    float  Value
-)
-{
-
-    // Map Value to y in [-pi,pi], x = 2*pi*quotient + remainder.
-    float quotient = XM_1DIV2PI*Value;
-    if (Value >= 0.0f)
-    {
-        quotient = (float)((int)(quotient + 0.5f));
-    }
-    else
-    {
-        quotient = (float)((int)(quotient - 0.5f));
-    }
-    float y = Value - XM_2PI*quotient;
-
-    // Map y to [-pi/2,pi/2] with sin(y) = sin(Value).
-    float sign;
-    if (y > XM_PIDIV2)
-    {
-        y = XM_PI - y;
-        sign = -1.0f;
-    }
-    else if (y < -XM_PIDIV2)
-    {
-        y = -XM_PI - y;
-        sign = -1.0f;
-    }
-    else
-    {
-        sign = +1.0f;
-    }
-
-    float y2 = y * y;
-
-    // 11-degree minimax approximation
-    *pSin = ( ( ( ( (-2.3889859e-08f * y2 + 2.7525562e-06f) * y2 - 0.00019840874f ) * y2 + 0.0083333310f ) * y2 - 0.16666667f ) * y2 + 1.0f ) * y;
-
-    // 10-degree minimax approximation
-    float p = ( ( ( ( -2.6051615e-07f * y2 + 2.4760495e-05f ) * y2 - 0.0013888378f ) * y2 + 0.041666638f ) * y2 - 0.5f ) * y2 + 1.0f;
-    *pCos = sign*p;
-}
 
 inline XMMATRIX XMMatrixTranspose
 (
@@ -454,9 +387,10 @@ inline XMMATRIX XMMatrixPerspectiveFovRH
     float FarZ
 )
 {
-    float    SinFov;
-    float    CosFov;
-    XMScalarSinCos(&SinFov, &CosFov, 0.5f * FovAngleY);
+	float hva = 0.5f*FovAngleY;
+    float SinFov = sinf(0.5f*hva);
+    float CosFov = cosf(0.5f*hva);
+    //XMScalarSinCos(&SinFov, &CosFov, 0.5f * FovAngleY);
     float fRange = FarZ / (NearZ-FarZ);
     // Note: This is recorded on the stack
     float Height = CosFov / SinFov;
@@ -538,4 +472,4 @@ inline XMMATRIX XMMatrixLookToRH
 #undef XMVECTOR
 #undef FXMVECTOR
 
-#endif // SMPORT_INL
+#endif

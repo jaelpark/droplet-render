@@ -6,7 +6,7 @@ __attribute__ ((aligned(16)))
 #include <smmintrin.h> //SSE4
 #include <math.h> //powf
 #include "smmath.inl"
-#include "smport.inl"
+#include "SMMathPort.inl"
 
 #include <vector>
 #include <atomic>
