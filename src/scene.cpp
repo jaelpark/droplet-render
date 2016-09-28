@@ -265,7 +265,7 @@ void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &c1, const
     for(uint i = 0; i < 8; ++i){
         float4 sv = 2.0f*float4((float)(i%2),(float)((i/2)%2),(float)(i/4),0.0f)-float4::one();
         float4 cc = c+sv*ee;
-        BoundingBox aabb(cc,ee);
+        BoundingBox aabb(cc,1.1f*ee); //scale by 1.1 to expand for cases where surface is goes near the leaf boundary
 
         //aabb.Intersects
         if(aabb.Intersects(aabb1)){
@@ -798,7 +798,7 @@ void Scene::Initialize(float s, float qb, SCENE_CACHE_MODE cm){
             float4 ne = nc.splat<3>();
             //
 			ob[i].qval[VOLUME_BUFFER_SDF] = FLT_MAX;
-			ob[i].qval[VOLUME_BUFFER_FOG] = 0.0f;
+			ob[i].qval[VOLUME_BUFFER_FOG] = 0.01f;
 			//
             for(uint j = 0; j < uN*uN*uN; ++j){
                 float4 nn = (nv-2.0f*float4((float)(j%uN),(float)((j/uN)%uN),(float)(j/(uN*uN)),1.0f)-float4::one())/(nv-float4::one());

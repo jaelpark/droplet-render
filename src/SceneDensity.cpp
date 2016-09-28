@@ -104,7 +104,7 @@ void ParticleInput::Evaluate(const void *pp){
 	ValueNodeParams np(&zr,&zr,0.0f,0.0f,psamplers,std::get<INP_QGRSAMPLER>(*pd));
 	pntree->EvaluateNodes0(&np,level+1,emask);
 
-	float size = psizen->locr(indices[INPUT_SIZE]);
+	float size = psizen->locr(indices[INPUT_SIZE]); //TODO: these should be static. Remove EvaluateNodes0 above.
 	float coff = pcoffn->locr(indices[INPUT_CUTOFF]);
 
 	openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
@@ -118,9 +118,14 @@ void ParticleInput::Evaluate(const void *pp){
 
 	DebugPrintf("> Rasterizing particle spheres...\n");
 	openvdb::tools::ParticlesToLevelSet<openvdb::FloatGrid> lsf(*pdgrid);
+	lsf.setRmax(1e5f); //max radius in voxel units
 	lsf.setGrainSize(1);
 	lsf.rasterizeSpheres(pl);
 	lsf.finalize();
+
+	float r = size/pgridtr->voxelSize().x();
+	if(r < lsf.getRmin() || r > lsf.getRmax())
+		DebugPrintf("Warning: Particle size either to big or small for sphere rasterizer."); //TODO: check this earlier somewhere
 
 	DebugPrintf("> Converting fog volume...\n");
 	openvdb::tools::sdfToFogVolume(*pdgrid);
