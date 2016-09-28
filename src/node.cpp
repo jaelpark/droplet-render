@@ -328,9 +328,10 @@ void SceneInfo::Evaluate(const void *pp){
 	dfloat3 dposw = pnode->locr(indices[INPUT_POSITION]);
 
 	BaseValueResult<float> &rs = this->BaseValueNode<float>::result.local();
-	rs.value[OUTPUT_FLOAT_DISTANCE] = pd->SampleGlobalDistance(dposw);
+	rs.value[OUTPUT_FLOAT_DISTANCE] = pd->SampleGlobalDistance(dposw,true);
 	rs.value[OUTPUT_FLOAT_DENSITY] = pd->SampleGlobalDensity(dposw);
-	rs.value[OUTPUT_FLOAT_FINAL] = rs.value[OUTPUT_FLOAT_DISTANCE] > 0.0f?rs.value[OUTPUT_FLOAT_DENSITY]:1.0f;
+	//rs.value[OUTPUT_FLOAT_FINAL] = rs.value[OUTPUT_FLOAT_DISTANCE] > 0.0f?rs.value[OUTPUT_FLOAT_DENSITY]:1.0f;
+	rs.value[OUTPUT_FLOAT_FINAL] = pd->SampleGlobalDistance(dposw,false) > 0.0f?rs.value[OUTPUT_FLOAT_DENSITY]:1.0f;
 }
 
 ISurfaceInput::ISurfaceInput(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt), BaseNode(_level,pnt){

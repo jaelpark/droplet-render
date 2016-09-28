@@ -106,27 +106,29 @@ typedef openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampl
 namespace Node{
 
 //using InputNodeParams = std::tuple<SceneData::BaseObject *, openvdb::math::Transform::Ptr, const FloatGridBoxSampler *[VOLUME_BUFFER_COUNT]>;
-using InputNodeParams = std::tuple<SceneData::BaseObject *, openvdb::math::Transform::Ptr, const FloatGridBoxSampler *, const FloatGridBoxSampler *>;
+using InputNodeParams = std::tuple<SceneData::BaseObject *, openvdb::math::Transform::Ptr, const FloatGridBoxSampler *, const FloatGridBoxSampler *, const FloatGridBoxSampler *>;
 enum INP{
 	INP_OBJECT,
 	INP_TRANSFORM,
 	INP_SDFSAMPLER,
+	INP_QGRSAMPLER,
 	INP_FOGSAMPLER
 };
 
 class ValueNodeParams : public IValueNodeParams{
 public:
-	ValueNodeParams(const dfloat3 *, const dfloat3 *, float, float, const FloatGridBoxSampler *[VOLUME_BUFFER_COUNT]);
+	ValueNodeParams(const dfloat3 *, const dfloat3 *, float, float, const FloatGridBoxSampler *[VOLUME_BUFFER_COUNT], const FloatGridBoxSampler *);
 	~ValueNodeParams();
 	const dfloat3 * GetVoxPosW() const;
 	const dfloat3 * GetCptPosW() const;
 	float GetLocalDistance() const;
 	float GetLocalDensity() const;
-	float SampleGlobalDistance(const dfloat3 &) const;
+	float SampleGlobalDistance(const dfloat3 &, bool) const;
 	float SampleGlobalDensity(const dfloat3 &) const;
 	//global
 	//const openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT];
 	const FloatGridBoxSampler *psampler[VOLUME_BUFFER_COUNT];
+	const FloatGridBoxSampler *pqsampler;
 	//local
 	const dfloat3 *pvoxw;
 	const dfloat3 *pcptw;
@@ -143,7 +145,7 @@ class Scene{
 public:
 	Scene();
 	~Scene();
-    void Initialize(float, SCENE_CACHE_MODE);
+    void Initialize(float, float, SCENE_CACHE_MODE);
 	//void AddObject();
 	//void BuildScene();
 	void Destroy();

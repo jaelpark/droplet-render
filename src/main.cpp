@@ -482,10 +482,8 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
     Py_DECREF(pysampling);
 
     PyObject *pygrid = PyObject_GetAttrString(pscene,"blcloudgrid");
-    PyObject *pydsize = PyObject_GetAttrString(pygrid,"detailsize");
-    float dsize = (float)PyFloat_AsDouble(pydsize);
-
-    Py_DECREF(pydsize);
+	float dsize = PyGetFloat(pygrid,"detailsize");
+	float qband = PyGetFloat(pygrid,"qfbandw");
     Py_DECREF(pygrid);
 
     PyObject *pyperf = PyObject_GetAttrString(pscene,"blcloudperf");
@@ -499,8 +497,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
     //TODO: cache postfix from bpy.path.basename(bpy.data.filepath)
 
     gpscene = new Scene(); //TODO: interface for blender status reporting
-    gpscene->Initialize(dsize,cm);
-	//gpscene->BuildScene();
+    gpscene->Initialize(dsize,qband,cm);
 
 	gpkernel = new RenderKernel();
     gpkernel->Initialize(gpscene,&sviewi,&sproji,ppf,scattevs,msigmas,msigmaa,rx,ry,w,h,flags);

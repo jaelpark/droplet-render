@@ -21,8 +21,8 @@ BaseSurfaceNode1::~BaseSurfaceNode1(){
     //
 }
 
-openvdb::FloatGrid::Ptr BaseSurfaceNode1::ComputeLevelSet(openvdb::math::Transform::Ptr pgridtr, float lff) const{
-	openvdb::FloatGrid::Ptr ptgrid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,vl,tl,ql,lff,lff);
+openvdb::FloatGrid::Ptr BaseSurfaceNode1::ComputeLevelSet(openvdb::math::Transform::Ptr pgridtr, float ebvc, float ibvc) const{
+	openvdb::FloatGrid::Ptr ptgrid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,vl,tl,ql,ebvc,ibvc);
 	return ptgrid;
 }
 
@@ -31,7 +31,6 @@ BaseSurfaceNode * BaseSurfaceNode::Create(uint level, NodeTree *pnt){
 }
 
 SurfaceInput::SurfaceInput(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt), BaseSurfaceNode1(_level,pnt), BaseNode(_level,pnt), ISurfaceInput(_level,pnt){
-    //
     //DebugPrintf(">> SurfaceInput()\n");
 }
 
@@ -83,7 +82,7 @@ Displacement::~Displacement(){
 void Displacement::Evaluate(const void *pp){
     InputNodeParams *pd = (InputNodeParams*)pp;
 
-    const float lff = 4.0f;
+    const float bvc = 4.0f;
 
 	BaseValueNode<float> *pnoisen = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_DISTANCE]);
 	BaseValueNode<float> *pmaxn = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_MAXIMUM]);
@@ -92,7 +91,7 @@ void Displacement::Evaluate(const void *pp){
 
 	dfloat3 zr(0.0f);
 	const FloatGridBoxSampler *psamplers[] = {std::get<INP_SDFSAMPLER>(*pd),std::get<INP_FOGSAMPLER>(*pd)};
-	ValueNodeParams np(&zr,&zr,0.0f,0.0f,psamplers);
+	ValueNodeParams np(&zr,&zr,0.0f,0.0f,psamplers,std::get<INP_QGRSAMPLER>(*pd));
     pntree->EvaluateNodes0(&np,level+1,emask);
     float amp = pmaxn->locr(indices[INPUT_MAXIMUM]);
 
@@ -103,9 +102,9 @@ void Displacement::Evaluate(const void *pp){
 	}
 	pbgrid->setTransform(pgridtr);
 
-    openvdb::FloatGrid::Ptr psgrid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,pnode->vl,pnode->tl,pnode->ql,ceilf(amp/pgridtr->voxelSize().x()+lff),lff);
+    openvdb::FloatGrid::Ptr psgrid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,pnode->vl,pnode->tl,pnode->ql,ceilf(amp/pgridtr->voxelSize().x()+bvc),bvc);
 
-    DebugPrintf("Allocated disp. exterior narrow band for amp = %f+%f (%u voxels)\n",amp,pgridtr->voxelSize().x()*lff,(uint)ceilf(amp/pgridtr->voxelSize().x()+lff));
+    DebugPrintf("Allocated disp. exterior narrow band for amp = %f+%f (%u voxels)\n",amp,pgridtr->voxelSize().x()*bvc,(uint)ceilf(amp/pgridtr->voxelSize().x()+bvc));
     DebugPrintf("> Displacing SDF...\n");
 
     typedef std::tuple<openvdb::FloatGrid::Ptr, openvdb::FloatGrid::Accessor, openvdb::FloatGrid::ConstAccessor> FloatGridT;
@@ -125,10 +124,10 @@ void Displacement::Evaluate(const void *pp){
 			openvdb::Vec3s posw = pgridtr->indexToWorld(c.asVec3d());
             openvdb::Vec3s cptw = cptr.result(*pgridtr->map<openvdb::math::UniformScaleMap>(),std::get<2>(fgt),c);
 
-			ValueNodeParams np1((dfloat3*)posw.asPointer(),(dfloat3*)cptw.asPointer(),m.getValue(),0.0f,psamplers);
+			ValueNodeParams np1((dfloat3*)posw.asPointer(),(dfloat3*)cptw.asPointer(),m.getValue(),0.0f,psamplers,std::get<INP_QGRSAMPLER>(*pd));
 			pntree->EvaluateNodes0(&np1,level+1,emask);
 
-            float f = pnoisen->locr(indices[INPUT_DISTANCE]);
+            float f = fabs(pnoisen->locr(indices[INPUT_DISTANCE]));
             std::get<1>(fgt).setValue(c,f); //set only the displacement, so that billowing can be done
         }
     });
@@ -146,8 +145,6 @@ void Displacement::Evaluate(const void *pp){
             float d = sgrida.getValue(c);
             float f = m.getValue();
 
-            //f *= powf(std::min(dgrida0.getValue(c),1.0f),pbilln->locr(indices[INPUT_BILLOW])); //this is here because of the normalization
-			//bgrida.setValue(c,2.0f*f/amp); //bgrida.setValue(c,f/amp);
 			float b = pbilln->locr(indices[INPUT_BILLOW]);
 			if(b > 0.0f){
 				openvdb::math::Vec3s posw = pgridtr->indexToWorld(c);

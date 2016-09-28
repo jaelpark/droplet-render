@@ -11,7 +11,7 @@ public:
 	virtual const dfloat3 * GetCptPosW() const = 0;
 	virtual float GetLocalDistance() const = 0;
 	virtual float GetLocalDensity() const = 0;
-	virtual float SampleGlobalDistance(const dfloat3 &) const = 0;
+	virtual float SampleGlobalDistance(const dfloat3 &, bool) const = 0;
 	virtual float SampleGlobalDensity(const dfloat3 &) const = 0;
 };
 

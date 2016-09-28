@@ -108,6 +108,7 @@ namespace fBm{
 sfloat1 noise(const sfloat4 &_pos, uint octaves, float freq, float amp, float fjump, float gain){
     sfloat1 s = sfloat1::zero();
     for(uint i = 0; i < octaves; ++i){
+		//warning: PerlinNoise range -1,1 while hash gives 0,1
 		s += PerlinNoise::noise(_pos*freq)*amp;
         //s += HashNoise::noise(_pos*freq)*amp;
         freq *= fjump;
@@ -156,7 +157,7 @@ void FbmNoise::Evaluate(const void *pp){
 		pampn->locr(indices[INPUT_AMP]),pfjumpn->locr(indices[INPUT_FJUMP]),pgainn->locr(indices[INPUT_GAIN]));
 
 	BaseValueResult<float> &rs = this->BaseValueNode<float>::result.local();
-	rs.value[OUTPUT_FLOAT_NOISE] = fabsf(f.get<0>());
+	rs.value[OUTPUT_FLOAT_NOISE] = f.get<0>();
 	rs.value[OUTPUT_FLOAT_MAXIMUM] = fBm::GetAmplitudeMax(poctn->locr(indices[INPUT_OCTAVES]),pampn->locr(indices[INPUT_AMP]),
 		pgainn->locr(indices[INPUT_GAIN]));
 	BaseValueResult<dfloat3> &rv = this->BaseValueNode<dfloat3>::result.local();
