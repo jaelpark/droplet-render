@@ -61,23 +61,6 @@ inline __m128 RNG_Sample(sint4 *prs){
 	return r;
 }
 
-inline sfloat4 RNG_SampleDir(sint4 *prs){
-    //__m128 tt = _mm_set1_ps(2.0f);
-    //__m128 tp = _mm_set1_ps(SM_PI);
-    __m128 t = 2.0f*SM_PI*RNG_Sample(prs);
-    __m128 p = SM_PI*RNG_Sample(prs);
-    //__m128 r = sin_ps(p);//XMVectorSin(p);
-	sfloat4 rd;
-    __m128 sp, cp, st, ct;
-    sincos_ps(p,&sp,&cp);
-    sincos_ps(t,&st,&ct);
-    rd.v[0].v = _mm_mul_ps(sp,ct);
-    rd.v[1].v = _mm_mul_ps(sp,st);
-    rd.v[2].v = cp;
-    rd.v[3].v = _mm_setzero_ps();
-	return rd;
-}
-
 inline void RNG_Init(sint4 *prs){
     //use mersenne twister to initialize the vectorized rng
     static std::mt19937 mt(1000);
@@ -395,8 +378,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
             sfloat4 r0 = lo+rd*tr0;
 			sfloat4 r1 = lo+rd*tr1;
-
-            //sint1 sm = sfloat1::And(qm,sfloat1::Greater(tr0,zr));
+			
 			sint1 sm = sfloat1::Greater(tr0,zr);
 			dintN SM = dintN(sm);
 
@@ -459,14 +441,6 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 				//-> unless the ray has run out of leafs
                 rm = sfloat1::Or(sfloat1::And(sm,sfloat1::Greater(sc,tr0)),sfloat1::AndNot(sm,rm));
 
-                /*sh = sfloat1::And(sm,rm);
-				dintN SH = dintN(sh);
-				for(uint j = 0; j < BLCLOUD_VSIZE; ++j)
-					dist1.v[j] = SH.v[j] != 0?SampleVoxelSpace(rc.get(j),&pvol[ob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_SDF]],ce.get(j)):1.0f;
-				sfloat1 d = sfloat1::load(&dist1);
-
-				rm = sfloat1::And(rm,sfloat1::Greater(d,zr));*/
-
 				sh = sfloat1::And(sm,rm);
 				dintN SH = dintN(sh);
 				for(uint j = 0; j < BLCLOUD_VSIZE; ++j){
@@ -506,11 +480,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 				lc += KernelSampler::BaseLight::lights[i]->Evaluate(rd);
 
 	        //skylighting
-	        //sfloat1 th = sfloat1::acos(rd.v[2]); //add/remove abs to remove/get ground
-	        //sfloat1 ph = sfloat1::atan2(rd.v[0],rd.v[1]);
-	        //sfloat1 sth, cth, szr, czr;
-	        //sincos_ps(th,&sth.v,&cth.v);
-	        sfloat1 rdz = sfloat1::abs(rd.v[2]);
+	        sfloat1 rdz = sfloat1::abs(rd.v[2]); //add/remove abs to remove/get ground
 	        sfloat1 sth = sfloat1::sqrt(1.0f-rd.v[2]*rd.v[2]);
 	        sfloat1 cth = rdz;
 	        sfloat1 lth = sfloat1::zero(); //sun theta
@@ -519,24 +489,11 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 	        sincos_ps(lth,&slth.v,&clth.v);
 	        sincos_ps(lph,&slph.v,&clph.v);
 
-	        //sfloat1 cph = sth*slth*cos_ps(lph-ph)+cth*clth;
 	        sfloat1 rdd = rd.v[0]/rd.v[1];
 	        sfloat1 acr = 1.0f/sfloat1::sqrt(rdd*rdd+1.0f); //cos(ph = atan(rdd))
 	        sfloat1 czp = acr*(rdd*slph+clph); //cos(zr-ph)
 	        sfloat1 cph = sth*slth*czp+cth*clth;
 
-	        //sfloat1 cc1 = sfloat1::Greater(cph,sfloat1::one());
-	        //sfloat1 cc2 = sfloat1::Less(cph,-sfloat1::one());
-	        //sfloat1 ga = sfloat1::acos(cph);
-	        /*ga = sfloat1::Or(sfloat1::And(cc1,zr),sfloat1::AndNot(cc1,ga));
-	        ga = sfloat1::Or(sfloat1::And(cc2,sfloat1(SM_PI)),sfloat1::AndNot(cc2,ga));*/
-
-	        //th = sfloat1::min(th,sfloat1(XM_PIDIV2-0.001f));
-
-	        //sfloat1 gacs = cos_ps(ga);
-	        //sfloat1 thcs = cos_ps(th);
-	        //sfloat1 gmma = 1.570796808f+(-0.7107710905f+(-0.9654782056e-5f+
-	             //(-2.721495228f+(0.2766071913e-4f+(5.591013086f+(-0.1860396098e-4f-3.690226730f*cph)*cph)*cph)*cph)*cph)*cph)*cph; //acos minimax
 			sfloat1 gmma = sfloat1::acos(cph);
 	        sfloat1 gacs = sfloat1::saturate(cph);
 	        sfloat1 thcs = sfloat1::max(rdz,sfloat1::zero());
@@ -705,10 +662,8 @@ RenderKernel::~RenderKernel(){
 
 bool RenderKernel::Initialize(const Scene *pscene, const dmatrix44 *pviewi, const dmatrix44 *pproji, KernelSampler::PhaseFunction *ppf, uint scattevs,
     float msigmas, float msigmaa, uint rx, uint ry, uint w, uint h, uint flags){
-    if(!(phb = (dfloat4*)_mm_malloc(rx*ry*16,16))){
-        //DebugPrintf("Framebuffer allocation failure.\n");
+    if(!(phb = (dfloat4*)_mm_malloc(rx*ry*16,16)))
 		return false;
-    }
 
 	this->pscene = pscene;
     this->scattevs = scattevs;
@@ -724,9 +679,7 @@ bool RenderKernel::Initialize(const Scene *pscene, const dmatrix44 *pviewi, cons
 
 	this->ppf = ppf;
 
-    //dfloat3 sdir = dfloat3(0.0f,0.0f,1.0f);
     float th = 0.0f;//acosf(sdir.z);
-    //float ph = atan2f(sdir.x,sdir.y);
     float se = XM_PIDIV2-th; //solar elevation
 
 	pskyms = arhosek_rgb_skymodelstate_alloc_init(2.2,0.6,se);
