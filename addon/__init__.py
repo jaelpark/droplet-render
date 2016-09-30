@@ -47,12 +47,9 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 	bl_idname = config.dre_engineid;
 	bl_label = "Droplet Render";
 	bl_use_preview = False;
-	#outnode = None;
 
 	#def update(self, data, scene):
-		#group = data.node_groups[scene.blcloudrender.nodetree];
-		#self.outnode = group.nodes["Material Output"]; #warning, unreliable: fix
-		#print("INFO: scene update requested");
+		#pass
 
 	def render(self, scene):
 		#s = scene.render.resolution_percentage/100.0;
@@ -80,7 +77,6 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 			for x in range(0,nx):
 				tl.append((x*rx,y*ry)); #TODO: fix the alignment so that the first tile starts at the center
 
-		#libdroplet.BeginRender(scene,self.outnode,rx,ry,w,h);
 		libdroplet.BeginRender(scene,bpy.data,rx,ry,w,h);
 
 		while len(tl) > 0:
@@ -120,10 +116,12 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 
 def register():
 	bpy.utils.register_module(__name__);
-	#properties_render.RENDER_PT_render.COMPAT_ENGINES.add('droplet');
 	properties_particle.PARTICLE_PT_context_particles.COMPAT_ENGINES.add(config.dre_engineid);
 	properties_particle.PARTICLE_PT_emission.COMPAT_ENGINES.add(config.dre_engineid);
 	properties_particle.PARTICLE_PT_draw.COMPAT_ENGINES.add(config.dre_engineid);
+	properties_particle.PARTICLE_PT_velocity.COMPAT_ENGINES.add(config.dre_engineid);
+	properties_particle.PARTICLE_PT_physics.COMPAT_ENGINES.add(config.dre_engineid);
+	properties_particle.PARTICLE_PT_field_weights.COMPAT_ENGINES.add(config.dre_engineid);
 
 	properties_physics_common.PHYSICS_PT_add.COMPAT_ENGINES.add(config.dre_engineid);
 
@@ -140,7 +138,6 @@ def register():
 	bpy.types.Scene.blcloudperf = PointerProperty(type=panel.ClPerformanceProperties);
 
 	bpy.types.Object.droplet = PointerProperty(type=panel.ClObjectProperties);
-	#bpy.types.ParticleSystem.droplet = PointerProperty(type=panel.ClParticleSystemProperties);
 	bpy.types.ParticleSettings.droplet = PointerProperty(type=panel.ClParticleSystemProperties);
 	bpy.types.Lamp.droplet = PointerProperty(type=panel.ClLampProperties);
 

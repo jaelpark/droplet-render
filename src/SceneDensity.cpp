@@ -293,7 +293,7 @@ void SmokeCache::Evaluate(const void *pp){
 		pdgrid->tree().prune();
 
 	}catch(const openvdb::IoError &e){
-		DebugPrintf("OpenVDB: %s\n",e.what());
+		DebugPrintf("SmokeCache: %s\n",e.what());
 	}
 }
 
@@ -455,15 +455,12 @@ void Advection::Evaluate(const void *pp){
 					break;
 				rc += s*v;//float4::load(&v);
 				//
-				//all the other inputs except the vector is evaluated only per-voxel
 				//TODO: advection data to info node (current iteration, distance etc)?
-				//TODO: local data sampling (by the sample_local option)
 				float4::store((dfloat3*)posw.asPointer(),rc);
 				new(&np1) ValueNodeParams((dfloat3*)posw.asPointer(),&zr,0.0f,f,psamplers,std::get<INP_QGRSAMPLER>(*pd));
 				pntree->EvaluateNodes0(&np1,level+1,emask);
 			}
 
-			//if(p > th) //??
 			std::get<1>(fgt).setValue(c,p);
         }
     });
