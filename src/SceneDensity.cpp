@@ -139,7 +139,7 @@ IParticleInput * IParticleInput::Create(uint level, NodeTree *pnt){
 
 FieldInput::FieldInput(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), BaseVectorFieldNode(_level,pnt), BaseVectorFieldNode1(_level,pnt), BaseNode(_level,pnt), IFieldInput(_level,pnt){
     //
-	printf("FieldInput()\n");
+	//printf("FieldInput()\n");
 }
 
 FieldInput::~FieldInput(){

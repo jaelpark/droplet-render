@@ -16,13 +16,18 @@ IValueNodeParams::~IValueNodeParams(){
 }
 
 BaseNode::BaseNode(uint _level, NodeTree *_pntree) : imask(0), omask(0), emask(0), level(_level), pntree(_pntree){
-	printf("BaseNode()\n");
+	//printf("BaseNode()\n");
     memset(pnodes,0,sizeof(pnodes));
 }
 
 BaseNode::~BaseNode(){
     //
 }
+
+//HACK: prevent double listing caused by multiple inheritance
+#define MIHACK(l) for(uint i = 0; i < l.size(); ++i)\
+	if(l[i] == this)\
+		return;
 
 template<class T>
 BaseValueResult<T>::BaseValueResult(const T &r){
@@ -36,20 +41,16 @@ BaseValueResult<T>::BaseValueResult(){
 
 template<class T>
 BaseValueNode<T>::BaseValueNode(T r, uint level, NodeTree *pnt) : BaseNode(level,pnt){
-	printf("BaseValueNode(T)\n");
-	for(uint i = 0; i < pnt->nodes0.size(); ++i) //HACK: prevent double listing caused by multiple inheritance
-		if(pnt->nodes0[i] == this)
-			return;
+	//printf("BaseValueNode(T)\n");
+	MIHACK(pnt->nodes0);
     result = r; //set the default value for every thread
     pnt->nodes0.push_back(this);
 }
 
 template<class T>
 BaseValueNode<T>::BaseValueNode(uint level, NodeTree *pnt) : BaseNode(level,pnt){
-	printf("BaseValueNode()\n");
-	for(uint i = 0; i < pnt->nodes0.size(); ++i)
-		if(pnt->nodes0[i] == this)
-			return;
+	//printf("BaseValueNode()\n");
+	MIHACK(pnt->nodes0);
     pnt->nodes0.push_back(this);
 }
 
@@ -259,7 +260,8 @@ void IFbmNoise::Evaluate(const void *pp){
 }
 
 BaseFogNode::BaseFogNode(uint level, NodeTree *pnt) : BaseNode(level,pnt){
-    printf("BaseFogNode()\n");
+    //printf("BaseFogNode()\n");
+	MIHACK(pnt->nodes1);
     pnt->nodes1.push_back(this);
 }
 
@@ -272,7 +274,8 @@ void BaseFogNode::Evaluate(const void *pp){
 }
 
 BaseSurfaceNode::BaseSurfaceNode(uint level, NodeTree *pnt) : BaseNode(level,pnt){
-    printf("BaseSurfaceNode()\n");
+    //printf("BaseSurfaceNode()\n");
+	MIHACK(pnt->nodes1);
     pnt->nodes1.push_back(this);
 }
 
@@ -285,7 +288,8 @@ void BaseSurfaceNode::Evaluate(const void *pp){
 }
 
 BaseVectorFieldNode::BaseVectorFieldNode(uint level, NodeTree *pnt) : BaseNode(level,pnt){
-	printf("BaseVectorFieldNode()\n");
+	//printf("BaseVectorFieldNode()\n");
+	MIHACK(pnt->nodes1);
 	pnt->nodes1.push_back(this);
 }
 
@@ -406,7 +410,7 @@ IDisplacement::~IDisplacement(){
 }
 
 OutputNode::OutputNode(NodeTree *pnt) : BaseNode(0,pnt){
-	printf("OutputNode()\n");
+	//printf("OutputNode()\n");
     pnt->nodes1.push_back(this);
 }
 
