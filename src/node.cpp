@@ -64,124 +64,61 @@ void BaseValueNode<T>::Evaluate(const void *pp){
     //
 }
 
-template<class T>
-AddNode<T>::AddNode(uint level, NodeTree *pnt) : BaseValueNode<T>(level,pnt), BaseNode(level,pnt){
-    //
+FloatInput::FloatInput(uint level, NodeTree *pnt) : BaseValueNode<float>(level,pnt), BaseNode(level,pnt){
+	//
 }
 
-template<class T>
-AddNode<T>::~AddNode(){
-    //
+FloatInput::~FloatInput(){
+	//
 }
 
-template<class T>
-void AddNode<T>::Evaluate(const void *pp){
-    T a = dynamic_cast<BaseValueNode<T>*>(this->pnodes[0])->BaseValueNode<T>::result.local().value[this->indices[0]];
-    T b = dynamic_cast<BaseValueNode<T>*>(this->pnodes[1])->BaseValueNode<T>::result.local().value[this->indices[1]];
-    this->result.local().value[0] = a+b;
-    //DebugPrintf("---AddNode<float>::Evaluate(), result = %f\n",this->result);
+void FloatInput::Evaluate(const void *pp){
+	this->result.local().value[0] = dynamic_cast<BaseValueNode<float>*>(this->pnodes[0])->BaseValueNode<float>::result.local().value[this->indices[0]];
 }
 
-template<class T>
-SubNode<T>::SubNode(uint level, NodeTree *pnt) : BaseValueNode<T>(level,pnt), BaseNode(level,pnt){
-    //
+ScalarMath::ScalarMath(uint level, NodeTree *pnt, char _opch) : BaseValueNode<float>(level,pnt), BaseNode(level,pnt), opch(_opch){
+	//
 }
 
-template<class T>
-SubNode<T>::~SubNode(){
-    //
+ScalarMath::~ScalarMath(){
+	//
 }
 
-template<class T>
-void SubNode<T>::Evaluate(const void *pp){
-    T a = dynamic_cast<BaseValueNode<T>*>(this->pnodes[0])->BaseValueNode<T>::result.local().value[this->indices[0]];
-    T b = dynamic_cast<BaseValueNode<T>*>(this->pnodes[1])->BaseValueNode<T>::result.local().value[this->indices[1]];
-    this->result.local().value[0] = a-b;
+void ScalarMath::Evaluate(const void *pp){
+	float a = dynamic_cast<BaseValueNode<float>*>(this->pnodes[0])->BaseValueNode<float>::result.local().value[this->indices[0]];
+    float b = dynamic_cast<BaseValueNode<float>*>(this->pnodes[1])->BaseValueNode<float>::result.local().value[this->indices[1]];
+	float r;
+	switch(opch){
+	case '+': r = a+b; break;
+	case '-': r = a-b; break;
+	case '*': r = a*b; break;
+	case '/': r = a/b; break;
+	case 'a': r = fabs(a); break;
+	case 'm': r = std::min(a,b); break;
+	case 'M': r = std::max(a,b); break;
+	case 'q': r = sqrtf(a); break;
+	case 'p': r = powf(a,b); break;
+	case '0': r = floorf(a); break;
+	case '1': r = ceilf(a); break;
+	default:
+		r = 0.0f;
+	}
+	this->result.local().value[0] = r;
 }
 
-template<class T>
-MulNode<T>::MulNode(uint level, NodeTree *pnt) : BaseValueNode<T>(level,pnt), BaseNode(level,pnt){
-    //
+VectorInput::VectorInput(uint level, NodeTree *pnt) : BaseValueNode<dfloat3>(level,pnt), BaseNode(level,pnt){
+	//
 }
 
-template<class T>
-MulNode<T>::~MulNode(){
-    //
+VectorInput::~VectorInput(){
+	//
 }
 
-template<class T>
-void MulNode<T>::Evaluate(const void *pp){
-    T a = dynamic_cast<BaseValueNode<T>*>(this->pnodes[0])->BaseValueNode<T>::result.local().value[this->indices[0]];
-    T b = dynamic_cast<BaseValueNode<T>*>(this->pnodes[1])->BaseValueNode<T>::result.local().value[this->indices[1]];
-    this->result.local().value[0] = a*b;
-}
-
-template<class T>
-DivNode<T>::DivNode(uint level, NodeTree *pnt) : BaseValueNode<T>(level,pnt), BaseNode(level,pnt){
-    //
-}
-
-template<class T>
-DivNode<T>::~DivNode(){
-    //
-}
-
-template<class T>
-void DivNode<T>::Evaluate(const void *pp){
-    T a = dynamic_cast<BaseValueNode<T>*>(this->pnodes[0])->BaseValueNode<T>::result.local().value[this->indices[0]];
-    T b = dynamic_cast<BaseValueNode<T>*>(this->pnodes[1])->BaseValueNode<T>::result.local().value[this->indices[1]];
-    this->result.local().value[0] = a/b;
-}
-
-template<class T>
-PowNode<T>::PowNode(uint level, NodeTree *pnt) : BaseValueNode<T>(level,pnt), BaseNode(level,pnt){
-    //
-}
-
-template<class T>
-PowNode<T>::~PowNode(){
-    //
-}
-
-template<class T>
-void PowNode<T>::Evaluate(const void *pp){
-    T a = dynamic_cast<BaseValueNode<T>*>(this->pnodes[0])->BaseValueNode<T>::result.local().value[this->indices[0]];
-    T b = dynamic_cast<BaseValueNode<T>*>(this->pnodes[1])->BaseValueNode<T>::result.local().value[this->indices[1]];
-    this->result.local().value[0] = powf(a,b);
-}
-
-template<class T>
-MinNode<T>::MinNode(uint level, NodeTree *pnt) : BaseValueNode<T>(level,pnt), BaseNode(level,pnt){
-    //
-}
-
-template<class T>
-MinNode<T>::~MinNode(){
-    //
-}
-
-template<class T>
-void MinNode<T>::Evaluate(const void *pp){
-	T a = dynamic_cast<BaseValueNode<T>*>(this->pnodes[0])->BaseValueNode<T>::result.local().value[this->indices[0]];
-    T b = dynamic_cast<BaseValueNode<T>*>(this->pnodes[1])->BaseValueNode<T>::result.local().value[this->indices[1]];
-    this->result.local().value[0] = a < b?a:b;
-}
-
-template<class T>
-MaxNode<T>::MaxNode(uint level, NodeTree *pnt) : BaseValueNode<T>(level,pnt), BaseNode(level,pnt){
-    //
-}
-
-template<class T>
-MaxNode<T>::~MaxNode(){
-    //
-}
-
-template<class T>
-void MaxNode<T>::Evaluate(const void *pp){
-	T a = dynamic_cast<BaseValueNode<T>*>(this->pnodes[0])->BaseValueNode<T>::result.local().value[this->indices[0]];
-    T b = dynamic_cast<BaseValueNode<T>*>(this->pnodes[1])->BaseValueNode<T>::result.local().value[this->indices[1]];
-    this->result.local().value[0] = a > b?a:b;
+void VectorInput::Evaluate(const void *pp){
+	this->result.local().value[0] = dfloat3(
+		dynamic_cast<BaseValueNode<float>*>(this->pnodes[0])->BaseValueNode<float>::result.local().value[this->indices[0]],
+		dynamic_cast<BaseValueNode<float>*>(this->pnodes[1])->BaseValueNode<float>::result.local().value[this->indices[1]],
+		dynamic_cast<BaseValueNode<float>*>(this->pnodes[2])->BaseValueNode<float>::result.local().value[this->indices[2]]);
 }
 
 VectorMath::VectorMath(uint level, NodeTree *pnt, char _opch) : BaseValueNode<dfloat3>(level,pnt), BaseNode(level,pnt), opch(_opch){
@@ -199,52 +136,15 @@ void VectorMath::Evaluate(const void *pp){
 	float4 b = float4::load(&sb);
 	float4 r;
 	switch(opch){
-	case '+':
-		r = a+b;
-		break;
-	case '-':
-		r = a-b;
-		break;
-	case '*':
-		r = a*b;
-		break;
-	case '/':
-		r = a/b;
-		break;
-	case 'X':
-		r = float4::cross(a,b);
-		break;
+	case '+': r = a+b; break;
+	case '-': r = a-b; break;
+	case '*': r = a*b; break;
+	case '/': r = a/b; break;
+	case 'X': r = float4::cross(a,b); break;
 	default:
 		r = float4::zero();
 	}
 	this->result.local().value[0] = dfloat3(r);
-}
-
-FloatInput::FloatInput(uint level, NodeTree *pnt) : BaseValueNode<float>(level,pnt), BaseNode(level,pnt){
-	//
-}
-
-FloatInput::~FloatInput(){
-	//
-}
-
-void FloatInput::Evaluate(const void *pp){
-	this->result.local().value[0] = dynamic_cast<BaseValueNode<float>*>(this->pnodes[0])->BaseValueNode<float>::result.local().value[this->indices[0]];
-}
-
-VectorInput::VectorInput(uint level, NodeTree *pnt) : BaseValueNode<dfloat3>(level,pnt), BaseNode(level,pnt){
-	//
-}
-
-VectorInput::~VectorInput(){
-	//
-}
-
-void VectorInput::Evaluate(const void *pp){
-	this->result.local().value[0] = dfloat3(
-		dynamic_cast<BaseValueNode<float>*>(this->pnodes[0])->BaseValueNode<float>::result.local().value[this->indices[0]],
-		dynamic_cast<BaseValueNode<float>*>(this->pnodes[1])->BaseValueNode<float>::result.local().value[this->indices[1]],
-		dynamic_cast<BaseValueNode<float>*>(this->pnodes[2])->BaseValueNode<float>::result.local().value[this->indices[2]]);
 }
 
 IFbmNoise::IFbmNoise(uint _level, NodeTree *pnt) : BaseValueNode<float>(_level,pnt), BaseValueNode<dfloat3>(_level,pnt), BaseNode(_level,pnt){
@@ -482,20 +382,14 @@ void NodeTree::DeleteAll(){
 }
 
 BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, NodeTree *pnt){
-    if(strcmp(pname,"ClNodeFloatAdd") == 0){
-        return new AddNode<float>(level,pnt);
-    }else if(strcmp(pname,"ClNodeFloatSub") == 0){
-        return new SubNode<float>(level,pnt);
-    }else if(strcmp(pname,"ClNodeFloatMul") == 0){
-        return new MulNode<float>(level,pnt);
-    }else if(strcmp(pname,"ClNodeFloatDiv") == 0){
-        return new DivNode<float>(level,pnt);
-    }else if(strcmp(pname,"ClNodeFloatPow") == 0){
-        return new PowNode<float>(level,pnt);
-	}else if(strcmp(pname,"ClNodeFloatMin") == 0){
-		return new MinNode<float>(level,pnt);
-	}else if(strcmp(pname,"ClNodeFloatMax") == 0){
-		return new MaxNode<float>(level,pnt);
+	if(strcmp(pname,"ClNodeScalarMath") == 0){
+		PyObject *pop = PyObject_GetAttrString((PyObject*)pnode,"op");
+		const char *pops = PyUnicode_AsUTF8(pop);
+		const char opch = pops[0];
+		Py_DECREF(pop);
+
+		return new ScalarMath(level,pnt,opch);
+
 	}else if(strcmp(pname,"ClNodeVectorMath") == 0){
 		PyObject *pop = PyObject_GetAttrString((PyObject*)pnode,"op");
 		const char *pops = PyUnicode_AsUTF8(pop);
@@ -575,13 +469,6 @@ BaseNode * CreateNodeBySocket(const char *pname, const void *pvalue, uint level,
 //force compile
 template class BaseValueNode<float>;
 //template<> std::vector<BaseValueNode<float> *> BaseValueNode<float>::nodes = std::vector<BaseValueNode<float> *>();
-template class AddNode<float>;
-template class SubNode<float>;
-template class MulNode<float>;
-template class DivNode<float>;
-template class PowNode<float>;
-template class MinNode<float>;
-template class MaxNode<float>;
 
 template class BaseValueNode<int>;
 

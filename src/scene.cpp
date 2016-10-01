@@ -437,8 +437,7 @@ static void S_Create(float s, float qb, float bvc, openvdb::FloatGrid::Ptr pgrid
 			if(SceneData::SmokeCache::objs[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST){
 				fogppl.push_back(PostFogParams(SceneData::SmokeCache::objs[i],pdfn->pdgrid->deepCopy()));
 				openvdb::tools::compMax(*ptfog,*pdfn->pdgrid);
-				continue;
-			}
+			}else
 			if(pgrid[VOLUME_BUFFER_FOG])
 				openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid); //compSum
 			else pgrid[VOLUME_BUFFER_FOG] = pdfn->pdgrid;
@@ -454,8 +453,7 @@ static void S_Create(float s, float qb, float bvc, openvdb::FloatGrid::Ptr pgrid
 			if(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST){
 				fogppl.push_back(PostFogParams(SceneData::ParticleSystem::prss[i],pdfn->pdgrid->deepCopy()));
 				openvdb::tools::compMax(*ptfog,*pdfn->pdgrid);
-				continue;
-			}
+			}else
 			if(pgrid[VOLUME_BUFFER_FOG])
 				openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
 			else pgrid[VOLUME_BUFFER_FOG] = pdfn->pdgrid;

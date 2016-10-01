@@ -55,60 +55,25 @@ public:
 	tbb::enumerable_thread_specific<BaseValueResult<T>> result;
 };
 
-//NOTE: this could all be replaced with some common arithmetic node implementation which calls some operand
-template<class T>
-class AddNode : public BaseValueNode<T>{
+class FloatInput : public BaseValueNode<float>{
 public:
-    AddNode(uint, NodeTree *);
-    ~AddNode();
-    void Evaluate(const void *);
-};
-
-template<class T>
-class SubNode : public BaseValueNode<T>{
-public:
-    SubNode(uint, NodeTree *);
-    ~SubNode();
-    void Evaluate(const void *);
-};
-
-template<class T>
-class MulNode : public BaseValueNode<T>{
-public:
-    MulNode(uint, NodeTree *);
-    ~MulNode();
-    void Evaluate(const void *);
-};
-
-template<class T>
-class DivNode : public BaseValueNode<T>{
-public:
-    DivNode(uint, NodeTree *);
-    ~DivNode();
-    void Evaluate(const void *);
-};
-
-template<class T>
-class PowNode : public BaseValueNode<T>{
-public:
-    PowNode(uint, NodeTree *);
-    ~PowNode();
-    void Evaluate(const void *);
-};
-
-template<class T>
-class MinNode : public BaseValueNode<T>{
-public:
-	MinNode(uint, NodeTree *);
-	~MinNode();
+	FloatInput(uint, NodeTree *);
+	~FloatInput();
 	void Evaluate(const void *);
 };
 
-template<class T>
-class MaxNode : public BaseValueNode<T>{
+class ScalarMath : public BaseValueNode<float>{
 public:
-	MaxNode(uint, NodeTree *);
-	~MaxNode();
+	ScalarMath(uint, NodeTree *, char);
+	~ScalarMath();
+	void Evaluate(const void *);
+	char opch;
+};
+
+class VectorInput : public BaseValueNode<dfloat3>{
+public:
+	VectorInput(uint, NodeTree *);
+	~VectorInput();
 	void Evaluate(const void *);
 };
 
@@ -118,20 +83,6 @@ public:
 	~VectorMath();
 	void Evaluate(const void *);
 	char opch;
-};
-
-class FloatInput : public BaseValueNode<float>{
-public:
-	FloatInput(uint, NodeTree *);
-	~FloatInput();
-	void Evaluate(const void *);
-};
-
-class VectorInput : public BaseValueNode<dfloat3>{
-public:
-	VectorInput(uint, NodeTree *);
-	~VectorInput();
-	void Evaluate(const void *);
 };
 
 class IFbmNoise : public virtual BaseValueNode<float>, public virtual BaseValueNode<dfloat3>{

@@ -169,7 +169,6 @@ void FieldInput::Evaluate(const void *pp){
 
 	openvdb::FloatGrid::Ptr ptgridd;
 	openvdb::Vec3SGrid::Ptr ptgridv;
-	//openvdb::FloatGrid::Ptr pvdenom; //denomiator for the weighted vector average
 	if(pgridtr->voxelSize().x() < prasres->locr(indices[INPUT_RASTERIZATIONRES])){ //TODO: const expression
 		openvdb::math::Transform::Ptr pgridtr1 = openvdb::math::Transform::createLinearTransform(prasres->locr(indices[INPUT_RASTERIZATIONRES]));
 
@@ -191,7 +190,6 @@ void FieldInput::Evaluate(const void *pp){
 	//TODO: multithreading maybe
 	openvdb::FloatGrid::Accessor dgrida = ptgridd->getAccessor();
 	openvdb::Vec3SGrid::Accessor vgrida = ptgridv->getAccessor();
-	//openvdb::FloatGrid::Accessor mgrida = pvdenom->getAccessor();
 	for(uint i = 0; i < pps->pl.size(); ++i){
 		//pntree->EvaluateNodes0(0,level+1,emask);
 		openvdb::Vec3s posw(pps->pl[i].x,pps->pl[i].y,pps->pl[i].z);
@@ -229,7 +227,7 @@ void FieldInput::Evaluate(const void *pp){
 		}
 	}
 
-	//Normalize the vgrid by dgrid (weighted average). This needs to be done manually as openvdb composition methods accept only identical grids.
+	//normalize the vgrid by dgrid (weighted average)
 	if(omask & 0x2){
 		for(openvdb::Vec3SGrid::ValueOnIter m = ptgridv->beginValueOn(); m.test(); ++m){
 			float w = dgrida.getValue(m.getCoord())/pweight->locr(indices[INPUT_WEIGHT]);
@@ -244,8 +242,6 @@ void FieldInput::Evaluate(const void *pp){
 		if(omask & 0x2)
 			openvdb::tools::resampleToMatch<openvdb::tools::BoxSampler>(*ptgridv,*pvgrid);
 	}else DebugPrintf("Used native grid resolution for particle rasterization.\n");
-
-	//advection: trace voxel if density < threshold
 
 	if(omask & 0x1)
 		pdgrid->tree().prune();
@@ -275,9 +271,7 @@ void SmokeCache::Evaluate(const void *pp){
 		return;
 	}
 
-	//openvdb::io::File vdbc = openvdb::io::File("̛/tmp/fog_000142_00.vdb");
-	//openvdb::io::File vdbc("/home/jasper/Asiakirjat/3dcgi/clouds/blendcache_droplet_fluid_sim01/fog_000142_00.vdb");
-	openvdb::io::File vdbc("/home/jasper/Asiakirjat/3dcgi/clouds/blendcache_droplet_random1/fog_000070_00.vdb");
+	openvdb::io::File vdbc("/tmp/blendcache_droplet_random1/fog_000070_00.vdb");
 	try{
 		vdbc.open(false);
 		openvdb::FloatGrid::Ptr ptgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(vdbc.readGrid("density"));

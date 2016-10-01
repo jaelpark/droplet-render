@@ -166,12 +166,9 @@ class ClNodeParticleInput(bpy.types.Node):
 	bl_label = "ParticleSystem.SphereRaster";
 
 	def init(self, context):
-		#self.inputs.new("ClNodeFloatSocket","Raster.res");
-		#self.inputs.new("ClNodeFloatSocket","Weight");
 		self.inputs.new("ClNodeFloatSocket","Size");
 		self.inputs.new("ClNodeFloatSocket","Cutoff");
 		self.outputs.new("ClNodeFogSocket","Fog");
-		#self.outputs.new("ClNodeVectorFieldSocket","Velocity");
 
 class ClNodeFieldInput(bpy.types.Node):
 	bl_idname = "ClNodeFieldInput";
@@ -197,69 +194,6 @@ class ClNodeFogPostInput(bpy.types.Node):
 	def init(self, context):
 		 self.outputs.new("ClNodeFogSocket","Fog");
 
-class ClNodeFloatAdd(bpy.types.Node):
-	bl_idname = "ClNodeFloatAdd";
-	bl_label = "Add";
-
-	def init(self, context):
-		self.inputs.new("ClNodeFloatSocket","a");
-		self.inputs.new("ClNodeFloatSocket","b");
-		self.outputs.new("ClNodeFloatSocket","Out");
-
-class ClNodeFloatSub(bpy.types.Node):
-	bl_idname = "ClNodeFloatSub";
-	bl_label = "Subtract";
-
-	def init(self, context):
-		self.inputs.new("ClNodeFloatSocket","a");
-		self.inputs.new("ClNodeFloatSocket","b");
-		self.outputs.new("ClNodeFloatSocket","Out");
-
-class ClNodeFloatMul(bpy.types.Node):
-	bl_idname = "ClNodeFloatMul";
-	bl_label = "Multiply";
-
-	def init(self, context):
-		self.inputs.new("ClNodeFloatSocket","a");
-		self.inputs.new("ClNodeFloatSocket","b");
-		self.outputs.new("ClNodeFloatSocket","Out");
-
-class ClNodeFloatDiv(bpy.types.Node):
-	bl_idname = "ClNodeFloatDiv";
-	bl_label = "Divide";
-
-	def init(self, context):
-		self.inputs.new("ClNodeFloatSocket","a");
-		self.inputs.new("ClNodeFloatSocket","b");
-		self.outputs.new("ClNodeFloatSocket","Out");
-
-class ClNodeFloatPow(bpy.types.Node):
-	bl_idname = "ClNodeFloatPow";
-	bl_label = "Power";
-
-	def init(self, context):
-		self.inputs.new("ClNodeFloatSocket","a");
-		self.inputs.new("ClNodeFloatSocket","b");
-		self.outputs.new("ClNodeFloatSocket","Out");
-
-class ClNodeFloatMin(bpy.types.Node):
-	bl_idname = "ClNodeFloatMin";
-	bl_label = "Min";
-
-	def init(self, context):
-		self.inputs.new("ClNodeFloatSocket","a");
-		self.inputs.new("ClNodeFloatSocket","b");
-		self.outputs.new("ClNodeFloatSocket","Out");
-
-class ClNodeFloatMax(bpy.types.Node):
-	bl_idname = "ClNodeFloatMax";
-	bl_label = "Max";
-
-	def init(self, context):
-		self.inputs.new("ClNodeFloatSocket","a");
-		self.inputs.new("ClNodeFloatSocket","b");
-		self.outputs.new("ClNodeFloatSocket","Out");
-
 class ClNodeFloatInput(bpy.types.Node):
 	bl_idname = "ClNodeFloatInput";
 	bl_label = "Value";
@@ -267,6 +201,37 @@ class ClNodeFloatInput(bpy.types.Node):
 	def init(self, context):
 		self.inputs.new("ClNodeFloatSocket","Value");
 		self.outputs.new("ClNodeFloatSocket","Out");
+
+class ClNodeScalarMath(bpy.types.Node):
+	bl_idname = "ClNodeScalarMath";
+	bl_label = "Scalar Math";
+
+	op = EnumProperty(name="",default="+",items=(
+		("+","Add",""),
+		("-","Subtract",""),
+		("*","Multiply",""),
+		("/","Divide",""),
+		("a","Abs",""),
+		("m","Min",""),
+		("M","Max",""),
+		("q","Sqrt",""),
+		("p","Power",""),
+		("0","Floor",""),
+		("1","Ceil","")));
+		# ("s","Sin",""),
+		# ("c","Cos",""),
+		# ("t","Tan",""),
+		# ("S","arcsin",""),
+		# ("C","arccos",""),
+		# ("T","arctan","")));
+
+	def init(self, context):
+		self.inputs.new("ClNodeFloatSocket","a");
+		self.inputs.new("ClNodeFloatSocket","b");
+		self.outputs.new("ClNodeFloatSocket","Out");
+
+	def draw_buttons(self, context, layout):
+		layout.prop(self,"op");
 
 class ClNodeVectorInput(bpy.types.Node):
 	bl_idname = "ClNodeVectorInput";
@@ -377,30 +342,6 @@ class ClNodeDisplacement(bpy.types.Node):
 
 	def draw_buttons(self, context, layout):
 		layout.prop(self,"resf");
-		#s = layout.split();
-		#s.column().row().prop(self,"resf");
-		#s.column().row().label("0.0001");
-
-#^^this alternative is still unoptimal, as all (noise) nodes of the tree would be evaluated (above level+1), even if only was was needed for current displacement node.
-# class ClNodefBmPerlinNoise(bpy.types.Node):
-# 	bl_idname = "ClNodefBmPerlinNoise";
-# 	bl_label = "fBm Perlin";
-#
-# 	#props = PointerProperty(type=ClPropertyfBmPerlinNoise);
-#
-# 	def init(self, context):
-# 		self.inputs.new("ClNodeIntSocket","octaves");
-# 		self.inputs.new("ClNodeFloatSocket","freq");
-# 		self.inputs.new("ClNodeFloatSocket","amp");
-# 		self.inputs.new("ClNodeFloatSocket","fjump");
-# 		self.inputs.new("ClNodeFloatSocket","gain");
-# 		self.inputs.new("ClNodeFloatSocket","billow");
-# 		self.inputs.new("ClNodeSurfaceSocket","Surface");
-# 		self.outputs.new("ClNodeSurfaceSocket","Surface");
-# 		#self.outputs.new("ClNodeGridSocket","Distance");
-#
-# 	#def draw_buttons(self, context, layout):
-# 		#self.props.draw(context,layout);
 
 class ClNodeCategory(NodeCategory):
 	@classmethod
@@ -423,13 +364,7 @@ categories = [
 		NodeItem("ClNodeSurfaceOutput"),
 	]),
 	ClNodeCategory("MATH_CATEGORY","Math",items = [
-		NodeItem("ClNodeFloatAdd"),
-		NodeItem("ClNodeFloatSub"),
-		NodeItem("ClNodeFloatMul"),
-		NodeItem("ClNodeFloatDiv"),
-		NodeItem("ClNodeFloatPow"),
-		NodeItem("ClNodeFloatMin"),
-		NodeItem("ClNodeFloatMax"),
+		NodeItem("ClNodeScalarMath"),
 		NodeItem("ClNodeVectorMath"),
 	]),
 	ClNodeCategory("NOISE_CATEGORY","Noise",items = [
