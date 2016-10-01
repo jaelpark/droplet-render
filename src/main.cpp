@@ -99,7 +99,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
             //
             PyObject *pidn = PyObject_GetAttrString(proot,"bl_idname"); //TODO: give enum id
             const char *pn = PyUnicode_AsUTF8(pidn);
-            //DebugPrintf("%s\n",pn);
+            printf("%s\n",pn);
 
             Node::BaseNode *pbn = Node::CreateNodeByType(pn,proot,l,pnt);//Node::CreateNode(pn,l);
             if(!pbn){

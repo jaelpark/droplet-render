@@ -16,11 +16,12 @@
 
 namespace Node{
 
-ValueNodeParams::ValueNodeParams(const dfloat3 *_pvoxw, const dfloat3 *_pcptw, float _s, float _p, const FloatGridBoxSampler *_psampler[VOLUME_BUFFER_COUNT], const FloatGridBoxSampler *_pqsampler)
+ValueNodeParams::ValueNodeParams(const dfloat3 *_pvoxw, const dfloat3 *_pcptw, float _s, float _p, const FloatGridBoxSampler *_psampler[VOLUME_BUFFER_COUNT], const FloatGridBoxSampler *_pqsampler, const VectorGridBoxSampler *_pvsampler)
 	: pvoxw(_pvoxw), pcptw(_pcptw), distance(_s), density(_p){
 	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
 		psampler[i] = _psampler[i];
 	pqsampler = _pqsampler;
+	pvsampler = _pvsampler;
 }
 
 ValueNodeParams::~ValueNodeParams(){
@@ -50,6 +51,10 @@ float ValueNodeParams::SampleGlobalDistance(const dfloat3 &p, bool q) const{
 
 float ValueNodeParams::SampleGlobalDensity(const dfloat3 &p) const{
 	return psampler[VOLUME_BUFFER_FOG]?psampler[VOLUME_BUFFER_FOG]->wsSample(*(openvdb::Vec3f*)&p):0.0f;
+}
+
+dfloat3 ValueNodeParams::SampleGlobalVector(const dfloat3 &p) const{
+	return pvsampler?*((dfloat3*)pvsampler->wsSample(*(openvdb::Vec3f*)&p).asPointer()):dfloat3(0.0f);
 }
 
 }
@@ -378,7 +383,7 @@ static void S_Create(float s, float qb, float bvc, openvdb::FloatGrid::Ptr pgrid
 	std::vector<PostFogParams> fogppl; //input grids to be post-processed
 
     for(uint i = 0; i < SceneData::Surface::objs.size(); ++i){
-		Node::InputNodeParams snp(SceneData::Surface::objs[i],pgridtr,0,0,0);
+		Node::InputNodeParams snp(SceneData::Surface::objs[i],pgridtr,0,0,0,0);
 		SceneData::Surface::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_SURFACE);
 
         Node::BaseSurfaceNode1 *pdsn = dynamic_cast<Node::BaseSurfaceNode1*>(SceneData::Surface::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_SURFACE]);
@@ -424,7 +429,7 @@ static void S_Create(float s, float qb, float bvc, openvdb::FloatGrid::Ptr pgrid
 	ptvel->setGridClass(openvdb::GRID_FOG_VOLUME);
 
 	for(uint i = 0; i < SceneData::SmokeCache::objs.size(); ++i){
-		Node::InputNodeParams snp(SceneData::SmokeCache::objs[i],pgridtr,0,0,0);
+		Node::InputNodeParams snp(SceneData::SmokeCache::objs[i],pgridtr,0,0,0,0);
 		SceneData::SmokeCache::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOG);
 
 		Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(SceneData::SmokeCache::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOG]);
@@ -441,7 +446,7 @@ static void S_Create(float s, float qb, float bvc, openvdb::FloatGrid::Ptr pgrid
 	}
 
 	for(uint i = 0; i < SceneData::ParticleSystem::prss.size(); ++i){
-		Node::InputNodeParams snp(SceneData::ParticleSystem::prss[i],pgridtr,0,0,0);
+		Node::InputNodeParams snp(SceneData::ParticleSystem::prss[i],pgridtr,0,0,0,0);
         SceneData::ParticleSystem::prss[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOG|1<<Node::OutputNode::INPUT_VECTOR);
 
 		Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOG]);
@@ -471,11 +476,12 @@ static void S_Create(float s, float qb, float bvc, openvdb::FloatGrid::Ptr pgrid
 
 		FloatGridBoxSampler *pqsampler = new FloatGridBoxSampler(*pqsdf);
 		FloatGridBoxSampler *ppsampler = new FloatGridBoxSampler(*pqfog);
+		VectorGridBoxSampler *pvsampler = new VectorGridBoxSampler(*ptvel);
 		FloatGridBoxSampler *pdsampler = pgrid[VOLUME_BUFFER_SDF]?new FloatGridBoxSampler(*pgrid[VOLUME_BUFFER_SDF]):pqsampler;
 
 		for(uint i = 0; i < fogppl.size(); ++i){
 			SceneData::PostFog fobj(std::get<PFP_OBJECT>(fogppl[i])->pnt,std::get<PFP_INPUTGRID>(fogppl[i]));
-			Node::InputNodeParams snp(&fobj,pgridtr,pdsampler,pqsampler,ppsampler);
+			Node::InputNodeParams snp(&fobj,pgridtr,pdsampler,pqsampler,ppsampler,pvsampler);
 			fobj.pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOGPOST);
 
 			Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(fobj.pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOGPOST]);
@@ -486,6 +492,7 @@ static void S_Create(float s, float qb, float bvc, openvdb::FloatGrid::Ptr pgrid
 
 		delete pqsampler;
 		delete ppsampler;
+		delete pvsampler;
 		if(pgrid[VOLUME_BUFFER_SDF])
 			delete pdsampler;
 	}

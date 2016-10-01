@@ -13,6 +13,7 @@ public:
 	virtual float GetLocalDensity() const = 0;
 	virtual float SampleGlobalDistance(const dfloat3 &, bool) const = 0;
 	virtual float SampleGlobalDensity(const dfloat3 &) const = 0;
+	virtual dfloat3 SampleGlobalVector(const dfloat3 &) const = 0;
 };
 
 class NodeTree;
@@ -336,19 +337,6 @@ public:
         INPUT_SURFACE,
         INPUT_COUNT
     };
-};
-
-class IVectorFieldSampler : public virtual BaseValueNode<dfloat3>{
-protected:
-	IVectorFieldSampler(uint, NodeTree *);
-	~IVectorFieldSampler();
-public:
-	virtual void Evaluate(const void *) = 0;
-	static IVectorFieldSampler * Create(uint, NodeTree *);
-	enum INPUT{
-		INPUT_FIELD,
-		INPUT_POSITION
-	};
 };
 
 class OutputNode : public BaseNode{

@@ -102,22 +102,24 @@ public:
 
 #ifdef OPENVDB_OPENVDB_HAS_BEEN_INCLUDED
 typedef openvdb::tools::GridSampler<openvdb::FloatGrid, openvdb::tools::BoxSampler> FloatGridBoxSampler;
+typedef openvdb::tools::GridSampler<openvdb::Vec3SGrid, openvdb::tools::BoxSampler> VectorGridBoxSampler;
 
 namespace Node{
 
 //using InputNodeParams = std::tuple<SceneData::BaseObject *, openvdb::math::Transform::Ptr, const FloatGridBoxSampler *[VOLUME_BUFFER_COUNT]>;
-using InputNodeParams = std::tuple<SceneData::BaseObject *, openvdb::math::Transform::Ptr, const FloatGridBoxSampler *, const FloatGridBoxSampler *, const FloatGridBoxSampler *>;
+using InputNodeParams = std::tuple<SceneData::BaseObject *, openvdb::math::Transform::Ptr, const FloatGridBoxSampler *, const FloatGridBoxSampler *, const FloatGridBoxSampler *, const VectorGridBoxSampler *>;
 enum INP{
 	INP_OBJECT,
 	INP_TRANSFORM,
 	INP_SDFSAMPLER,
 	INP_QGRSAMPLER,
-	INP_FOGSAMPLER
+	INP_FOGSAMPLER,
+	INP_VELSAMPLER,
 };
 
 class ValueNodeParams : public IValueNodeParams{
 public:
-	ValueNodeParams(const dfloat3 *, const dfloat3 *, float, float, const FloatGridBoxSampler *[VOLUME_BUFFER_COUNT], const FloatGridBoxSampler *);
+	ValueNodeParams(const dfloat3 *, const dfloat3 *, float, float, const FloatGridBoxSampler *[VOLUME_BUFFER_COUNT], const FloatGridBoxSampler *, const VectorGridBoxSampler *);
 	~ValueNodeParams();
 	const dfloat3 * GetVoxPosW() const;
 	const dfloat3 * GetCptPosW() const;
@@ -125,10 +127,12 @@ public:
 	float GetLocalDensity() const;
 	float SampleGlobalDistance(const dfloat3 &, bool) const;
 	float SampleGlobalDensity(const dfloat3 &) const;
+	dfloat3 SampleGlobalVector(const dfloat3 &) const;
 	//global
 	//const openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT];
 	const FloatGridBoxSampler *psampler[VOLUME_BUFFER_COUNT];
 	const FloatGridBoxSampler *pqsampler;
+	const VectorGridBoxSampler *pvsampler;
 	//local
 	const dfloat3 *pvoxw;
 	const dfloat3 *pcptw;

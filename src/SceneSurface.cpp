@@ -91,7 +91,7 @@ void Displacement::Evaluate(const void *pp){
 
 	dfloat3 zr(0.0f);
 	const FloatGridBoxSampler *psamplers[] = {std::get<INP_SDFSAMPLER>(*pd),std::get<INP_FOGSAMPLER>(*pd)};
-	ValueNodeParams np(&zr,&zr,0.0f,0.0f,psamplers,std::get<INP_QGRSAMPLER>(*pd));
+	ValueNodeParams np(&zr,&zr,0.0f,0.0f,psamplers,std::get<INP_QGRSAMPLER>(*pd),std::get<INP_VELSAMPLER>(*pd));
     pntree->EvaluateNodes0(&np,level+1,emask);
     float amp = pmaxn->locr(indices[INPUT_MAXIMUM]);
 
@@ -124,7 +124,7 @@ void Displacement::Evaluate(const void *pp){
 			openvdb::Vec3s posw = pgridtr->indexToWorld(c.asVec3d());
             openvdb::Vec3s cptw = cptr.result(*pgridtr->map<openvdb::math::UniformScaleMap>(),std::get<2>(fgt),c);
 
-			ValueNodeParams np1((dfloat3*)posw.asPointer(),(dfloat3*)cptw.asPointer(),m.getValue(),0.0f,psamplers,std::get<INP_QGRSAMPLER>(*pd));
+			ValueNodeParams np1((dfloat3*)posw.asPointer(),(dfloat3*)cptw.asPointer(),m.getValue(),0.0f,psamplers,std::get<INP_QGRSAMPLER>(*pd),std::get<INP_VELSAMPLER>(*pd));
 			pntree->EvaluateNodes0(&np1,level+1,emask);
 
             float f = fabs(pnoisen->locr(indices[INPUT_DISTANCE]));

@@ -16,6 +16,7 @@ IValueNodeParams::~IValueNodeParams(){
 }
 
 BaseNode::BaseNode(uint _level, NodeTree *_pntree) : imask(0), omask(0), emask(0), level(_level), pntree(_pntree){
+	printf("BaseNode()\n");
     memset(pnodes,0,sizeof(pnodes));
 }
 
@@ -35,6 +36,7 @@ BaseValueResult<T>::BaseValueResult(){
 
 template<class T>
 BaseValueNode<T>::BaseValueNode(T r, uint level, NodeTree *pnt) : BaseNode(level,pnt){
+	printf("BaseValueNode(T)\n");
 	for(uint i = 0; i < pnt->nodes0.size(); ++i) //HACK: prevent double listing caused by multiple inheritance
 		if(pnt->nodes0[i] == this)
 			return;
@@ -44,6 +46,7 @@ BaseValueNode<T>::BaseValueNode(T r, uint level, NodeTree *pnt) : BaseNode(level
 
 template<class T>
 BaseValueNode<T>::BaseValueNode(uint level, NodeTree *pnt) : BaseNode(level,pnt){
+	printf("BaseValueNode()\n");
 	for(uint i = 0; i < pnt->nodes0.size(); ++i)
 		if(pnt->nodes0[i] == this)
 			return;
@@ -256,7 +259,7 @@ void IFbmNoise::Evaluate(const void *pp){
 }
 
 BaseFogNode::BaseFogNode(uint level, NodeTree *pnt) : BaseNode(level,pnt){
-    //DebugPrintf(">> BaseSurfaceNode(level)\n");
+    printf("BaseFogNode()\n");
     pnt->nodes1.push_back(this);
 }
 
@@ -269,7 +272,7 @@ void BaseFogNode::Evaluate(const void *pp){
 }
 
 BaseSurfaceNode::BaseSurfaceNode(uint level, NodeTree *pnt) : BaseNode(level,pnt){
-    //DebugPrintf(">> BaseSurfaceNode(level)\n");
+    printf("BaseSurfaceNode()\n");
     pnt->nodes1.push_back(this);
 }
 
@@ -282,6 +285,7 @@ void BaseSurfaceNode::Evaluate(const void *pp){
 }
 
 BaseVectorFieldNode::BaseVectorFieldNode(uint level, NodeTree *pnt) : BaseNode(level,pnt){
+	printf("BaseVectorFieldNode()\n");
 	pnt->nodes1.push_back(this);
 }
 
@@ -334,7 +338,7 @@ void SceneInfo::Evaluate(const void *pp){
 	rs.value[OUTPUT_FLOAT_FINAL] = pd->SampleGlobalDistance(dposw,false) > 0.0f?rs.value[OUTPUT_FLOAT_DENSITY]:1.0f;
 
 	BaseValueResult<dfloat3> &rv = this->BaseValueNode<dfloat3>::result.local();
-	rv.value[OUTPUT_VECTOR_VECTOR] = dfloat3(0.0f); //TODO: need sampler for this
+	rv.value[OUTPUT_VECTOR_VECTOR] = pd->SampleGlobalVector(dposw);
 }
 
 ISurfaceInput::ISurfaceInput(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt), BaseNode(_level,pnt){
@@ -401,15 +405,8 @@ IDisplacement::~IDisplacement(){
     //
 }
 
-IVectorFieldSampler::IVectorFieldSampler(uint _level, NodeTree *pnt) : BaseValueNode<dfloat3>(_level,pnt), BaseNode(_level,pnt){
-	//
-}
-
-IVectorFieldSampler::~IVectorFieldSampler(){
-	//
-}
-
 OutputNode::OutputNode(NodeTree *pnt) : BaseNode(0,pnt){
+	printf("OutputNode()\n");
     pnt->nodes1.push_back(this);
 }
 
