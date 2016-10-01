@@ -419,6 +419,10 @@ static void S_Create(float s, float qb, float bvc, openvdb::FloatGrid::Ptr pgrid
 	ptfog->setTransform(pgridtr);
 	ptfog->setGridClass(openvdb::GRID_FOG_VOLUME);
 
+	openvdb::Vec3SGrid::Ptr ptvel = openvdb::Vec3SGrid::create();
+	ptvel->setTransform(pgridtr);
+	ptvel->setGridClass(openvdb::GRID_FOG_VOLUME);
+
 	for(uint i = 0; i < SceneData::SmokeCache::objs.size(); ++i){
 		Node::InputNodeParams snp(SceneData::SmokeCache::objs[i],pgridtr,0,0,0);
 		SceneData::SmokeCache::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOG);
@@ -438,7 +442,7 @@ static void S_Create(float s, float qb, float bvc, openvdb::FloatGrid::Ptr pgrid
 
 	for(uint i = 0; i < SceneData::ParticleSystem::prss.size(); ++i){
 		Node::InputNodeParams snp(SceneData::ParticleSystem::prss[i],pgridtr,0,0,0);
-        SceneData::ParticleSystem::prss[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOG);
+        SceneData::ParticleSystem::prss[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOG|1<<Node::OutputNode::INPUT_VECTOR);
 
 		Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOG]);
 		if(pdfn->pdgrid->activeVoxelCount() > 0){
@@ -451,6 +455,10 @@ static void S_Create(float s, float qb, float bvc, openvdb::FloatGrid::Ptr pgrid
 				openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
 			else pgrid[VOLUME_BUFFER_FOG] = pdfn->pdgrid;
 		}
+
+		Node::BaseVectorFieldNode1 *pvfn = dynamic_cast<Node::BaseVectorFieldNode1*>(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_VECTOR]);
+		if(pvfn->pvgrid->activeVoxelCount() > 0)
+			openvdb::tools::compSum(*ptvel,*pvfn->pvgrid);
 	}
 
 	//fog post-processor

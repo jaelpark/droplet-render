@@ -481,27 +481,4 @@ IAdvection * IAdvection::Create(uint level, NodeTree *pnt, uint flags){
 	return new Advection(level,pnt,flags);
 }
 
-VectorFieldSampler::VectorFieldSampler(uint level, NodeTree *pnt) : BaseValueNode<dfloat3>(level,pnt), BaseNode(level,pnt), IVectorFieldSampler(level,pnt){
-	//
-}
-
-VectorFieldSampler::~VectorFieldSampler(){
-	//
-}
-
-void VectorFieldSampler::Evaluate(const void *pp){
-	BaseVectorFieldNode1 *pfieldn = dynamic_cast<BaseVectorFieldNode1*>(pnodes[INPUT_FIELD]);
-	BaseValueNode<dfloat3> *pnode = dynamic_cast<BaseValueNode<dfloat3>*>(pnodes[INPUT_POSITION]);
-
-	openvdb::tools::GridSampler<openvdb::Vec3SGrid, openvdb::tools::BoxSampler> sampler1(*pfieldn->pvgrid); //can't recreate the sampler every iteration?
-	dfloat3 dposw = pnode->locr(indices[INPUT_POSITION]);
-
-	openvdb::Vec3s v = sampler1.wsSample(*(openvdb::Vec3s*)&dposw);
-	this->BaseValueNode<dfloat3>::result.local().value[0] = *(dfloat3*)&v;
-}
-
-IVectorFieldSampler * IVectorFieldSampler::Create(uint level, NodeTree *pnt){
-	return new VectorFieldSampler(level,pnt);
-}
-
 }

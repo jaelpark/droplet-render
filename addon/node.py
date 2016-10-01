@@ -149,8 +149,10 @@ class ClNodeSceneInfo(bpy.types.Node):
 	def init(self, context):
 		self.inputs.new("ClNodeVectorSocket","World");
 		self.outputs.new("ClNodeFloatSocket","Distance");
+		#TODO: CPT.world now that we have a query field
 		self.outputs.new("ClNodeFloatSocket","Density");
 		self.outputs.new("ClNodeFloatSocket","Density.Final");
+		self.outputs.new("ClNodeVectorSocket","Vector");
 
 class ClNodeSurfaceInput(bpy.types.Node):
 	bl_idname = "ClNodeSurfaceInput";
@@ -295,9 +297,6 @@ class ClNodeVectorMath(bpy.types.Node):
 	def draw_buttons(self, context, layout):
 		layout.prop(self,"op");
 
-#class ClPropertyEmpty(bpy.types.PropertyGroup):
-	#pass
-
 class ClNodeFbmNoise(bpy.types.Node):
 	bl_idname = "ClNodeFbmNoise";
 	bl_label = "FbmNoise";
@@ -322,6 +321,7 @@ class ClNodeSurfaceOutput(bpy.types.Node):
 		#self.inputs.new("ClNodeShaderSocket","Shader");
 		self.inputs.new("ClNodeFogSocket","Fog");
 		self.inputs.new("ClNodeFogSocket","Fog.Post");
+		self.inputs.new("ClNodeVectorFieldSocket","Vector");
 		self.inputs.new("ClNodeSurfaceSocket","Surface");
 
 		#self.color = (0.7,0.7,0.8);
@@ -402,15 +402,6 @@ class ClNodeDisplacement(bpy.types.Node):
 # 	#def draw_buttons(self, context, layout):
 # 		#self.props.draw(context,layout);
 
-class ClNodeVectorFieldSampler(bpy.types.Node):
-	bl_idname = "ClNodeVectorFieldSampler";
-	bl_label = "VectorField sampler";
-
-	def init(self, context):
-		self.inputs.new("ClNodeVectorFieldSocket","Field");
-		self.inputs.new("ClNodeVectorSocket","World");
-		self.outputs.new("ClNodeVectorSocket","Out");
-
 class ClNodeCategory(NodeCategory):
 	@classmethod
 	def poll(cls, context):
@@ -441,9 +432,6 @@ categories = [
 		NodeItem("ClNodeFloatMax"),
 		NodeItem("ClNodeVectorMath"),
 	]),
-	ClNodeCategory("CONVERSION_CATEGORY","Conversion",items = [
-		NodeItem("ClNodeVectorFieldSampler"),
-	]),
 	ClNodeCategory("NOISE_CATEGORY","Noise",items = [
 		NodeItem("ClNodeFbmNoise"),
 	]),
@@ -453,6 +441,5 @@ categories = [
 	]),
 	ClNodeCategory("SURFACE_CATEGORY","Surface",items = [
 		NodeItem("ClNodeDisplacement"),
-		#NodeItem("ClNodefBmPerlinNoise"),
 	]),
 ];

@@ -207,7 +207,7 @@ public:
 	};
 };
 
-class SceneInfo : public BaseValueNode<float>{
+class SceneInfo : public BaseValueNode<float>, public BaseValueNode<dfloat3>{
 public:
 	SceneInfo(uint, NodeTree *);
 	~SceneInfo();
@@ -220,6 +220,9 @@ public:
 		OUTPUT_FLOAT_DENSITY,
 		OUTPUT_FLOAT_FINAL,
 		OUTPUT_FLOAT_COUNT
+	};
+	enum OUTPUT_VECTOR{
+		OUTPUT_VECTOR_VECTOR,
 	};
 };
 
@@ -356,6 +359,7 @@ public:
     enum INPUT{
         INPUT_FOG,
 		INPUT_FOGPOST,
+		INPUT_VECTOR,
         INPUT_SURFACE,
         INPUT_COUNT,
     };

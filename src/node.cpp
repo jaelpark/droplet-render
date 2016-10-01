@@ -313,7 +313,7 @@ void VoxelInfo::Evaluate(const void *pp){
 	rs.value[OUTPUT_FLOAT_DENSITY] = pd->GetLocalDensity();
 }
 
-SceneInfo::SceneInfo(uint _level, NodeTree *pnt) : BaseValueNode<float>(_level,pnt), BaseNode(_level,pnt){
+SceneInfo::SceneInfo(uint _level, NodeTree *pnt) : BaseValueNode<float>(_level,pnt), BaseValueNode<dfloat3>(_level,pnt), BaseNode(_level,pnt){
 	//
 }
 
@@ -332,6 +332,9 @@ void SceneInfo::Evaluate(const void *pp){
 	rs.value[OUTPUT_FLOAT_DENSITY] = pd->SampleGlobalDensity(dposw);
 	//rs.value[OUTPUT_FLOAT_FINAL] = rs.value[OUTPUT_FLOAT_DISTANCE] > 0.0f?rs.value[OUTPUT_FLOAT_DENSITY]:1.0f;
 	rs.value[OUTPUT_FLOAT_FINAL] = pd->SampleGlobalDistance(dposw,false) > 0.0f?rs.value[OUTPUT_FLOAT_DENSITY]:1.0f;
+
+	BaseValueResult<dfloat3> &rv = this->BaseValueNode<dfloat3>::result.local();
+	rv.value[OUTPUT_VECTOR_VECTOR] = dfloat3(0.0f); //TODO: need sampler for this
 }
 
 ISurfaceInput::ISurfaceInput(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt), BaseNode(_level,pnt){
@@ -541,8 +544,6 @@ BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, No
 		Py_DECREF(presf);
 
         return IDisplacement::Create(level,pnt,resf);
-	}else if(strcmp(pname,"ClNodeVectorFieldSampler") == 0){
-		return IVectorFieldSampler::Create(level,pnt);
     }else if(strcmp(pname,"ClNodeSurfaceOutput") == 0){
         return new OutputNode(pnt);
     }
