@@ -20,17 +20,17 @@ class NodeTree;
 
 class BaseNode{
 protected:
-    BaseNode(uint, NodeTree *);
+	BaseNode(uint, NodeTree *);
 public:
-    virtual ~BaseNode();
-    virtual void Evaluate(const void *) = 0;
-    BaseNode *pnodes[12];
-    NodeTree *pntree; //can be null
+	virtual ~BaseNode();
+	virtual void Evaluate(const void *) = 0;
+	BaseNode *pnodes[12];
+	NodeTree *pntree; //can be null
 	uint indices[12]; //index to the input node (pnodes[x]) output socket, per-socket-type basis
 	uint imask; //input mask - a bitmask to indicate if any (real) input nodes are connected (not using default automatic base node)
-    uint omask; //output mask to help optimize storage and performance in some cases
-    uint emask; //ouput root node branch mask (e.g. 0x1 if required for the 1st input, 0x2 for the second, 0x1|0x2 for both, etc.)
-    uint level;
+	uint omask; //output mask to help optimize storage and performance in some cases
+	uint emask; //ouput root node branch mask (e.g. 0x1 if required for the 1st input, 0x2 for the second, 0x1|0x2 for both, etc.)
+	uint level;
 };
 
 template<class T>
@@ -45,10 +45,10 @@ template<class T>
 class BaseValueNode : public virtual BaseNode{
 //NOTE: the virtual inheritance requires an explicit constructor call at higher levels of hierarchy also whenever BaseValueNode<T>(...) is called.
 public:
-    BaseValueNode(T, uint, NodeTree *);
-    BaseValueNode(uint, NodeTree *);
-    virtual ~BaseValueNode();
-    virtual void Evaluate(const void *);
+	BaseValueNode(T, uint, NodeTree *);
+	BaseValueNode(uint, NodeTree *);
+	virtual ~BaseValueNode();
+	virtual void Evaluate(const void *);
 	inline T locr(uint outx){
 		return this->BaseValueNode<T>::result.local().value[outx];
 	}
@@ -93,14 +93,14 @@ public:
 	virtual void Evaluate(const void *);
 	static IFbmNoise * Create(uint, NodeTree *);
 	enum INPUT{
-        INPUT_OCTAVES,
-        INPUT_FREQ,
-        INPUT_AMP,
-        INPUT_FJUMP,
-        INPUT_GAIN,
-        INPUT_POSITION,
-        INPUT_COUNT
-    };
+		INPUT_OCTAVES,
+		INPUT_FREQ,
+		INPUT_AMP,
+		INPUT_FJUMP,
+		INPUT_GAIN,
+		INPUT_POSITION,
+		INPUT_COUNT
+	};
 	enum OUTPUT_FLOAT{
 		OUTPUT_FLOAT_NOISE,
 		OUTPUT_FLOAT_MAXIMUM,
@@ -114,23 +114,23 @@ public:
 
 class BaseFogNode : public virtual BaseNode{
 protected:
-    BaseFogNode(uint, NodeTree *);
-    virtual ~BaseFogNode();
+	BaseFogNode(uint, NodeTree *);
+	virtual ~BaseFogNode();
 public:
-    virtual void Evaluate(const void *);
-    static BaseFogNode * Create(uint, NodeTree *);
-    static void SortNodes();
-    static void EvaluateAll(const void *, uint);
+	virtual void Evaluate(const void *);
+	static BaseFogNode * Create(uint, NodeTree *);
+	static void SortNodes();
+	static void EvaluateAll(const void *, uint);
 };
 
 class BaseSurfaceNode : public virtual BaseNode{
 protected:
-    //BaseSurfaceNode();
-    BaseSurfaceNode(uint, NodeTree *);
-    virtual ~BaseSurfaceNode();
+	//BaseSurfaceNode();
+	BaseSurfaceNode(uint, NodeTree *);
+	virtual ~BaseSurfaceNode();
 public:
-    virtual void Evaluate(const void *);
-    static BaseSurfaceNode * Create(uint, NodeTree *);
+	virtual void Evaluate(const void *);
+	static BaseSurfaceNode * Create(uint, NodeTree *);
 };
 
 class BaseVectorFieldNode : public virtual BaseNode{
@@ -180,11 +180,11 @@ public:
 
 class ISurfaceInput : public virtual BaseSurfaceNode{
 protected:
-    ISurfaceInput(uint, NodeTree *);
-    ~ISurfaceInput();
+	ISurfaceInput(uint, NodeTree *);
+	~ISurfaceInput();
 public:
-    virtual void Evaluate(const void *) = 0;
-    static ISurfaceInput * Create(uint, NodeTree *);
+	virtual void Evaluate(const void *) = 0;
+	static ISurfaceInput * Create(uint, NodeTree *);
 };
 
 class IParticleInput : public virtual BaseFogNode{
@@ -276,48 +276,48 @@ public:
 
 class IDisplacement : public virtual BaseSurfaceNode{
 protected:
-    IDisplacement(uint, NodeTree *);
-    ~IDisplacement();
+	IDisplacement(uint, NodeTree *);
+	~IDisplacement();
 public:
-    virtual void Evaluate(const void *) = 0;
-    static IDisplacement * Create(uint, NodeTree *, float);
-    enum INPUT{
-        INPUT_DISTANCE,
+	virtual void Evaluate(const void *) = 0;
+	static IDisplacement * Create(uint, NodeTree *, float);
+	enum INPUT{
+		INPUT_DISTANCE,
 		INPUT_MAXIMUM,
 		INPUT_BILLOW,
-        INPUT_SURFACE,
-        INPUT_COUNT
-    };
+		INPUT_SURFACE,
+		INPUT_COUNT
+	};
 };
 
 class OutputNode : public BaseNode{
 public:
-    OutputNode(NodeTree *);
-    ~OutputNode();
-    void Evaluate(const void *);
-    enum INPUT{
-        INPUT_FOG,
+	OutputNode(NodeTree *);
+	~OutputNode();
+	void Evaluate(const void *);
+	enum INPUT{
+		INPUT_FOG,
 		INPUT_FOGPOST,
 		INPUT_VECTOR,
-        INPUT_SURFACE,
-        INPUT_COUNT,
-    };
+		INPUT_SURFACE,
+		INPUT_COUNT,
+	};
 };
 
 class NodeTree{
 public:
-    NodeTree(const char *);
-    ~NodeTree();
-    void EvaluateNodes0(const void *, uint, uint);
-    void EvaluateNodes1(const void *, uint, uint);
-    void ApplyBranchMask();
-    void SortNodes();
-    BaseNode * GetRoot() const;
-    static void DeleteAll();
-    std::vector<BaseNode *> nodes0; //low-level nodes (math, info nodes, values etc)
-    std::vector<BaseNode *> nodes1; //high-level nodes (surface and fog operations)
+	NodeTree(const char *);
+	~NodeTree();
+	void EvaluateNodes0(const void *, uint, uint);
+	void EvaluateNodes1(const void *, uint, uint);
+	void ApplyBranchMask();
+	void SortNodes();
+	BaseNode * GetRoot() const;
+	static void DeleteAll();
+	std::vector<BaseNode *> nodes0; //low-level nodes (math, info nodes, values etc)
+	std::vector<BaseNode *> nodes1; //high-level nodes (surface and fog operations)
 	char name[256];
-    static std::vector<NodeTree *> ntrees;
+	static std::vector<NodeTree *> ntrees;
 };
 
 BaseNode * CreateNodeByType(const char *, const void *, uint, NodeTree *);

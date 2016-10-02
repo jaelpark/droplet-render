@@ -17,11 +17,11 @@ IValueNodeParams::~IValueNodeParams(){
 
 BaseNode::BaseNode(uint _level, NodeTree *_pntree) : imask(0), omask(0), emask(0), level(_level), pntree(_pntree){
 	//printf("BaseNode()\n");
-    memset(pnodes,0,sizeof(pnodes));
+	memset(pnodes,0,sizeof(pnodes));
 }
 
 BaseNode::~BaseNode(){
-    //
+	//
 }
 
 //HACK: prevent double listing caused by multiple inheritance
@@ -43,25 +43,25 @@ template<class T>
 BaseValueNode<T>::BaseValueNode(T r, uint level, NodeTree *pnt) : BaseNode(level,pnt){
 	//printf("BaseValueNode(T)\n");
 	MIHACK(pnt->nodes0);
-    result = r; //set the default value for every thread
-    pnt->nodes0.push_back(this);
+	result = r; //set the default value for every thread
+	pnt->nodes0.push_back(this);
 }
 
 template<class T>
 BaseValueNode<T>::BaseValueNode(uint level, NodeTree *pnt) : BaseNode(level,pnt){
 	//printf("BaseValueNode()\n");
 	MIHACK(pnt->nodes0);
-    pnt->nodes0.push_back(this);
+	pnt->nodes0.push_back(this);
 }
 
 template<class T>
 BaseValueNode<T>::~BaseValueNode(){
-    //
+	//
 }
 
 template<class T>
 void BaseValueNode<T>::Evaluate(const void *pp){
-    //
+	//
 }
 
 FloatInput::FloatInput(uint level, NodeTree *pnt) : BaseValueNode<float>(level,pnt), BaseNode(level,pnt){
@@ -86,7 +86,7 @@ ScalarMath::~ScalarMath(){
 
 void ScalarMath::Evaluate(const void *pp){
 	float a = dynamic_cast<BaseValueNode<float>*>(this->pnodes[0])->BaseValueNode<float>::result.local().value[this->indices[0]];
-    float b = dynamic_cast<BaseValueNode<float>*>(this->pnodes[1])->BaseValueNode<float>::result.local().value[this->indices[1]];
+	float b = dynamic_cast<BaseValueNode<float>*>(this->pnodes[1])->BaseValueNode<float>::result.local().value[this->indices[1]];
 	float r;
 	switch(opch){
 	case '+': r = a+b; break;
@@ -131,7 +131,7 @@ VectorMath::~VectorMath(){
 
 void VectorMath::Evaluate(const void *pp){
 	dfloat3 sa = dynamic_cast<BaseValueNode<dfloat3>*>(this->pnodes[0])->BaseValueNode<dfloat3>::result.local().value[this->indices[0]];
-    dfloat3 sb = dynamic_cast<BaseValueNode<dfloat3>*>(this->pnodes[1])->BaseValueNode<dfloat3>::result.local().value[this->indices[1]];
+	dfloat3 sb = dynamic_cast<BaseValueNode<dfloat3>*>(this->pnodes[1])->BaseValueNode<dfloat3>::result.local().value[this->indices[1]];
 	float4 a = float4::load(&sa);
 	float4 b = float4::load(&sb);
 	float4 r;
@@ -160,31 +160,31 @@ void IFbmNoise::Evaluate(const void *pp){
 }
 
 BaseFogNode::BaseFogNode(uint level, NodeTree *pnt) : BaseNode(level,pnt){
-    //printf("BaseFogNode()\n");
+	//printf("BaseFogNode()\n");
 	MIHACK(pnt->nodes1);
-    pnt->nodes1.push_back(this);
+	pnt->nodes1.push_back(this);
 }
 
 BaseFogNode::~BaseFogNode(){
-    //
+	//
 }
 
 void BaseFogNode::Evaluate(const void *pp){
-    //
+	//
 }
 
 BaseSurfaceNode::BaseSurfaceNode(uint level, NodeTree *pnt) : BaseNode(level,pnt){
-    //printf("BaseSurfaceNode()\n");
+	//printf("BaseSurfaceNode()\n");
 	MIHACK(pnt->nodes1);
-    pnt->nodes1.push_back(this);
+	pnt->nodes1.push_back(this);
 }
 
 BaseSurfaceNode::~BaseSurfaceNode(){
-    //
+	//
 }
 
 void BaseSurfaceNode::Evaluate(const void *pp){
-    //
+	//
 }
 
 BaseVectorFieldNode::BaseVectorFieldNode(uint level, NodeTree *pnt) : BaseNode(level,pnt){
@@ -246,11 +246,11 @@ void SceneInfo::Evaluate(const void *pp){
 }
 
 ISurfaceInput::ISurfaceInput(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt), BaseNode(_level,pnt){
-    //
+	//
 }
 
 ISurfaceInput::~ISurfaceInput(){
-    //
+	//
 }
 
 IParticleInput::IParticleInput(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseNode(_level,pnt){
@@ -302,83 +302,83 @@ IAdvection::~IAdvection(){
 }
 
 IDisplacement::IDisplacement(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt), BaseNode(_level,pnt){
-    //
+	//
 }
 
 IDisplacement::~IDisplacement(){
-    //
+	//
 }
 
 OutputNode::OutputNode(NodeTree *pnt) : BaseNode(0,pnt){
 	//printf("OutputNode()\n");
-    pnt->nodes1.push_back(this);
+	pnt->nodes1.push_back(this);
 }
 
 OutputNode::~OutputNode(){
-    //
+	//
 }
 
 void OutputNode::Evaluate(const void *pp){
-    //never used, output node won't be listed anywhere
+	//never used, output node won't be listed anywhere
 }
 
 NodeTree::NodeTree(const char *pn){
 	strcpy(name,pn);
-    ntrees.push_back(this);
+	ntrees.push_back(this);
 }
 
 NodeTree::~NodeTree(){
-    for(uint i = 0; i < nodes0.size(); ++i)
-        delete nodes0[i];
-    for(uint i = 0; i < nodes1.size(); ++i)
-        delete nodes1[i];
+	for(uint i = 0; i < nodes0.size(); ++i)
+		delete nodes0[i];
+	for(uint i = 0; i < nodes1.size(); ++i)
+		delete nodes1[i];
 }
 
 void NodeTree::EvaluateNodes0(const void *pp, uint max, uint mask){
-    for(uint i = 0; i < nodes0.size() && nodes0[i]->level >= max; ++i)
-        if(nodes0[i]->emask & mask)
-            nodes0[i]->Evaluate(pp);
+	for(uint i = 0; i < nodes0.size() && nodes0[i]->level >= max; ++i)
+		if(nodes0[i]->emask & mask)
+			nodes0[i]->Evaluate(pp);
 }
 
 void NodeTree::EvaluateNodes1(const void *pp, uint max, uint mask){
-    for(uint i = 0; i < nodes1.size() && nodes1[i]->level >= max; ++i)
-        if(nodes1[i]->emask & mask)
-            nodes1[i]->Evaluate(pp);
+	for(uint i = 0; i < nodes1.size() && nodes1[i]->level >= max; ++i)
+		if(nodes1[i]->emask & mask)
+			nodes1[i]->Evaluate(pp);
 }
 
 void NodeTree::ApplyBranchMask(){
-    BaseNode *proot = GetRoot();
-    proot->emask = ~0u;
+	BaseNode *proot = GetRoot();
+	proot->emask = ~0u;
 
-    std::function<void (BaseNode *, uint)> rbmask = [&](BaseNode *pnode, uint mask)->void{
-        pnode->emask |= mask;
-        for(uint i = 0; i < sizeof(pnode->pnodes)/sizeof(pnode->pnodes[0]); ++i)
-            if(pnode->pnodes[i])
-                rbmask(pnode->pnodes[i],mask);
-    };
+	std::function<void (BaseNode *, uint)> rbmask = [&](BaseNode *pnode, uint mask)->void{
+		pnode->emask |= mask;
+		for(uint i = 0; i < sizeof(pnode->pnodes)/sizeof(pnode->pnodes[0]); ++i)
+			if(pnode->pnodes[i])
+				rbmask(pnode->pnodes[i],mask);
+	};
 
-    for(uint i = 0; i < sizeof(proot->pnodes)/sizeof(proot->pnodes[0]); ++i)
-        if(proot->pnodes[i])
-            rbmask(proot->pnodes[i],1<<i);
+	for(uint i = 0; i < sizeof(proot->pnodes)/sizeof(proot->pnodes[0]); ++i)
+		if(proot->pnodes[i])
+			rbmask(proot->pnodes[i],1<<i);
 }
 
 void NodeTree::SortNodes(){
-    std::sort(nodes0.begin(),nodes0.end(),[&](BaseNode *pa, BaseNode *pb)->bool{
-        return pa->level > pb->level;
-    });
-    std::sort(nodes1.begin(),nodes1.end(),[&](BaseNode *pa, BaseNode *pb)->bool{
-        return pa->level > pb->level;
-    });
+	std::sort(nodes0.begin(),nodes0.end(),[&](BaseNode *pa, BaseNode *pb)->bool{
+		return pa->level > pb->level;
+	});
+	std::sort(nodes1.begin(),nodes1.end(),[&](BaseNode *pa, BaseNode *pb)->bool{
+		return pa->level > pb->level;
+	});
 }
 
 BaseNode * NodeTree::GetRoot() const{
-    return nodes1.back(); //assume already sorted
+	return nodes1.back(); //assume already sorted
 }
 
 void NodeTree::DeleteAll(){
-    for(uint i = 0; i < ntrees.size(); ++i)
-        delete ntrees[i];
-    ntrees.clear();
+	for(uint i = 0; i < ntrees.size(); ++i)
+		delete ntrees[i];
+	ntrees.clear();
 }
 
 BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, NodeTree *pnt){
@@ -409,8 +409,8 @@ BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, No
 		return new VoxelInfo(level,pnt);
 	}else if(strcmp(pname,"ClNodeSceneInfo") == 0){
 		return new SceneInfo(level,pnt);
-    }else if(strcmp(pname,"ClNodeSurfaceInput") == 0){
-        return ISurfaceInput::Create(level,pnt);
+	}else if(strcmp(pname,"ClNodeSurfaceInput") == 0){
+		return ISurfaceInput::Create(level,pnt);
 	}else if(strcmp(pname,"ClNodeParticleInput") == 0){
 		return IParticleInput::Create(level,pnt);
 	}else if(strcmp(pname,"ClNodeFieldInput") == 0){
@@ -433,36 +433,36 @@ BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, No
 		Py_DECREF(psl);
 
 		return IAdvection::Create(level,pnt,flags);
-    }else if(strcmp(pname,"ClNodeDisplacement") == 0){
+	}else if(strcmp(pname,"ClNodeDisplacement") == 0){
 		PyObject *presf = PyObject_GetAttrString((PyObject*)pnode,"resf");
 		float resf = (float)PyFloat_AsDouble(presf);
 		Py_DECREF(presf);
 
-        return IDisplacement::Create(level,pnt,resf);
-    }else if(strcmp(pname,"ClNodeSurfaceOutput") == 0){
-        return new OutputNode(pnt);
-    }
-    return 0;
+		return IDisplacement::Create(level,pnt,resf);
+	}else if(strcmp(pname,"ClNodeSurfaceOutput") == 0){
+		return new OutputNode(pnt);
+	}
+	return 0;
 }
 
 BaseNode * CreateNodeBySocket(const char *pname, const void *pvalue, uint level, NodeTree *pnt){
-    if(strcmp(pname,"ClNodeFloatSocket") == 0){
-        float v = PyFloat_AsDouble((PyObject*)pvalue);
-        return new BaseValueNode<float>(v,level,pnt);
-    }else if(strcmp(pname,"ClNodeIntSocket") == 0){
-        int v = PyLong_AsLong((PyObject*)pvalue);
-        return new BaseValueNode<int>(v,level,pnt);
+	if(strcmp(pname,"ClNodeFloatSocket") == 0){
+		float v = PyFloat_AsDouble((PyObject*)pvalue);
+		return new BaseValueNode<float>(v,level,pnt);
+	}else if(strcmp(pname,"ClNodeIntSocket") == 0){
+		int v = PyLong_AsLong((PyObject*)pvalue);
+		return new BaseValueNode<int>(v,level,pnt);
 	}else if(strcmp(pname,"ClNodeVectorSocket") == 0)
 		return new BaseValueNode<dfloat3>(dfloat3(0.0f),level,pnt);
-    //else if(strcmp(pname,"ClNodeShaderSocket") == 0)
-        //return BaseSurfaceNode::Create(level,pnt);//return new BaseSurfaceNode(level);//BaseNode(level);
-    else if(strcmp(pname,"ClNodeFogSocket") == 0)
-        return BaseFogNode::Create(level,pnt);
-    else if(strcmp(pname,"ClNodeSurfaceSocket") == 0)
-        return BaseSurfaceNode::Create(level,pnt);//return new BaseSurfaceNode(level);
+	//else if(strcmp(pname,"ClNodeShaderSocket") == 0)
+		//return BaseSurfaceNode::Create(level,pnt);//return new BaseSurfaceNode(level);//BaseNode(level);
+	else if(strcmp(pname,"ClNodeFogSocket") == 0)
+		return BaseFogNode::Create(level,pnt);
+	else if(strcmp(pname,"ClNodeSurfaceSocket") == 0)
+		return BaseSurfaceNode::Create(level,pnt);//return new BaseSurfaceNode(level);
 	else if(strcmp(pname,"ClNodeVectorFieldSocket") == 0)
 		return BaseVectorFieldNode::Create(level,pnt);
-    return 0;
+	return 0;
 
 }
 

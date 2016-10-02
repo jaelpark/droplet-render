@@ -27,16 +27,16 @@ PostFog::~PostFog(){
 namespace Node{
 
 BaseFogNode1::BaseFogNode1(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseNode(_level,pnt){
-    pdgrid = openvdb::FloatGrid::create();
-    pdgrid->setGridClass(openvdb::GRID_FOG_VOLUME);
+	pdgrid = openvdb::FloatGrid::create();
+	pdgrid->setGridClass(openvdb::GRID_FOG_VOLUME);
 }
 
 BaseFogNode1::~BaseFogNode1(){
-    //
+	//
 }
 
 BaseFogNode * BaseFogNode::Create(uint level, NodeTree *pnt){
-    return new BaseFogNode1(level,pnt);
+	return new BaseFogNode1(level,pnt);
 }
 
 BaseVectorFieldNode1::BaseVectorFieldNode1(uint _level, NodeTree *pnt) : BaseVectorFieldNode(_level,pnt), BaseNode(_level,pnt){
@@ -79,12 +79,12 @@ protected:
 };
 
 ParticleInput::ParticleInput(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), BaseNode(_level,pnt), IParticleInput(_level,pnt){
-    //
-    //DebugPrintf(">> ParticleInput()\n");
+	//
+	//DebugPrintf(">> ParticleInput()\n");
 }
 
 ParticleInput::~ParticleInput(){
-    //
+	//
 }
 
 void ParticleInput::Evaluate(const void *pp){
@@ -138,12 +138,12 @@ IParticleInput * IParticleInput::Create(uint level, NodeTree *pnt){
 }
 
 FieldInput::FieldInput(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), BaseVectorFieldNode(_level,pnt), BaseVectorFieldNode1(_level,pnt), BaseNode(_level,pnt), IFieldInput(_level,pnt){
-    //
+	//
 	//printf("FieldInput()\n");
 }
 
 FieldInput::~FieldInput(){
-    //
+	//
 }
 
 void FieldInput::Evaluate(const void *pp){
@@ -173,7 +173,7 @@ void FieldInput::Evaluate(const void *pp){
 		openvdb::math::Transform::Ptr pgridtr1 = openvdb::math::Transform::createLinearTransform(prasres->locr(indices[INPUT_RASTERIZATIONRES]));
 
 		ptgridd = openvdb::FloatGrid::create();
-	    ptgridd->setGridClass(openvdb::GRID_FOG_VOLUME);
+		ptgridd->setGridClass(openvdb::GRID_FOG_VOLUME);
 		ptgridd->setTransform(pgridtr1);
 
 		ptgridv = openvdb::Vec3SGrid::create();
@@ -254,12 +254,12 @@ IFieldInput * IFieldInput::Create(uint level, NodeTree *pnt){
 }
 
 SmokeCache::SmokeCache(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), BaseNode(_level,pnt), ISmokeCache(_level,pnt){
-    //
-    //DebugPrintf(">> ParticleInput()\n");
+	//
+	//DebugPrintf(">> ParticleInput()\n");
 }
 
 SmokeCache::~SmokeCache(){
-    //
+	//
 }
 
 void SmokeCache::Evaluate(const void *pp){
@@ -297,11 +297,11 @@ ISmokeCache * ISmokeCache::Create(uint level, NodeTree *pnt){
 }
 
 FogPostInput::FogPostInput(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), BaseNode(_level,pnt), IFogPostInput(_level,pnt){
-    //
+	//
 }
 
 FogPostInput::~FogPostInput(){
-    //
+	//
 }
 
 void FogPostInput::Evaluate(const void *pp){
@@ -344,16 +344,16 @@ void Composite::Evaluate(const void *pp){
 	DebugPrintf("> Compositing fog volume...\n");
 
 	typedef std::tuple<openvdb::FloatGrid::Ptr, openvdb::FloatGrid::Accessor> FloatGridT;
-    tbb::enumerable_thread_specific<FloatGridT> tgrida([&]()->FloatGridT{
-        openvdb::FloatGrid::Ptr ptgrid = openvdb::FloatGrid::create();
-        ptgrid->setTransform(pgridtr);
-        ptgrid->setGridClass(openvdb::GRID_FOG_VOLUME);
-        return FloatGridT(ptgrid,ptgrid->getAccessor());
-    });
-    tbb::parallel_for(openvdb::tree::IteratorRange<openvdb::FloatGrid::ValueOnIter>(pnode->pdgrid->beginValueOn()),[&](openvdb::tree::IteratorRange<openvdb::FloatGrid::ValueOnIter> &r){
-        FloatGridT &fgt = tgrida.local();
-        for(; r; ++r){
-            const openvdb::FloatGrid::ValueOnIter &m = r.iterator();
+	tbb::enumerable_thread_specific<FloatGridT> tgrida([&]()->FloatGridT{
+		openvdb::FloatGrid::Ptr ptgrid = openvdb::FloatGrid::create();
+		ptgrid->setTransform(pgridtr);
+		ptgrid->setGridClass(openvdb::GRID_FOG_VOLUME);
+		return FloatGridT(ptgrid,ptgrid->getAccessor());
+	});
+	tbb::parallel_for(openvdb::tree::IteratorRange<openvdb::FloatGrid::ValueOnIter>(pnode->pdgrid->beginValueOn()),[&](openvdb::tree::IteratorRange<openvdb::FloatGrid::ValueOnIter> &r){
+		FloatGridT &fgt = tgrida.local();
+		for(; r; ++r){
+			const openvdb::FloatGrid::ValueOnIter &m = r.iterator();
 
 			openvdb::Coord c = m.getCoord();
 			openvdb::math::Vec3s posw = pnode->pdgrid->transform().indexToWorld(c); //should use the same pgridtr as here
@@ -363,19 +363,19 @@ void Composite::Evaluate(const void *pp){
 
 			float f = pvalue->locr(indices[IComposite::INPUT_VALUE]);
 			std::get<1>(fgt).setValue(c,f);
-        }
-    });
+		}
+	});
 
 	//TODO: try compSum
 	openvdb::FloatGrid::Accessor dgrida = pdgrid->getAccessor();
-    for(tbb::enumerable_thread_specific<FloatGridT>::const_iterator q = tgrida.begin(); q != tgrida.end(); ++q){
-        //
-        for(openvdb::FloatGrid::ValueOnIter m = std::get<0>(*q)->beginValueOn(); m.test(); ++m){
+	for(tbb::enumerable_thread_specific<FloatGridT>::const_iterator q = tgrida.begin(); q != tgrida.end(); ++q){
+		//
+		for(openvdb::FloatGrid::ValueOnIter m = std::get<0>(*q)->beginValueOn(); m.test(); ++m){
 			openvdb::Coord c = m.getCoord();
-            float f = m.getValue();
-            dgrida.setValue(c,f);
-        }
-    }
+			float f = m.getValue();
+			dgrida.setValue(c,f);
+		}
+	}
 }
 
 IComposite * IComposite::Create(uint level, NodeTree *pnt){
@@ -411,16 +411,16 @@ void Advection::Evaluate(const void *pp){
 	DebugPrintf("> Advecting fog volume...\n");
 
 	typedef std::tuple<openvdb::FloatGrid::Ptr, openvdb::FloatGrid::Accessor> FloatGridT;
-    tbb::enumerable_thread_specific<FloatGridT> tgrida([&]()->FloatGridT{
-        openvdb::FloatGrid::Ptr ptgrid = openvdb::FloatGrid::create();
-        ptgrid->setTransform(pgridtr);
-        ptgrid->setGridClass(openvdb::GRID_FOG_VOLUME);
-        return FloatGridT(ptgrid,ptgrid->getAccessor());
-    });
-    tbb::parallel_for(openvdb::tree::IteratorRange<openvdb::FloatGrid::ValueOnIter>(pnode->pdgrid->beginValueOn()),[&](openvdb::tree::IteratorRange<openvdb::FloatGrid::ValueOnIter> &r){
-        FloatGridT &fgt = tgrida.local();
-        for(; r; ++r){
-            const openvdb::FloatGrid::ValueOnIter &m = r.iterator();
+	tbb::enumerable_thread_specific<FloatGridT> tgrida([&]()->FloatGridT{
+		openvdb::FloatGrid::Ptr ptgrid = openvdb::FloatGrid::create();
+		ptgrid->setTransform(pgridtr);
+		ptgrid->setGridClass(openvdb::GRID_FOG_VOLUME);
+		return FloatGridT(ptgrid,ptgrid->getAccessor());
+	});
+	tbb::parallel_for(openvdb::tree::IteratorRange<openvdb::FloatGrid::ValueOnIter>(pnode->pdgrid->beginValueOn()),[&](openvdb::tree::IteratorRange<openvdb::FloatGrid::ValueOnIter> &r){
+		FloatGridT &fgt = tgrida.local();
+		for(; r; ++r){
+			const openvdb::FloatGrid::ValueOnIter &m = r.iterator();
 
 			openvdb::Coord c = m.getCoord();
 			openvdb::math::Vec3s posw = pnode->pdgrid->transform().indexToWorld(c);
@@ -457,19 +457,19 @@ void Advection::Evaluate(const void *pp){
 			}
 
 			std::get<1>(fgt).setValue(c,p);
-        }
-    });
+		}
+	});
 
 	//TODO: try compSum
 	openvdb::FloatGrid::Accessor dgrida = pdgrid->getAccessor();
-    for(tbb::enumerable_thread_specific<FloatGridT>::const_iterator q = tgrida.begin(); q != tgrida.end(); ++q){
-        //
-        for(openvdb::FloatGrid::ValueOnIter m = std::get<0>(*q)->beginValueOn(); m.test(); ++m){
+	for(tbb::enumerable_thread_specific<FloatGridT>::const_iterator q = tgrida.begin(); q != tgrida.end(); ++q){
+		//
+		for(openvdb::FloatGrid::ValueOnIter m = std::get<0>(*q)->beginValueOn(); m.test(); ++m){
 			openvdb::Coord c = m.getCoord();
-            float f = m.getValue();
-            dgrida.setValue(c,f);
-        }
-    }
+			float f = m.getValue();
+			dgrida.setValue(c,f);
+		}
+	}
 }
 
 IAdvection * IAdvection::Create(uint level, NodeTree *pnt, uint flags){

@@ -17,9 +17,9 @@ namespace Node{
 //additional layer of abstraction - the openvdb compile times are ridiculous
 class BaseFogNode1 : public virtual BaseFogNode{
 public:
-    BaseFogNode1(uint, NodeTree *);
-    ~BaseFogNode1();
-    openvdb::FloatGrid::Ptr pdgrid;
+	BaseFogNode1(uint, NodeTree *);
+	~BaseFogNode1();
+	openvdb::FloatGrid::Ptr pdgrid;
 	//openvdb::Vec3SGrid::Ptr pvgrid; //sadly, there's no 4d vector grid
 };
 
@@ -33,8 +33,8 @@ public:
 class ParticleInput : public BaseFogNode1, public IParticleInput{
 public:
 	ParticleInput(uint, NodeTree *);
-    ~ParticleInput();
-    void Evaluate(const void *);
+	~ParticleInput();
+	void Evaluate(const void *);
 };
 
 class FieldInput : public BaseFogNode1, public BaseVectorFieldNode1, public IFieldInput{
