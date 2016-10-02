@@ -282,7 +282,11 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 
 			std::unordered_map<Py_hash_t, Node::NodeTree *>::const_iterator m = std::find_if(ntm.begin(),ntm.end(),[=](const std::unordered_map<Py_hash_t, Node::NodeTree *>::value_type &t)->bool{
 				return strcmp(t.second->name,pname) == 0;
-			}); //always assume that a node tree is found
+			});
+			if(m == ntm.end()){
+				DebugPrintf("Warning: invalid node tree %s. Skipping particle system (index=%u,%u).\n",pname,i,j);
+				continue;
+			}
 			SceneData::ParticleSystem *pprs = new SceneData::ParticleSystem(m->second); //TODO: reserve() the particle vector size
 
 			Py_DECREF(ppn);
@@ -368,6 +372,10 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 			std::unordered_map<Py_hash_t, Node::NodeTree *>::const_iterator m = std::find_if(ntm.begin(),ntm.end(),[=](const std::unordered_map<Py_hash_t, Node::NodeTree *>::value_type &t)->bool{
 				return strcmp(t.second->name,pname) == 0;
 			});
+			if(m == ntm.end()){
+				DebugPrintf("Warning: invalid node tree %s. Skipping surface (index=%u).\n",pname,i);
+				continue;
+			}
 			SceneData::Surface *psobj = new SceneData::Surface(m->second);
 
 			Py_DECREF(ppn);
