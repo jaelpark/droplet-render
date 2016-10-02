@@ -187,11 +187,10 @@ void FieldInput::Evaluate(const void *pp){
 
 	DebugPrintf("> Rasterizing particle fields...\n");
 
-	//TODO: multithreading maybe
+	//TODO: Multithreading maybe? Currently it's not too slow though
 	openvdb::FloatGrid::Accessor dgrida = ptgridd->getAccessor();
 	openvdb::Vec3SGrid::Accessor vgrida = ptgridv->getAccessor();
 	for(uint i = 0; i < pps->pl.size(); ++i){
-		//pntree->EvaluateNodes0(0,level+1,emask);
 		openvdb::Vec3s posw(pps->pl[i].x,pps->pl[i].y,pps->pl[i].z);
 		openvdb::Vec3s c = ptgridd->transform().worldToIndex(posw); //assume cell-centered indices
 		openvdb::Vec3f f = openvdb::Vec3f(floorf(c.x()-0.5f),floorf(c.y()-0.5f),floorf(c.z()-0.5f));
@@ -271,11 +270,12 @@ void SmokeCache::Evaluate(const void *pp){
 		return;
 	}
 
+	//Experimental Blender VDB smoke cache support. As long as there's no decent way to get cache name references with Python, this won't work.
+	//TODO: might want to get the velocity grid as well
 	openvdb::io::File vdbc("/tmp/blendcache_droplet_random1/fog_000070_00.vdb");
 	try{
 		vdbc.open(false);
 		openvdb::FloatGrid::Ptr ptgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(vdbc.readGrid("density"));
-		//TODO: read also velocity field
 		vdbc.close();
 
 		DebugPrintf("Read OpenVDB smoke cache: %s\n",ptgrid->getName().c_str());
@@ -365,17 +365,9 @@ void Composite::Evaluate(const void *pp){
 			std::get<1>(fgt).setValue(c,f);
 		}
 	});
-
-	//TODO: try compSum
-	openvdb::FloatGrid::Accessor dgrida = pdgrid->getAccessor();
-	for(tbb::enumerable_thread_specific<FloatGridT>::const_iterator q = tgrida.begin(); q != tgrida.end(); ++q){
-		//
-		for(openvdb::FloatGrid::ValueOnIter m = std::get<0>(*q)->beginValueOn(); m.test(); ++m){
-			openvdb::Coord c = m.getCoord();
-			float f = m.getValue();
-			dgrida.setValue(c,f);
-		}
-	}
+	
+	for(tbb::enumerable_thread_specific<FloatGridT>::const_iterator q = tgrida.begin(); q != tgrida.end(); ++q)
+		openvdb::tools::compSum(*pdgrid,*std::get<0>(*q));
 }
 
 IComposite * IComposite::Create(uint level, NodeTree *pnt){
@@ -448,7 +440,7 @@ void Advection::Evaluate(const void *pp){
 				float4 v = float4::load(&vs);
 				if(float4::dot3(v,v).get<0>() < 1e-5f)
 					break;
-				rc += s*v;//float4::load(&v);
+				rc += s*v;
 				//
 				//TODO: advection data to info node (current iteration, distance etc)?
 				float4::store((dfloat3*)posw.asPointer(),rc);
@@ -460,16 +452,8 @@ void Advection::Evaluate(const void *pp){
 		}
 	});
 
-	//TODO: try compSum
-	openvdb::FloatGrid::Accessor dgrida = pdgrid->getAccessor();
-	for(tbb::enumerable_thread_specific<FloatGridT>::const_iterator q = tgrida.begin(); q != tgrida.end(); ++q){
-		//
-		for(openvdb::FloatGrid::ValueOnIter m = std::get<0>(*q)->beginValueOn(); m.test(); ++m){
-			openvdb::Coord c = m.getCoord();
-			float f = m.getValue();
-			dgrida.setValue(c,f);
-		}
-	}
+	for(tbb::enumerable_thread_specific<FloatGridT>::const_iterator q = tgrida.begin(); q != tgrida.end(); ++q)
+		openvdb::tools::compSum(*pdgrid,*std::get<0>(*q));
 }
 
 IAdvection * IAdvection::Create(uint level, NodeTree *pnt, uint flags){

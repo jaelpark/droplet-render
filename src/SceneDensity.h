@@ -20,7 +20,6 @@ public:
 	BaseFogNode1(uint, NodeTree *);
 	~BaseFogNode1();
 	openvdb::FloatGrid::Ptr pdgrid;
-	//openvdb::Vec3SGrid::Ptr pvgrid; //sadly, there's no 4d vector grid
 };
 
 class BaseVectorFieldNode1 : public virtual BaseVectorFieldNode{

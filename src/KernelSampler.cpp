@@ -527,7 +527,7 @@ static const dfloat3 miecdf[] = {
 static const uint miedl = sizeof(mied)/sizeof(mied[0]);
 
 inline void SamplingBasis(const sfloat4 &iv, sfloat4 *pb1, sfloat4 *pb2){
-    //TODO: should probably handle zero-cases
+    //TODO: Should probably handle zero-cases. Might even fix something.
     pb1->v[0] = -iv.v[2];
     pb1->v[1] = sfloat1::zero();
     pb1->v[2] = iv.v[0];
@@ -589,7 +589,6 @@ MiePhase::~MiePhase(){
 }
 
 sfloat1 MiePhase::Evaluate(const sfloat1 &ct) const{
-	//sfloat1 a = sfloat1::acos(ct)/SM_PI;
 	sfloat1 ct1 = sfloat1::saturate(ct); //hack rare abs(ct) > 1 cases
 	sfloat1 a = sfloat1::acos(ct1)/SM_PI;
 	sfloat1 b = sfloat1((float)miedl*a);
@@ -608,7 +607,6 @@ sfloat1 MiePhase::Evaluate(const sfloat1 &ct) const{
 }
 
 sfloat4 MiePhase::EvaluateRGB(const sfloat1 &ct) const{
-	//sfloat1 a = sfloat1::acos(ct)/SM_PI;
 	sfloat1 ct1 = sfloat1::saturate(ct); //hack rare abs(ct) > 1 cases
 	sfloat1 a = sfloat1::acos(ct1)/SM_PI;
 	sfloat1 b = sfloat1((float)miedl*a);
@@ -633,7 +631,6 @@ sfloat4 MiePhase::EvaluateRGB(const sfloat1 &ct) const{
 }
 
 sfloat4 MiePhase::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2) const{
-#if 1
 	sfloat1 th = sfloat1::zero();
 	for(uint i = 0; i < miedl-1; ++i){
 		/*//sfloat1 cdf0 = sfloat1(miecdf[i+0].x);
@@ -642,7 +639,7 @@ sfloat4 MiePhase::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2
 		//sfloat1 b = sfloat1((float)miedl*u1);
 		sfloat1 m = sfloat1::Less(cdf1,u1);
 		sfloat1 s = sfloat1((float)i/(float)miedl);
-		th = sfloat1::Or(sfloat1::And(m,s),sfloat1::AndNot(m,th)); //TODO: interpolation
+		th = sfloat1::Or(sfloat1::And(m,s),sfloat1::AndNot(m,th));
 		if(m.AllFalse())
 			break;*/
 		sfloat1 cdf0 = sfloat1(miecdf[i+0].x);
@@ -670,9 +667,6 @@ sfloat4 MiePhase::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2
     sfloat1 sph, cph;
     sincos_ps(ph.v,&sph.v,&cph.v);
     return b1*st*cph+b2*st*sph+iv*ct;
-#else
-	return HGPhase::ghg.Sample(iv,u1,u2);
-#endif
 }
 
 MiePhase MiePhase::gmie;
@@ -719,10 +713,8 @@ sfloat1 SunLight::Pdf(const sfloat4 &iv) const{
 }
 
 sfloat4 SunLight::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2) const{
-	//iv: light vector in this case
     //t = asin(theta = r/d)
     //cos(asin(t)) = sqrt(1-(r/d)^2)
-    //sfloat1 u1 = RNG_Sample(prs);
     sfloat1 ctm = sfloat1::sqrt(1.0f-angle*angle);
     sfloat1 ct = (1.0f-u1)+u1*ctm;
     sfloat1 st = sfloat1::sqrt(1.0f-ct*ct);

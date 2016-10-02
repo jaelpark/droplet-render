@@ -1,8 +1,6 @@
 #ifndef SCENE_H
 #define SCENE_H
 
-//#define BLCLOUD_uN 32
-
 enum SCENE_CACHE_MODE{
 	SCENE_CACHE_DISABLED,
 	SCENE_CACHE_READ,
@@ -41,7 +39,7 @@ public:
 class Octree{
 public:
 	Octree(uint);
-	Octree(); //should only used by concurrent_vector initial allocator
+	Octree();
 	~Octree();
 	void BuildPath(const float4 &, const float4 &, const float4 &, const float4 &, uint, uint, std::atomic<uint> *, std::atomic<uint> *, tbb::concurrent_vector<Octree> *, tbb::concurrent_vector<OctreeStructure> *, VOLUME_BUFFER);
 	void BuildPath(const float4 &, const float4 &, const float4 &, const float4 &, const float4 &, uint, uint, std::atomic<uint> *, std::atomic<uint> *, tbb::concurrent_vector<Octree> *, tbb::concurrent_vector<OctreeStructure> *, VOLUME_BUFFER);
@@ -51,10 +49,6 @@ public:
 	//std::atomic_flag lock; //MT node write-access
 	tbb::spin_mutex m;
 };
-
-/*struct LeafVolume{
-	float pvol[BLCLOUD_uN*BLCLOUD_uN*BLCLOUD_uN]; //pdst
-};*/
 
 namespace Node{
 class NodeTree;
@@ -105,7 +99,6 @@ typedef openvdb::tools::GridSampler<openvdb::Vec3SGrid, openvdb::tools::BoxSampl
 
 namespace Node{
 
-//using InputNodeParams = std::tuple<SceneData::BaseObject *, openvdb::math::Transform::Ptr, const FloatGridBoxSampler *[VOLUME_BUFFER_COUNT]>;
 using InputNodeParams = std::tuple<SceneData::BaseObject *, openvdb::math::Transform::Ptr, const FloatGridBoxSampler *, const FloatGridBoxSampler *, const FloatGridBoxSampler *, const VectorGridBoxSampler *>;
 enum INP{
 	INP_OBJECT,
@@ -148,7 +141,6 @@ public:
 	void Initialize(float, uint, float, SCENE_CACHE_MODE);
 	void Destroy();
 	float *pvol[VOLUME_BUFFER_COUNT];
-	//LeafVolume *pbuf[VOLUME_BUFFER_COUNT]; //-> psdfb, pfogb
 	uint lvoxc;
 	uint index;
 	uint leafx[VOLUME_BUFFER_COUNT];

@@ -454,8 +454,6 @@ BaseNode * CreateNodeBySocket(const char *pname, const void *pvalue, uint level,
 		return new BaseValueNode<int>(v,level,pnt);
 	}else if(strcmp(pname,"ClNodeVectorSocket") == 0)
 		return new BaseValueNode<dfloat3>(dfloat3(0.0f),level,pnt);
-	//else if(strcmp(pname,"ClNodeShaderSocket") == 0)
-		//return BaseSurfaceNode::Create(level,pnt);//return new BaseSurfaceNode(level);//BaseNode(level);
 	else if(strcmp(pname,"ClNodeFogSocket") == 0)
 		return BaseFogNode::Create(level,pnt);
 	else if(strcmp(pname,"ClNodeSurfaceSocket") == 0)
@@ -466,7 +464,6 @@ BaseNode * CreateNodeBySocket(const char *pname, const void *pvalue, uint level,
 
 }
 
-//force compile
 template class BaseValueNode<float>;
 //template<> std::vector<BaseValueNode<float> *> BaseValueNode<float>::nodes = std::vector<BaseValueNode<float> *>();
 

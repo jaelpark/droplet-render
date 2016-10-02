@@ -22,19 +22,16 @@ public:
 	sfloat4 Sample(const sfloat4 &, const sfloat1 &, const sfloat1 &) const;
 	static HGPhase ghg;
 private:
-	float g1;
+	float g1; //anisotropy parameter
 };
 
 class MiePhase : public PhaseFunction{
 public:
 	MiePhase();
 	~MiePhase();
-	sfloat1 Evaluate(const sfloat1 &) const;
+	sfloat1 Evaluate(const sfloat1 &) const; //In future if spectral rendering is supported, an additional parameter indicating the color channel is needed.
 	sfloat4 EvaluateRGB(const sfloat1 &) const;
-	sfloat4 Sample(const sfloat4 &, const sfloat1 &, const sfloat1 &) const; //sample from data relative to incident vector, then uniformly sample an azimuthal angle
-	//Note: spectral rendering is not supported. To get MIE effects (for example), color channels need to be rendered separately with different
-	//phase functions. Alternatively approximate the effect by assuming the different channels of the PDF to be close to each other, so that only
-	//one can be used for sampling, while the full spectrum is evaluated for the color effects.
+	sfloat4 Sample(const sfloat4 &, const sfloat1 &, const sfloat1 &) const;
 	static MiePhase gmie;
 };
 

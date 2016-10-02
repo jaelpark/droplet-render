@@ -24,7 +24,6 @@ static const int p[] = {151,160,137,91,90,15,
 };
 
 inline sfloat4 fade(const sfloat4 &t){
-	//return t * t * t * (t * (t * 6 - 15) + 10);
 	return t*t*t*(t*(t*sfloat1(6.0f)-sfloat1(15.0f))+sfloat1(10.0f));
 }
 
@@ -79,6 +78,7 @@ sfloat1 noise(const sfloat4 &_pos){
 
 namespace HashNoise{
 
+//shadertoy/clouds
 sfloat1 hash(sfloat1 n){
 	sfloat1 t = sin_ps(n)*43758.5453f;
 	return t-sfloat1::floor(t);
@@ -92,13 +92,13 @@ sfloat1 noise(const sfloat4 &_pos){
 	sfloat1 n = F.v[0]+57.0f*F.v[1]+113.0f*F.v[2];
 	return sfloat1::lerp(
 		sfloat1::lerp(sfloat1::lerp(hash(n),
-									 hash(n+sfloat1(1.0f)),fad.v[0]),
-					   sfloat1::lerp(hash(n+sfloat1(57.0f)),
-									 hash(n+sfloat1(58.0f)),fad.v[0]),fad.v[1]),
+									hash(n+sfloat1(1.0f)),fad.v[0]),
+					  sfloat1::lerp(hash(n+sfloat1(57.0f)),
+									hash(n+sfloat1(58.0f)),fad.v[0]),fad.v[1]),
 		sfloat1::lerp(sfloat1::lerp(hash(n+sfloat1(113.0f)),
-									 hash(n+sfloat1(114.0f)),fad.v[0]),
-					   sfloat1::lerp(hash(n+sfloat1(170.0f)),
-									 hash(n+sfloat1(171.0f)),fad.v[0]),fad.v[1]),fad.v[2]);
+									hash(n+sfloat1(114.0f)),fad.v[0]),
+					  sfloat1::lerp(hash(n+sfloat1(170.0f)),
+									hash(n+sfloat1(171.0f)),fad.v[0]),fad.v[1]),fad.v[2]);
 }
 
 }
@@ -149,7 +149,7 @@ void FbmNoise::Evaluate(const void *pp){
 	dfloat3 dposw = pnode->locr(indices[INPUT_POSITION]);
 	sfloat4 sposw = sfloat4(sfloat1(dposw.x,dposw.y,dposw.z,0.0f))+sfloat4(
 		sfloat1(0.0f),
-		sfloat1(1.0f,0.0f,0.0f,0.0f), //TODO: module the offset somehow
+		sfloat1(1.0f,0.0f,0.0f,0.0f),
 		sfloat1(0.0f,1.0f,0.0f,0.0f),
 		sfloat1(0.0f,0.0f,1.0f,0.0f))*sfloat1(154.7f);
 
@@ -159,7 +159,7 @@ void FbmNoise::Evaluate(const void *pp){
 	BaseValueResult<float> &rs = this->BaseValueNode<float>::result.local();
 	rs.value[OUTPUT_FLOAT_NOISE] = f.get<0>();
 	rs.value[OUTPUT_FLOAT_MAXIMUM] = fBm::GetAmplitudeMax(poctn->locr(indices[INPUT_OCTAVES]),pampn->locr(indices[INPUT_AMP]),
-		pgainn->locr(indices[INPUT_GAIN]));
+		pgainn->locr(indices[INPUT_GAIN])); //Calculate the maximum value given. Works only when all the input parameters are constant.
 	BaseValueResult<dfloat3> &rv = this->BaseValueNode<dfloat3>::result.local();
 	rv.value[OUTPUT_VECTOR_NOISE] = dfloat3(0.57735f*f); //normalize by 1/sqrt(3) to have max length equal to amplitude
 }

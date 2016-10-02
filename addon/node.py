@@ -66,20 +66,6 @@ class ClNodeVectorSocket(bpy.types.NodeSocket):
 	def draw_color(self, context, node):
 		return (0.3,0.3,0.3,1);
 
-# class ClNodeShaderSocket(bpy.types.NodeSocket):
-# 	bl_idname = "ClNodeShaderSocket";
-# 	bl_label = "Shader socket";
-#
-# 	value = FloatProperty(name="",default=0);
-# 	type = 'SHADER';
-#
-# 	def draw(self, context, layout, node, x):
-# 		layout.label(self.name);
-#
-# 	def draw_color(self, context, node):
-# 		return (0.4,1,0.4,1);
-# 		#return (0.9,0.9,0.2,1);
-
 class ClNodeFogSocket(bpy.types.NodeSocket):
 	bl_idname = "ClNodeFogSocket";
 	bl_label = "Fog socket";
@@ -282,8 +268,6 @@ class ClNodeSurfaceOutput(bpy.types.Node):
 	bl_label = "Surface Output";
 
 	def init(self, context):
-		#TODO: 3d space to surface node: using sdf gradients, get the closest surface point and convert to texc
-		#self.inputs.new("ClNodeShaderSocket","Shader");
 		self.inputs.new("ClNodeFogSocket","Fog");
 		self.inputs.new("ClNodeFogSocket","Fog.Post");
 		self.inputs.new("ClNodeVectorFieldSocket","Vector");
@@ -328,10 +312,7 @@ class ClNodeDisplacement(bpy.types.Node):
 	bl_idname = "ClNodeDisplacement";
 	bl_label = "Displacement";
 
-	#props = PointerProperty(type=ClPropertyDisplacement);
-	#props = PointerProperty(type=ClPropertyEmpty);
 	resf = FloatProperty(name="Res.%",default=1.0,min=0.1,max=1.0,description="Percentage of the resolution (detail size) at which the displacement is performed. Choosing a lower fraction for low frequency displacement details will result in improved construction performance without significant loss of quality (especially for high amplitudes). In future builds choosing the optimal value may be done automatically.");
-	#detail = res/resf
 
 	def init(self, context):
 		self.inputs.new("ClNodeFloatSocket","Distance");

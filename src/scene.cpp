@@ -92,8 +92,6 @@ bool BoundingBox::Intersects(const float4 &v0, const float4 &v1, const float4 &v
 	float4 tmax = float4::max(float4::max(v0,v1),v2);
 
 	float4 dj = float4::Or(float4::Greater(tmin,bmax),float4::Greater(bmin,tmax));
-	//if(float4::AnyTrue(float4::EqualR(float4::swizzle(dj,0,1,2,0),float4::trueI())))
-	//if(float4::AnyTrue(float4::EqualR(dj.swizzle<0,1,2,0>(),sint1::trueI())))
 	if(dj.swizzle<0,1,2,0>().AnyTrue())
 		return false;
 
@@ -208,8 +206,6 @@ bool BoundingBox::Intersects(const float4 &v0, const float4 &v1, const float4 &v
 	ni = float4::Or(ni,float4::Greater(min,r));
 	ni = float4::Or(ni,float4::Less(max,-r));
 
-	//AnyFalse (EqualR(ni,true))
-	//return float4::AnyFalse(float4::EqualR(ni,sint1::trueI()));
 	return ni.AnyFalse();
 }
 
@@ -768,7 +764,6 @@ void Scene::Initialize(float s, uint maxd, float qb, SCENE_CACHE_MODE cm){
 			fwrite(&lvoxc,1,4,pf);
 			fwrite(&index,1,4,pf);
 			fwrite(&leafx[VOLUME_BUFFER_SDF],1,4,pf);
-			//fwrite(pob,1,(index+1)*sizeof(OctreeStructure),pf);
 			for(uint i = 0; i < index+1; ++i)
 				fwrite(&ob[i],1,sizeof(OctreeStructure),pf);
 
@@ -777,7 +772,7 @@ void Scene::Initialize(float s, uint maxd, float qb, SCENE_CACHE_MODE cm){
 	}
 
 	DebugPrintf("> Resampling volume data...\n");
-	
+
 	lvoxc3 = lvoxc*lvoxc*lvoxc;
 	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i){
 		if(pgrid[i]){

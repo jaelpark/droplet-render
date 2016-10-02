@@ -104,7 +104,7 @@ void Displacement::Evaluate(const void *pp){
 
 	openvdb::FloatGrid::Ptr psgrid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,pnode->vl,pnode->tl,pnode->ql,ceilf(amp/pgridtr->voxelSize().x()+bvc),bvc);
 
-	DebugPrintf("Allocated disp. exterior narrow band for amp = %f+%f (%u voxels)\n",amp,pgridtr->voxelSize().x()*bvc,(uint)ceilf(amp/pgridtr->voxelSize().x()+bvc));
+	DebugPrintf("Displacement narrow band = %f+%f (%u voxels)\n",amp,pgridtr->voxelSize().x()*bvc,(uint)ceilf(amp/pgridtr->voxelSize().x()+bvc));
 	DebugPrintf("> Displacing SDF...\n");
 
 	typedef std::tuple<openvdb::FloatGrid::Ptr, openvdb::FloatGrid::Accessor, openvdb::FloatGrid::ConstAccessor> FloatGridT;
@@ -133,7 +133,6 @@ void Displacement::Evaluate(const void *pp){
 	});
 
 	//This could probably be faster with parallel reduction
-	//openvdb::tools::compSum(*psgrid,*std::get<0>(*m));
 	openvdb::FloatGrid::Accessor sgrida = psgrid->getAccessor();
 	openvdb::FloatGrid::Accessor bgrida = pbgrid->getAccessor();
 	FloatGridBoxSampler bsampler(*pnode->pbgrid); //TODO: may use the cached version for the single threaded portion below
