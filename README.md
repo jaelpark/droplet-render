@@ -22,17 +22,24 @@ Only Linux operating systems on x86_64 are currently supported. It should be pos
     - tbb
     - python3.5 + numpy
     - cmake
+
 2. Create a build directory, for example:
+
     ```sh
     $ mkdir build-release
     $ cd build-release
     ```
+
 3. Droplet uses Cmake to configure itself. By default a release version with SSE3 support will be built. SSE4.2 can be enabled by passing an additional defition:
+
     ```sh
     $ cmake -DUSE_SSE4=ON ..
     ```
+
 4. Build the project by typing
+
     ```sh
     $ make -j
     ```
+
 5. Copy or symlink the produced libdroplet.so to Python library directory, usually /usr/lib/python3.5/site-packages. Copy the contents of 'addon' to Blender addons location by first creating a directory for it, such as 'droplet_render'. Enable the addon from Blender's settings menu.
