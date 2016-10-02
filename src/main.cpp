@@ -33,9 +33,16 @@ void DebugPrintf(const char *pfmt, ...){
 	va_end(args);
 }
 
-static inline float PyGetFloat(PyObject *pb, const char *pn){
+inline float PyGetFloat(PyObject *pb, const char *pn){
 	PyObject *pa = PyObject_GetAttrString(pb,pn);
 	float r = (float)PyFloat_AsDouble(pa);
+	Py_DECREF(pa);
+	return r;
+}
+
+inline uint PyGetUint(PyObject *pb, const char *pn){
+	PyObject *pa = PyObject_GetAttrString(pb,pn);
+	uint r = (uint)PyLong_AsLong(pa);
 	Py_DECREF(pa);
 	return r;
 }
@@ -315,12 +322,8 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 		}
 		Py_DECREF(ppro);
 
-		PyObject *phdn = PyObject_GetAttrString(pobj,"hide_render");
-		if(PyLong_AsLong(phdn) != 0){
-			Py_DECREF(phdn);
+		if(PyGetUint(pobj,"hide_render") != 0)
 			continue;
-		}
-		Py_DECREF(phdn);
 
 		PyObject *ptype = PyObject_GetAttrString(pobj,"type");
 		const char *ptype1 = PyUnicode_AsUTF8(ptype);
@@ -429,12 +432,8 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 				PyObject *pfvi = PyObject_GetIter(pfvs);
 				//uint fvc = PySequence_Size(pfvs);
 				for(PyObject *pji = PyIter_Next(pfvi); pji; Py_DecRef(pji), pji = PyIter_Next(pfvi)){
-					PyObject *pxo = PyObject_GetAttrString(pji,"index");
-					uint index = PyLong_AsLong(pxo);
+					uint index = PyGetUint(pji,"index");
 					psobj->tl.push_back(index);
-					//tris.push_back(index+vca);
-
-					Py_DECREF(pxo);
 				}
 				Py_DECREF(pfvi);
 			}
@@ -460,8 +459,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	Py_DECREF(pyrender);
 
 	PyObject *pysampling = PyObject_GetAttrString(pscene,"blcloudsampling");
-	PyObject *pyscattevs = PyObject_GetAttrString(pysampling,"scatterevs");
-	uint scattevs = (uint)PyLong_AsLong(pyscattevs);
+	uint scattevs = PyGetUint(pysampling,"scatterevs");
 	float msigmas = PyGetFloat(pysampling,"msigmas");
 	float msigmaa = PyGetFloat(pysampling,"msigmaa");
 	PyObject *pypf = PyObject_GetAttrString(pysampling,"phasef");
@@ -478,12 +476,12 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 		break;
 	}
 	Py_DECREF(pypf);
-	Py_DECREF(pyscattevs);
 	Py_DECREF(pysampling);
 
 	PyObject *pygrid = PyObject_GetAttrString(pscene,"blcloudgrid");
 	float dsize = PyGetFloat(pygrid,"detailsize");
 	float qband = PyGetFloat(pygrid,"qfbandw");
+	uint maxd = PyGetUint(pygrid,"maxdepth");
 	Py_DECREF(pygrid);
 
 	PyObject *pyperf = PyObject_GetAttrString(pscene,"blcloudperf");
@@ -497,7 +495,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	//TODO: cache postfix from bpy.path.basename(bpy.data.filepath)
 
 	gpscene = new Scene(); //TODO: interface for blender status reporting
-	gpscene->Initialize(dsize,qband,cm);
+	gpscene->Initialize(dsize,maxd,qband,cm);
 
 	gpkernel = new RenderKernel();
 	gpkernel->Initialize(gpscene,&sviewi,&sproji,ppf,scattevs,msigmas,msigmaa,rx,ry,w,h,flags);

@@ -1,7 +1,7 @@
 #ifndef SCENE_H
 #define SCENE_H
 
-#define BLCLOUD_uN 32
+//#define BLCLOUD_uN 32
 
 enum SCENE_CACHE_MODE{
 	SCENE_CACHE_DISABLED,
@@ -52,9 +52,9 @@ public:
 	tbb::spin_mutex m;
 };
 
-struct LeafVolume{
+/*struct LeafVolume{
 	float pvol[BLCLOUD_uN*BLCLOUD_uN*BLCLOUD_uN]; //pdst
-};
+};*/
 
 namespace Node{
 class NodeTree;
@@ -145,11 +145,14 @@ class Scene{
 public:
 	Scene();
 	~Scene();
-	void Initialize(float, float, SCENE_CACHE_MODE);
+	void Initialize(float, uint, float, SCENE_CACHE_MODE);
 	void Destroy();
-	LeafVolume *pbuf[VOLUME_BUFFER_COUNT]; //-> psdfb, pfogb
+	float *pvol[VOLUME_BUFFER_COUNT];
+	//LeafVolume *pbuf[VOLUME_BUFFER_COUNT]; //-> psdfb, pfogb
+	uint lvoxc;
 	uint index;
 	uint leafx[VOLUME_BUFFER_COUNT];
+	uint lvoxc3;
 	tbb::concurrent_vector<Octree> root;
 	tbb::concurrent_vector<OctreeStructure> ob;
 };

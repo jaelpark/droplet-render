@@ -114,24 +114,24 @@ inline sfloat1 IntersectCube(const sfloat4 &p, const sfloat4 &r, const sfloat4 &
 	return sfloat1::And(sfloat1::And(sfloat1::LessOrEqual(tr0,tr1),sfloat1::Greater(tr1,sfloat1::zero())),sfloat1::one());
 }
 
-inline float SampleVoxelSpace(const float4 &p, LeafVolume *pvol, const float4 &ce){
-	float4 nv = float4((float)BLCLOUD_uN);
+inline float SampleVoxelSpace(const float4 &p, float *pvol, const float4 &ce, uint lvoxc){
+	float4 nv = float4((float)lvoxc);
 	float4 ni = -0.5f*(ce-ce.splat<3>()-p)*(nv-float4::one())/ce.splat<3>();
 	float4 nf = float4::max(float4::floor(ni),float4::zero()); //max() shouldn't be necessary?
 	float4 nc = float4::min(float4::ceil(ni),nv-float4::one());
 	float4 nl = ni-nf;
 
 	//Safe-guard to clamp indices. There's a rare case where indices go out bounds.
-	nc = float4::max(float4::min(nc,float4(BLCLOUD_uN-1)),float4(0));
-	nf = float4::max(float4::min(nf,float4(BLCLOUD_uN-1)),float4(0));
+	nc = float4::max(float4::min(nc,float4(lvoxc-1)),float4(0));
+	nf = float4::max(float4::min(nf,float4(lvoxc-1)),float4(0));
 
 	duint3 a = duint3((uint)nf.get<0>(),(uint)nf.get<1>(),(uint)nf.get<2>());
 	duint3 b = duint3((uint)nc.get<0>(),(uint)nc.get<1>(),(uint)nc.get<2>());
 
-	float4 ua = float4(pvol->pvol[a.z*BLCLOUD_uN*BLCLOUD_uN+a.y*BLCLOUD_uN+a.x],pvol->pvol[a.z*BLCLOUD_uN*BLCLOUD_uN+b.y*BLCLOUD_uN+a.x],
-		pvol->pvol[b.z*BLCLOUD_uN*BLCLOUD_uN+a.y*BLCLOUD_uN+a.x],pvol->pvol[b.z*BLCLOUD_uN*BLCLOUD_uN+b.y*BLCLOUD_uN+a.x]); //([x0,y0,z0],[x0,y1,z0],[x0,y0,z1],[x0,y1,z1])
-	float4 ub = float4(pvol->pvol[a.z*BLCLOUD_uN*BLCLOUD_uN+a.y*BLCLOUD_uN+b.x],pvol->pvol[a.z*BLCLOUD_uN*BLCLOUD_uN+b.y*BLCLOUD_uN+b.x],
-		pvol->pvol[b.z*BLCLOUD_uN*BLCLOUD_uN+a.y*BLCLOUD_uN+b.x],pvol->pvol[b.z*BLCLOUD_uN*BLCLOUD_uN+b.y*BLCLOUD_uN+b.x]); //([x1,y0,z0],[x1,y1,z0],[x1,y0,z1],[x1,y1,z1])
+	float4 ua = float4(pvol[a.z*lvoxc*lvoxc+a.y*lvoxc+a.x],pvol[a.z*lvoxc*lvoxc+b.y*lvoxc+a.x],
+		pvol[b.z*lvoxc*lvoxc+a.y*lvoxc+a.x],pvol[b.z*lvoxc*lvoxc+b.y*lvoxc+a.x]); //([x0,y0,z0],[x0,y1,z0],[x0,y0,z1],[x0,y1,z1])
+	float4 ub = float4(pvol[a.z*lvoxc*lvoxc+a.y*lvoxc+b.x],pvol[a.z*lvoxc*lvoxc+b.y*lvoxc+b.x],
+		pvol[b.z*lvoxc*lvoxc+a.y*lvoxc+b.x],pvol[b.z*lvoxc*lvoxc+b.y*lvoxc+b.x]); //([x1,y0,z0],[x1,y1,z0],[x1,y0,z1],[x1,y1,z1])
 	float4 u = float4::lerp(ua,ub,nl.splat<0>()); //([x,y0,z0],[x,y1,z0],[x,y0,z1],[x,y1,z1])
 
 	float4 va = u.swizzle<0,2,0,2>();
@@ -393,7 +393,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 					}
 
 					if(SM.v[j] != 0 && VM.v[j] == 0)
-						dist1.v[j] = SampleVoxelSpace(r0.get(j),&pkernel->pscene->pbuf[VOLUME_BUFFER_SDF][pkernel->pscene->ob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_SDF]],ce.get(j));
+						dist1.v[j] = SampleVoxelSpace(r0.get(j),pkernel->pscene->pvol[VOLUME_BUFFER_SDF]+pkernel->pscene->lvoxc3*pkernel->pscene->ob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_SDF],ce.get(j),pkernel->pscene->lvoxc);
 					else dist1.v[j] = 1.0f;
 				}else VM.v[j] = 0;
 			}
@@ -440,14 +440,14 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 				for(uint j = 0; j < BLCLOUD_VSIZE; ++j){
 					if(SH.v[j] != 0){
 						if(VM.v[j] == 0){
-							dist1.v[j] = SampleVoxelSpace(rc.get(j),&pkernel->pscene->pbuf[VOLUME_BUFFER_SDF][pkernel->pscene->ob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_SDF]],ce.get(j));
+							dist1.v[j] = SampleVoxelSpace(rc.get(j),pkernel->pscene->pvol[VOLUME_BUFFER_SDF]+pkernel->pscene->lvoxc3*pkernel->pscene->ob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_SDF],ce.get(j),pkernel->pscene->lvoxc);
 							//have to check if fog exists
 							if(dist1.v[j] > 0.0f && pkernel->pscene->ob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_FOG] != ~0u)
-								rho1.v[j] = SampleVoxelSpace(rc.get(j),&pkernel->pscene->pbuf[VOLUME_BUFFER_FOG][pkernel->pscene->ob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_FOG]],ce.get(j));
+								rho1.v[j] = SampleVoxelSpace(rc.get(j),pkernel->pscene->pvol[VOLUME_BUFFER_FOG]+pkernel->pscene->lvoxc3*pkernel->pscene->ob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_FOG],ce.get(j),pkernel->pscene->lvoxc);
 							else rho1.v[j] = -1.0f;
 						}else{
 							dist1.v[j] = 1.0f;
-							rho1.v[j] = SampleVoxelSpace(rc.get(j),&pkernel->pscene->pbuf[VOLUME_BUFFER_FOG][pkernel->pscene->ob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_FOG]],ce.get(j));
+							rho1.v[j] = SampleVoxelSpace(rc.get(j),pkernel->pscene->pvol[VOLUME_BUFFER_FOG]+pkernel->pscene->lvoxc3*pkernel->pscene->ob[ls.GetLeaf(r,j,i)].volx[VOLUME_BUFFER_FOG],ce.get(j),pkernel->pscene->lvoxc);
 						}
 					}else{
 						dist1.v[j] = 1.0f;

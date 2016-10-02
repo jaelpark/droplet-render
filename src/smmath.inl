@@ -9,6 +9,7 @@
 #define IL_PERMUTE(v,c) _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(v),_mm_castsi128_ps(v),c))//_mm_shuffle_epi32(v,c)
 
 #define SM_PI 3.14159265358979f
+#define SM_LN2 0.69315f
 
 class dfloatN{
 public:
@@ -18,7 +19,6 @@ public:
 		for(uint i = 0; i < BLCLOUD_VSIZE; v[i++] = s);
 	}
 	dfloatN(float *p){
-		//memcpy(v,p,sizeof(v));
 		for(uint i = 0; i < BLCLOUD_VSIZE; v[i] = p[i], ++i);
 	}
 
@@ -88,7 +88,6 @@ inline dfloat4 operator/(float r, const dfloat4 &s){
 class dmatrix44{
 public:
 	dmatrix44(){}
-	//float r[16];
 	dfloat4 r[4];
 } __attribute__((aligned(16)));
 
@@ -100,7 +99,6 @@ public:
 		for(uint i = 0; i < BLCLOUD_VSIZE; v[i++] = s);
 	}
 	dintN(int *p){
-		//memcpy(v,p,sizeof(v));
 		for(uint i = 0; i < BLCLOUD_VSIZE; v[i] = p[i], ++i);
 	}
 
@@ -130,7 +128,6 @@ public:
 		for(uint i = 0; i < BLCLOUD_VSIZE; v[i++] = s);
 	}
 	duintN(uint *p){
-		//memcpy(v,p,sizeof(v));
 		for(uint i = 0; i < BLCLOUD_VSIZE; v[i] = p[i], ++i);
 	}
 
@@ -249,23 +246,14 @@ public:
 
 	template<uint x>
 	inline void set(float f){
-		/*const duint4 st[] = {
-			duint4(0,0,0,0),
-			duint4(3,2,0,1),
-			duint4(3,0,1,2),
-			duint4(0,2,1,3)
-		};
-		__m128 r = FL_PERMUTE(v,_MM_SHUFFLE(st[x].x,st[x].y,st[x].z,st[x].w));
+		//might wanna fix this for all cases
+		static_assert(x == 3);
+		//if(x == 3){
+		__m128 r = FL_PERMUTE(v,_MM_SHUFFLE(0,2,1,3));
 		__m128 t = _mm_set_ss(f);
 		r = _mm_move_ss(r,t);
-		v = FL_PERMUTE(r,_MM_SHUFFLE(st[x].x,st[x].y,st[x].z,st[x].w));*/
-		//assert(x == 3);
-		if(x == 3){
-			__m128 r = FL_PERMUTE(v,_MM_SHUFFLE(0,2,1,3));
-			__m128 t = _mm_set_ss(f);
-			r = _mm_move_ss(r,t);
-			v = FL_PERMUTE(r,_MM_SHUFFLE(0,2,1,3));
-		}
+		v = FL_PERMUTE(r,_MM_SHUFFLE(0,2,1,3));
+		//}
 	}
 
 	template<uint x>
@@ -309,10 +297,6 @@ public:
 		return _mm_movemask_ps(v) != 0b1111;
 	}
 
-	/*inline sfloat1 Select(const sfloat1 &a, const sfloat1 &b){
-		return sfloat1::Or(sfloat1::And(v,a),sfloat1::AndNot(v,b));
-	}*/
-
 	//------------------------------------------------------------------------------
 	//Arithmetic operations and dual input functions are defined as static members
 
@@ -353,17 +337,7 @@ public:
 #ifdef USE_SSE4
 		return _mm_floor_ps(s.v);
 #else
-		/*__m128i t = _mm_and_si128(_mm_castps_si128(s.v),_mm_set1_epi32(0x7FFFFFFF));
-		t = _mm_cmplt_epi32(t,_mm_set1_epi32(8388608));
-		//
-		__m128i i = _mm_cvttps_epi32(s.v);
-		r.v = _mm_cvtepi32_ps(i);
-		__m128 l = _mm_cmpgt_ps(r.v,s.v);
-		//
-		l = _mm_cvtepi32_ps(_mm_castps_si128(l));
-		r.v = _mm_add_ps(r.v,l);
-		//
-		r.v = _mm_or_ps(_mm_and_ps(r.v,_mm_castsi128_ps(t)),_mm_castsi128_ps(_mm_andnot_si128(t,_mm_castps_si128(s.v))));*/
+		//TODO: fix
 		sfloat1 r;
 		__attribute__((aligned(16))) float a[4];
 		_mm_store_ps(a,s.v);
@@ -380,17 +354,6 @@ public:
 #ifdef USE_SSE4
 		return _mm_ceil_ps(s.v);
 #else
-		/*__m128i t = _mm_and_si128(_mm_castps_si128(s.v),_mm_set1_epi32(0x7FFFFFFF));
-		t = _mm_cmplt_epi32(t,_mm_set1_epi32(8388608));
-		//
-		__m128i i = _mm_cvttps_epi32(s.v);
-		r.v = _mm_cvtepi32_ps(i);
-		__m128 l = _mm_cmplt_ps(r.v,s.v);
-		//
-		l = _mm_cvtepi32_ps(_mm_castps_si128(l));
-		r.v = _mm_sub_ps(r.v,l);
-		//
-		r.v = _mm_or_ps(_mm_and_ps(r.v,_mm_castsi128_ps(t)),_mm_castsi128_ps(_mm_andnot_si128(t,_mm_castps_si128(s.v))));*/
 		sfloat1 r;
 		__attribute__((aligned(16))) float a[4];
 		_mm_store_ps(a,s.v);
@@ -412,14 +375,6 @@ public:
 	}
 
 	static inline sfloat1 pow(const sfloat1 &s, const sfloat1 &p){
-		/*dfloat4 a, b;
-		float4::store(&a,s);
-		float4::store(&b,p);
-		sfloat1 r = sfloat1(
-			powf(a.x,b.x),
-			powf(a.y,b.y),
-			powf(a.z,b.z),
-			powf(a.w,b.w));*/
 		__attribute__((aligned(16))) float a[4];
 		__attribute__((aligned(16))) float b[4];
 		_mm_store_ps(a,s.v);
@@ -584,6 +539,7 @@ public:
 		return r;
 	}
 
+	//Used by the intersection code from DirectXMath. Ported from the same place for compatibility.
 	static inline float4 permute(const float4 &a, const float4 &b, uint x, uint y, uint z, uint w){
 		const uint *psrc[] = {(const uint*)&a.v,(const uint*)&b.v};
 		float4 r;
@@ -932,10 +888,6 @@ public:
 	}
 
 	static inline sint1 mask(int m){
-		/*m & (1<<3)?-1:0,
-		m & (1<<2)?-1:0,
-		m & (1<<1)?-1:0,
-		m & (1<<0)?-1:0*/
 		__m128i m1 = _mm_set1_epi32(m);
 		__m128i v1 = _mm_set1_epi32(1);
 		__m128i q = _mm_sll_epi32(v1,_mm_set_epi32(3,2,1,0));
@@ -958,21 +910,13 @@ public:
 		return _mm_cmpgt_epi32(a.v,b.v);
 	}
 
-	/*static inline sint1 GreaterOrEqual(const sint1 &a, const sint1 &b){
-		sint1 r;
-		r.v = _mm_cmpge_epi32(a.v,b.v);
-		return r;
-	}*/
+	//static inline sint1 GreaterOrEqual(const sint1 &a, const sint1 &b)...
 
 	static inline sint1 Less(const sint1 &a, const sint1 &b){
 		return _mm_cmplt_epi32(a.v,b.v);
 	}
 
-	/*static inline sint1 LessOrEqual(const sint1 &a, const sint1 &b){
-		sint1 r;
-		r.v = _mm_cmple_epi32(a.v,b.v);
-		return r;
-	}*/
+	//static inline sint1 LessOrEqual(const sint1 &a, const sint1 &b)...
 
 	static inline sint1 And(const sint1 &a, const sint1 &b){
 		return _mm_and_si128(a.v,b.v);
@@ -1018,8 +962,6 @@ public:
 		v[2].v = IL_PERMUTE(n.v,_MM_SHUFFLE(2,2,2,2));
 		v[3].v = IL_PERMUTE(n.v,_MM_SHUFFLE(3,3,3,3));
 	}
-
-	//set constructor
 
 	sint4(const sfloat4 &s){
 		v[0] = sint1(s.v[0]);

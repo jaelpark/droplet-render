@@ -82,6 +82,7 @@ class ClSamplingPanel(bpy.types.Panel):
 
 class ClGridProperties(bpy.types.PropertyGroup):
 	detailsize = FloatProperty(name="Detail size",default=0.02,min=0.0001,precision=4,description="Smallest detail size in blender units.");
+	maxdepth = IntProperty(name="Max Depth",default=12,min=1,description="Maximum octree depth. Limiting depth to smaller values increases render performance, but at the cost of less sparse data and higher memory requirements.");
 	#adaptive = BoolProperty(name="Adaptive resolution",default=False,description="Distance and FOV based resolution level of detail");
 	#qfield = BoolProperty(name="Construct Field",default=False,description="Construct low-resolution SDF for distance queries from the SceneInfo node. Queries made without this field will return a constant positive value over entire domain.");
 	qfbandw = FloatProperty(name="Band",default=1.0,min=0.01,precision=2,description="Outer narrow-band width of the low-resolution distance query field. This field is only constructed when the 'distance' output of the SceneInfo-node is used. A separate low-resolution field is created to allow approximate distance evaluation in larger global domains, as opposed to tight and local surface-surrounding field of the high-resolution field.");
@@ -91,6 +92,8 @@ class ClGridProperties(bpy.types.PropertyGroup):
 		c = s.column();
 		c.row().label("Resolution:");
 		c.row().prop(self,"detailsize");
+		c.row().label("Octree:");
+		c.row().prop(self,"maxdepth");
 
 		c = s.column();
 		c.row().label("SceneInfo Query:");

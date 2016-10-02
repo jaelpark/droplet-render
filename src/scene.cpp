@@ -351,7 +351,7 @@ enum PFP{
 	PFP_INPUTGRID
 };
 
-static void S_Create(float s, float qb, float bvc, openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT], Scene *pscene){
+static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT], Scene *pscene){
 	openvdb::math::Transform::Ptr pgridtr = openvdb::math::Transform::createLinearTransform(s);
 	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
 		pgrid[i] = 0;
@@ -549,13 +549,21 @@ static void S_Create(float s, float qb, float bvc, openvdb::FloatGrid::Ptr pgrid
 	float4 a = float4::max(float4::max(e.splat<0>(),e.splat<1>()),e.splat<2>());
 
 	float d = 2.0f*a.get<0>();
-	float N = (float)BLCLOUD_uN;
-	uint mlevel = (uint)ceilf(logf(d/(N*s))/0.69315f);
-	float r = powf(2.0f,(float)mlevel)*N; //sparse voxel resolution
-	//The actual voxel size is now v = d/(2^k*N), where k is the octree depth.
+	uint mlevel = (uint)ceilf(logf(d/(lvc*s))/SM_LN2);
 
-	DebugPrintf("Center = (%.3f, %.3f, %.3f)\nExtents = (%.3f, %.3f, %.3f) (max w = %.3f)\n",scaabb.sc.x,scaabb.sc.y,scaabb.sc.z,scaabb.se.x,scaabb.se.y,scaabb.se.z,d);
-	DebugPrintf("> Constructing octree (depth = %u, voxel = %f, sparse res = %u^3)...\n",mlevel,d/r,(uint)r);
+	//check the depth limit
+	if(mlevel > maxd){
+		lvc *= powf(2.0f,(float)(mlevel-maxd));
+		mlevel = maxd;
+	}
+
+	DebugPrintf("Center = (%.3f, %.3f, %.3f)\nExtents = (%.3f, %.3f, %.3f) (max w = %.3f)\n",
+		scaabb.sc.x,scaabb.sc.y,scaabb.sc.z,scaabb.se.x,scaabb.se.y,scaabb.se.z,d);
+
+	float y = powf(2.0f,(float)mlevel);
+	float r = y*lvc; //sparse voxel resolution
+	//The actual voxel size is now v = d/(2^k*N), where k is the octree depth and N=lvc.
+	DebugPrintf("> Constructing octree (depth = %u, leaf = %u*%f = %f, sparse res = %u^3)...\n",mlevel,(uint)lvc,d/r,lvc*d/r,(uint)r);
 
 	Octree *proot = new(scalable_malloc(sizeof(Octree))) Octree(0);
 
@@ -630,9 +638,8 @@ static void S_Create(float s, float qb, float bvc, openvdb::FloatGrid::Ptr pgrid
 
 	proot->FreeRecursive();
 	scalable_free(proot);
-	//
-	//pscene->ob.compact(); //make continuous
 
+	pscene->lvoxc = (uint)lvc;
 	pscene->index = indexa;
 	pscene->leafx[VOLUME_BUFFER_SDF] = leafxa;
 	pscene->leafx[VOLUME_BUFFER_FOG] = leafxb;
@@ -706,10 +713,11 @@ Scene::~Scene(){
 	//
 }
 
-void Scene::Initialize(float s, float qb, SCENE_CACHE_MODE cm){
+void Scene::Initialize(float s, uint maxd, float qb, SCENE_CACHE_MODE cm){
 	openvdb::initialize();
 
-	const float bvc = 4.0f; //number narrow band voxels counting from the surface
+	const float lvc = 8.0f; //minimum number of voxels in an octree leaf
+	const float bvc = 4.0f; //number of narrow band voxels counting from the surface
 
 	openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT];// = {0};
 	FloatGridBoxSampler *psampler[VOLUME_BUFFER_COUNT];
@@ -728,6 +736,7 @@ void Scene::Initialize(float s, float qb, SCENE_CACHE_MODE cm){
 			FILE *pf = fopen("/tmp/droplet-fileid.bin","rb");
 			if(!pf)
 				throw(0);
+			fread(&lvoxc,1,4,pf);
 			fread(&index,1,4,pf);
 			fread(&leafx[VOLUME_BUFFER_SDF],1,4,pf);
 			leafx[VOLUME_BUFFER_FOG] = 0;
@@ -746,7 +755,7 @@ void Scene::Initialize(float s, float qb, SCENE_CACHE_MODE cm){
 			cm = SCENE_CACHE_WRITE;
 		}
 
-		S_Create(s,qb,bvc,pgrid,this);
+		S_Create(s,qb,lvc,bvc,maxd,pgrid,this);
 		if(pgrid[VOLUME_BUFFER_SDF])
 			pgrid[VOLUME_BUFFER_SDF]->setName("surface-levelset");
 
@@ -756,6 +765,7 @@ void Scene::Initialize(float s, float qb, SCENE_CACHE_MODE cm){
 			vdbc.close();
 
 			FILE *pf = fopen("/tmp/droplet-fileid.bin","wb");
+			fwrite(&lvoxc,1,4,pf);
 			fwrite(&index,1,4,pf);
 			fwrite(&leafx[VOLUME_BUFFER_SDF],1,4,pf);
 			//fwrite(pob,1,(index+1)*sizeof(OctreeStructure),pf);
@@ -767,22 +777,19 @@ void Scene::Initialize(float s, float qb, SCENE_CACHE_MODE cm){
 	}
 
 	DebugPrintf("> Resampling volume data...\n");
-
-	//openvdb::tools::GridSampler<openvdb::FloatGrid::ConstAccessor, openvdb::tools::BoxSampler> fsampler(pgrid->getConstAccessor(),pgrid->transform());
-
-	//FloatGridBoxSampler *psampler[VOLUME_BUFFER_COUNT];
+	
+	lvoxc3 = lvoxc*lvoxc*lvoxc;
 	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i){
 		if(pgrid[i]){
-			pbuf[i] = new LeafVolume[leafx[i]];
+			pvol[i] = new float[lvoxc3*leafx[i]];
 			psampler[i] = new FloatGridBoxSampler(*pgrid[i]); //non-cached, thread safe version
 		}else{
-			pbuf[i] = 0;
+			pvol[i] = 0;
 			psampler[i] = 0;
 		}
 	}
 
-	//float4 nv = float4(N);
-	const uint uN = BLCLOUD_uN;
+	const uint uN = lvoxc;//BLCLOUD_uN;
 	float4 nv = float4((float)uN);
 
 	/*typedef openvdb::tools::GridSampler<openvdb::FloatGrid::ConstAccessor, openvdb::tools::BoxSampler> FastGridSampler;
@@ -819,13 +826,13 @@ void Scene::Initialize(float s, float qb, SCENE_CACHE_MODE cm){
 				float4::store((dfloat3*)posw.asPointer(),nw);
 
 				if(ob[i].volx[VOLUME_BUFFER_SDF] != ~0u){
-					pbuf[VOLUME_BUFFER_SDF][ob[i].volx[VOLUME_BUFFER_SDF]].pvol[j] = psampler[VOLUME_BUFFER_SDF]->wsSample(posw);
-					ob[i].qval[VOLUME_BUFFER_SDF] = openvdb::math::Min(ob[i].qval[VOLUME_BUFFER_SDF],pbuf[VOLUME_BUFFER_SDF][ob[i].volx[VOLUME_BUFFER_SDF]].pvol[j]);
+					pvol[VOLUME_BUFFER_SDF][ob[i].volx[VOLUME_BUFFER_SDF]*lvoxc3+j] = psampler[VOLUME_BUFFER_SDF]->wsSample(posw);
+					ob[i].qval[VOLUME_BUFFER_SDF] = openvdb::math::Min(ob[i].qval[VOLUME_BUFFER_SDF],pvol[VOLUME_BUFFER_SDF][ob[i].volx[VOLUME_BUFFER_SDF]*lvoxc3+j]);
 				}
 
 				if(ob[i].volx[VOLUME_BUFFER_FOG] != ~0u){
-					pbuf[VOLUME_BUFFER_FOG][ob[i].volx[VOLUME_BUFFER_FOG]].pvol[j] = openvdb::math::Max(openvdb::math::Min(psampler[VOLUME_BUFFER_FOG]->wsSample(posw),1.0f),0.0f);
-					ob[i].qval[VOLUME_BUFFER_FOG] = openvdb::math::Max(ob[i].qval[VOLUME_BUFFER_FOG],pbuf[VOLUME_BUFFER_FOG][ob[i].volx[VOLUME_BUFFER_FOG]].pvol[j]);
+					pvol[VOLUME_BUFFER_FOG][ob[i].volx[VOLUME_BUFFER_FOG]*lvoxc3+j] = openvdb::math::Max(openvdb::math::Min(psampler[VOLUME_BUFFER_FOG]->wsSample(posw),1.0f),0.0f);
+					ob[i].qval[VOLUME_BUFFER_FOG] = openvdb::math::Max(ob[i].qval[VOLUME_BUFFER_FOG],pvol[VOLUME_BUFFER_FOG][ob[i].volx[VOLUME_BUFFER_FOG]*lvoxc3+j]);
 				}
 			}
 		}
@@ -835,15 +842,15 @@ void Scene::Initialize(float s, float qb, SCENE_CACHE_MODE cm){
 		if(psampler[i])
 			delete psampler[i];
 
-	uint sdfs = leafx[VOLUME_BUFFER_SDF]*sizeof(LeafVolume);
-	uint fogs = leafx[VOLUME_BUFFER_FOG]*sizeof(LeafVolume);
+	uint sdfs = leafx[VOLUME_BUFFER_SDF]*lvoxc3*sizeof(float);
+	uint fogs = leafx[VOLUME_BUFFER_FOG]*lvoxc3*sizeof(float);
 	DebugPrintf("Volume size = %f MB\n  SDF = %f MB\n  Fog = %f MB\n",(float)(sdfs+fogs)/1e6f,(float)sdfs/1e6f,(float)fogs/1e6f);
 	//
 }
 
 void Scene::Destroy(){
 	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
-		if(pbuf[i])
-			delete []pbuf[i];
+		if(pvol[i])
+			delete []pvol[i];
 	ob.clear();
 }
