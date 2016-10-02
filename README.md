@@ -17,7 +17,9 @@ Note that Droplet does not apply any tonemapping or gamma correction. For correc
 
 ## Installation
 Only Linux operating systems on x86_64 are currently supported. It should be possible to also build and work on Windows, although testing has been less active recently.
+
 1. Install or build the required dependencies:
+
     - openvdb
     - tbb
     - python3.5 + numpy
