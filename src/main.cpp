@@ -54,36 +54,36 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 		DebugPrintf("Invalid arguments\n");
 		return 0;
 	}
-	PyObject *pcam = PyObject_GetAttrString(pscene,"camera");
-	PyObject *ploc = PyObject_GetAttrString(pcam,"location");
-	PyObject *prot = PyObject_GetAttrString(pcam,"rotation_euler");
+	PyObject *pycam = PyObject_GetAttrString(pscene,"camera");
+	PyObject *pyloc = PyObject_GetAttrString(pycam,"location");
+	PyObject *pyrot = PyObject_GetAttrString(pycam,"rotation_euler");
 	//PyObject *prot = PyObject_GetAttrString(pcam,"rotation_quaternion");
-	PyObject *pcdt = PyObject_GetAttrString(pcam,"data");
+	PyObject *pycdt = PyObject_GetAttrString(pycam,"data");
 
 	float4 u = float4(0,0,-1,0);
 
-	float fov = (float)h/(float)w*PyGetFloat(pcdt,"angle"); //blender seems to be using y-fov
-	float zmin = PyGetFloat(pcdt,"clip_start");
-	float zmax = PyGetFloat(pcdt,"clip_end");
+	float fov = (float)h/(float)w*PyGetFloat(pycdt,"angle"); //blender seems to be using y-fov
+	float zmin = PyGetFloat(pycdt,"clip_start");
+	float zmax = PyGetFloat(pycdt,"clip_end");
 
 	float4 p = float4(
-		PyGetFloat(ploc,"x"),
-		PyGetFloat(ploc,"y"),
-		PyGetFloat(ploc,"z"),1.0f);
+		PyGetFloat(pyloc,"x"),
+		PyGetFloat(pyloc,"y"),
+		PyGetFloat(pyloc,"z"),1.0f);
 
-	PyObject *pquat = PyObject_CallMethod(prot,"to_quaternion","");
+	PyObject *pyquat = PyObject_CallMethod(pyrot,"to_quaternion","");
 	float4 q = float4(
-		PyGetFloat(pquat,"x"),
-		PyGetFloat(pquat,"y"),
-		PyGetFloat(pquat,"z"),
-		PyGetFloat(pquat,"w"));
+		PyGetFloat(pyquat,"x"),
+		PyGetFloat(pyquat,"y"),
+		PyGetFloat(pyquat,"z"),
+		PyGetFloat(pyquat,"w"));
 	float4 d = XMVector3Rotate(u.v,q.v);
 
-	Py_DECREF(pcam);
-	Py_DECREF(ploc);
-	Py_DECREF(prot);
-	Py_DECREF(pquat);
-	Py_DECREF(pcdt);
+	Py_DECREF(pycam);
+	Py_DECREF(pyloc);
+	Py_DECREF(pyrot);
+	Py_DECREF(pyquat);
+	Py_DECREF(pycdt);
 
 	XMMATRIX view = XMMatrixLookToRH(p.v,d.v,u.v);
 	XMMATRIX proj = XMMatrixPerspectiveFovRH(fov,(float)w/(float)h,zmin,zmax);
@@ -205,6 +205,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 		const char *pn = PyUnicode_AsUTF8(pidn);
 		if(strcmp(pn,"ClNodeTree") != 0){
 			Py_DECREF(pidn);
+			Py_DECREF(pns1);
 			continue;
 		}
 		Py_DECREF(pidn);
@@ -214,6 +215,12 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 		Py_DECREF(pno);
 
 		PyObject *proot = PyObject_CallMethod(pns1,"get","(s)","Surface Output");
+		if(!proot){
+			DebugPrintf("Warning: output node not found\n");
+			//Py_DECREF(proot);
+			Py_DECREF(pns1);
+			continue;
+		}
 		ntree(proot,0,pntree);
 
 		pntree->SortNodes();
@@ -233,11 +240,11 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 
 	PyObject *pbmops = PyObject_GetAttrString(pbmesh,"ops");
 
-	PyObject *poat = PyObject_GetAttrString(pscene,"objects");
-	PyObject *pobl = PyObject_CallMethod(poat,"values","");
-	uint objc = PyList_Size(pobl);
+	PyObject *pyoat = PyObject_GetAttrString(pscene,"objects");
+	PyObject *pyobl = PyObject_CallMethod(pyoat,"values","");
+	uint objc = PyList_Size(pyobl);
 	for(uint i = 0; i < objc; ++i){
-		PyObject *pobj = PyList_GetItem(pobl,i);
+		PyObject *pobj = PyList_GetItem(pyobl,i);
 
 		//get smoke domain modifiers
 		PyObject *pmfs = PyObject_GetAttrString(pobj,"modifiers");
@@ -333,18 +340,18 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 		const char *ptype1 = PyUnicode_AsUTF8(ptype);
 
 		if(strcasecmp(ptype1,"LAMP") == 0){
-			prot = PyObject_GetAttrString(pobj,"rotation_euler");
-			pquat = PyObject_CallMethod(prot,"to_quaternion","");
+			pyrot = PyObject_GetAttrString(pobj,"rotation_euler");
+			pyquat = PyObject_CallMethod(pyrot,"to_quaternion","");
 
 			q = float4(
-				PyGetFloat(pquat,"x"),
-				PyGetFloat(pquat,"y"),
-				PyGetFloat(pquat,"z"),
-				PyGetFloat(pquat,"w"));
+				PyGetFloat(pyquat,"x"),
+				PyGetFloat(pyquat,"y"),
+				PyGetFloat(pyquat,"z"),
+				PyGetFloat(pyquat,"w"));
 			d = float4(XMVector3Rotate(u.v,q.v));
 
-			Py_DECREF(prot);
-			Py_DECREF(pquat);
+			Py_DECREF(pyrot);
+			Py_DECREF(pyquat);
 
 			PyObject *pdata = PyObject_GetAttrString(pobj,"data");
 			PyObject *psd = PyObject_GetAttrString(pdata,"droplet");
@@ -401,19 +408,16 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 			PyObject *pbm = PyObject_CallMethod(pbmesh,"new","");
 			PyObject_CallMethod(pbm,"from_object","OO",pobj,pscene);
 
-			/*PyObject *pfs = PyObject_GetAttrString(pbm,"faces");
-			PyObject_CallMethod(pbmops,"triangulate","O{s,O}",pbm,"faces",pfs); //fail*/
-
-			PyObject *pfa = PyObject_GetAttrString(pbm,"faces");
-			PyObject *pag = Py_BuildValue("(O)",pbm);
-			PyObject *pkw = PyDict_New();
-			PyObject *ptm = PyObject_GetAttrString(pbmops,"triangulate");
-			PyDict_SetItemString(pkw,"faces",pfa);
-			PyObject_Call(ptm,pag,pkw);
-			//Py_DECREF(ptm); //crash
-			Py_DECREF(pfa);
-			Py_DECREF(ptm);
-			Py_DECREF(pkw);
+			PyObject *pyfa = PyObject_GetAttrString(pbm,"faces");
+			PyObject *pyag = Py_BuildValue("(O)",pbm);
+			PyObject *pykw = PyDict_New();
+			PyObject *pytm = PyObject_GetAttrString(pbmops,"triangulate");
+			PyDict_SetItemString(pykw,"faces",pyfa);
+			PyObject_Call(pytm,pyag,pykw);
+			Py_DECREF(pyfa);
+			Py_DECREF(pyag);
+			Py_DECREF(pytm);
+			Py_DECREF(pykw);
 
 			PyObject *pvs = PyObject_GetAttrString(pbm,"verts");
 			PyObject *pvi = PyObject_GetIter(pvs);
@@ -433,12 +437,10 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 			Py_DECREF(pvs);
 
 			PyObject *pfs = PyObject_GetAttrString(pbm,"faces");
-			//uint tl = PySequence_Size(pfs);
 			PyObject *pfi = PyObject_GetIter(pfs);
 			for(PyObject *pni = PyIter_Next(pfi); pni; Py_DecRef(pni), pni = PyIter_Next(pfi)){
 				PyObject *pfvs = PyObject_GetAttrString(pni,"verts");
 				PyObject *pfvi = PyObject_GetIter(pfvs);
-				//uint fvc = PySequence_Size(pfvs);
 				for(PyObject *pji = PyIter_Next(pfvi); pji; Py_DecRef(pji), pji = PyIter_Next(pfvi)){
 					uint index = PyGetUint(pji,"index");
 					psobj->tl.push_back(index);
@@ -458,7 +460,10 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 		Py_DECREF(ptype);
 	}
 
-	Py_DECREF(poat);
+	Py_DECREF(pyoat);
+
+	Py_DECREF(pbmops);
+	Py_DECREF(pbmesh);
 
 	PyObject *pyrender = PyObject_GetAttrString(pscene,"blcloudrender");
 	PyObject *pytransparent = PyObject_GetAttrString(pyrender,"transparent");
@@ -552,9 +557,7 @@ static PyObject * DRE_EndRender(PyObject *pself, PyObject *pargs){
 }
 
 static PyMethodDef g_blmethods[] = {
-	//{"test",DRE_Test,METH_NOARGS,"test() doc string"},
 	{"BeginRender",DRE_BeginRender,METH_VARARGS,"BeginRender() doc string"}, //CreateDevice
-	//{"AddObject",DRE_AddObject,METH_VARARGS,"AddObject() doc string"},
 	{"Render",DRE_Render,METH_VARARGS,"Render() doc string"},
 	{"EndRender",DRE_EndRender,METH_NOARGS,"EndRender() doc string"},
 	{0,0,0,0}
@@ -562,14 +565,14 @@ static PyMethodDef g_blmethods[] = {
 
 static struct PyModuleDef g_bldre = {
 	PyModuleDef_HEAD_INIT,
-	"droplet", //blcloud
+	"droplet",
 	"Droplet Render Engine",
 	-1,
 	g_blmethods,
 	0,0,0,0 //freefunc m_free
 };
 
-#define BLCLOUD_MODINITFUNC PyInit_libdroplet //PyInit_libblcloud
+#define BLCLOUD_MODINITFUNC PyInit_libdroplet
 
 PyMODINIT_FUNC BLCLOUD_MODINITFUNC(){
 	return PyModule_Create(&g_bldre);
