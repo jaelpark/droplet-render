@@ -466,10 +466,9 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 		//sample E(rc)/T here
 		//T should be the value at rc; T(rc)
 
-		sfloat4 lc = sfloat1::zero();
-		sfloat4 ll;
-		//if(!sfloat1::AnyTrue(sfloat1::EqualR(rm,zr))){ //skip (sky)lighting calculations if all incident rays scatter
-		if(rm.AnyTrue()){ //skip (sky)lighting calculations if all incident rays scatter (didn't reach sun or sky) (at least one of rm != 0)
+		sfloat4 ll; //total lighting (directional+sky)
+		if(rm.AnyTrue() && !(pkernel->flags & RENDER_TRANSPARENT && r == 0)){ //skip (sky)lighting calculations if all the incident rays scatter (don't reach sun or sky) (at least one of rm != 0)
+			sfloat4 lc = sfloat1::zero(); //total directional lighting
 			for(uint i = 0; i < KernelSampler::BaseLight::lights.size(); ++i)
 				lc += KernelSampler::BaseLight::lights[i]->Evaluate(rd);
 
@@ -499,16 +498,19 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 					caf[j] = sfloat1(pkernel->pskyms->configs[i][j]);
 				//arhosek_tristim_skymodel_radiance(pkernel->pskyms,sth,sga,0)
 				sfloat1 expm = exp_ps(caf[4]*gmma);
-				sfloat1 miem = (sfloat1::one()+raym)/sfloat1::pow(sfloat1::one()+caf[8]*caf[8]-sfloat1(2.0f)*caf[8]*gacs,sfloat1(1.5f));
+				sfloat1 miem = (sfloat1::one()+raym)/sfloat1::pow(sfloat1::one()+caf[8]*caf[8]-2.0f*caf[8]*gacs,sfloat1(1.5f));
 				sfloat1 zenh = sfloat1::sqrt(thcs);
-				ca.v[i] = (sfloat1::one()+caf[0]*exp_ps(caf[1]/(thcs+sfloat1(0.01f))))*(caf[2]+caf[3]*expm+caf[5]*raym+caf[6]*miem+caf[7]*zenh);
+				ca.v[i] = (sfloat1::one()+caf[0]*exp_ps(caf[1]/(thcs+0.01f)))*(caf[2]+caf[3]*expm+caf[5]*raym+caf[6]*miem+caf[7]*zenh);
 				//ca.v[i] *= 0.028f*pkernel->pskyms->radiances[i];
 				ca.v[i] *= pkernel->pskyms->radiances[i];
 				ca.v[i] = 0.00035f*sfloat1::pow(ca.v[i],2.2f); //convert to linear and adjust exposure
 			}
-			ca.v[3] = sfloat1::zero();
 
 			ll = lc+ca;
+			ll.v[3] = sfloat1::one(); //alpha doesn't matter when r > 0
+		}else{
+			ll = sfloat1::zero();
+			ll.v[3] = sfloat1::AndNot(rm,sfloat1::one()); //alpha = 1 when scattering
 		}
 
 		if(r < pkernel->scattevs && rm.AnyFalse()){
@@ -529,8 +531,6 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 			//need two samples - with the phase sampling keep on the recursion while for the light do only single scattering
 			sfloat1 gm1 = sfloat1::AndNot(rm,sint1::trueI());
 			sfloat1 rq;
-			//sfloat4 s1 = SampleVolume(rc,srd,gm1,pkernel,prs,ls,r+1,1,&rq); //p1 canceled by phase=pdf=p1
-			//sfloat4 s2 = SampleVolume(rc,lrd,gm1,pkernel,prs,ls,BLCLOUD_MAX_RECURSION-1,1,&rq)*HG_Phase(sfloat4::dot3(lrd,rd)); //p2 canceled by the MIS estimator
 
 			//estimator S(1)*f1*w1/p1+S(2)*f2*w2/p2 /= woodcock pdf
 			sfloat4 s1 = SampleVolume(rc,srd,gm1,pkernel,prs,ls,r+1,1,&rq);
@@ -538,7 +538,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
 			//(HG_Phase(X)*SampleVolume(X)*p1/(p1+L_Pdf(X)))/p1 => (HG_Phase(X)=p1)*SampleVolume(X)/(p1+L_Pdf(X)) = p1*SampleVolume(X)/(p1+L_Pdf(X))
 			//(HG_Phase(Y)*SampleVolume(Y)*p2/(HG_Phase(Y)+p2))/p2 => HG_phase(Y)*SampleVolume(Y)/(HG_Phase(Y)+p2)
-			sfloat4 p3 = pkernel->ppf->EvaluateRGB(sfloat4::dot3(lrd,rd));//HG_Phase(sfloat4::dot3(lrd,rd));
+			sfloat4 p3 = pkernel->ppf->EvaluateRGB(sfloat4::dot3(lrd,rd));
 			sfloat4 cm = s1*p1/(p1+KernelSampler::BaseLight::lights[0]->Pdf(srd))+s2*p3/(p3+p2);//s1*p1/(p1+L_Pdf(srd,la))+s2*p3/(p3+p2);
 			cm *= msigmas/msigmae;
 
@@ -567,13 +567,13 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 			c.v[0] += sfloat1::Or(sfloat1::And(rm,ll.v[0]),sfloat1::AndNot(rm,cm.v[0]));
 			c.v[1] += sfloat1::Or(sfloat1::And(rm,ll.v[1]),sfloat1::AndNot(rm,cm.v[1]));
 			c.v[2] += sfloat1::Or(sfloat1::And(rm,ll.v[2]),sfloat1::AndNot(rm,cm.v[2]));
-			c.v[3] += sfloat1::one();
-		}else if(!(pkernel->flags & RENDER_TRANSPARENT) || r > 0){
+			c.v[3] += ll.v[3];
+		}else{
 			*prq = sint1::falseI();
 			c.v[0] += sfloat1::Or(sfloat1::And(rm,ll.v[0]),sfloat1::AndNot(rm,zr));
 			c.v[1] += sfloat1::Or(sfloat1::And(rm,ll.v[1]),sfloat1::AndNot(rm,zr));
 			c.v[2] += sfloat1::Or(sfloat1::And(rm,ll.v[2]),sfloat1::AndNot(rm,zr));
-			c.v[3] += sfloat1::one();
+			c.v[3] += ll.v[3];
 		}
 	}
 
@@ -668,6 +668,7 @@ bool RenderKernel::Initialize(const Scene *pscene, const dmatrix44 *pviewi, cons
 
 	this->ppf = ppf;
 
+	//TODO: set direction according to primary light
 	float th = 0.0f;//acosf(sdir.z);
 	float se = XM_PIDIV2-th; //solar elevation
 
