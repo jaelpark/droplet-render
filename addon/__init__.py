@@ -51,6 +51,15 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 		#TODO: should construct the scene here, not in render()
 		#pass
 
+	# def DrawBorder(self, result, tilew, tileh, tilew1, tileh1):
+	# 	bcolor = [0.9,0.5,0.0,1.0];
+	# 	for x in range(0,tilew1):
+	# 		result.layers[0].passes[0].rect[x] = bcolor;
+	# 		result.layers[0].passes[0].rect[tileh*(tileh1-1)+x] = bcolor;
+	# 	for y in range(0,tileh1):
+	# 		result.layers[0].passes[0].rect[tileh*y] = bcolor;
+	# 		result.layers[0].passes[0].rect[tileh*y+(tilew1-1)] = bcolor;
+
 	def render(self, scene):
 		#s = scene.render.resolution_percentage/100.0;
 		#w = int(s*scene.render.resolution_x);
@@ -91,12 +100,19 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 			tileh1 = tileh;
 			if tile1[1]+tileh > h:
 				tileh1 += int(h-(tile1[1]+tileh));
+
+			tilew1 += int(min(tile1[0],0));
+			tileh1 += int(min(tile1[1],0));
+
 			tile1 = ((
 				int(max(tile1[0],0)),
 				int(max(tile1[1],0))));
 
 			result = self.begin_result(tile1[0],tile1[1],tilew1,tileh1);
 			rr = np.zeros((tilew1*tileh1,4));
+
+			#self.DrawBorder(result,tilew,tileh,tilew1,tileh1);
+			self.update_result(result);
 
 			dd = 0;
 			for i in range(0,sc):
@@ -110,7 +126,10 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 				rr += libdroplet.Render(tile1[0],tile1[1],tilew1,tileh1,d1);
 
 				result.layers[0].passes[0].rect = rr/float(dd);
-				self.update_result(result); #TODO: draw rectangle if i < sc-1
+				#if i < sc-1:
+					#self.DrawBorder(result,tilew,tileh,tilew1,tileh1);
+
+				self.update_result(result);
 				self.update_progress(1.0-len(tiles)/(nx*ny)+i/(sc*nx*ny));
 			else:
 				self.end_result(result);
