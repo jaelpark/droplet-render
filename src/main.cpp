@@ -49,8 +49,8 @@ inline uint PyGetUint(PyObject *pb, const char *pn){
 
 static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	PyObject *pscene, *pdata;
-	uint rx, ry, w, h;
-	if(gpscene || !PyArg_ParseTuple(pargs,"OOIIII",&pscene,&pdata,&rx,&ry,&w,&h)){
+	uint tilex, tiley, w, h;
+	if(gpscene || !PyArg_ParseTuple(pargs,"OOIIII",&pscene,&pdata,&tilex,&tiley,&w,&h)){
 		DebugPrintf("Invalid arguments\n");
 		return 0;
 	}
@@ -511,7 +511,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	gpscene->Initialize(dsize,maxd,qband,cm);
 
 	gpkernel = new RenderKernel();
-	gpkernel->Initialize(gpscene,&sviewi,&sproji,ppf,scattevs,msigmas,msigmaa,rx,ry,w,h,flags);
+	gpkernel->Initialize(gpscene,&sviewi,&sproji,ppf,scattevs,msigmas,msigmaa,tilex,tiley,w,h,flags);
 
 	SceneData::SmokeCache::DeleteAll();
 	SceneData::ParticleSystem::DeleteAll();
@@ -523,14 +523,14 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 
 static PyObject * DRE_Render(PyObject *pself, PyObject *pargs){
 	//
-	uint x0, y0, samples;
-	if(!gpkernel || !PyArg_ParseTuple(pargs,"III",&x0,&y0,&samples))
+	uint x0, y0, tilex, tiley, samples;
+	if(!gpkernel || !PyArg_ParseTuple(pargs,"IIIII",&x0,&y0,&tilex,&tiley,&samples))
 		return 0;
 
-	gpkernel->Render(x0,y0,samples);
+	gpkernel->Render(x0,y0,tilex,tiley,samples);
 
 	//TODO: write directly to the blender's render result?
-	uint l = gpkernel->rx*gpkernel->ry;
+	uint l = tilex*tiley;
 	PyObject *prt = PyList_New(l);
 	for(uint i = 0; i < l; ++i){
 		PyObject *pc = Py_BuildValue("[f,f,f,f]",gpkernel->phb[i].x,gpkernel->phb[i].y,gpkernel->phb[i].z,gpkernel->phb[i].w);

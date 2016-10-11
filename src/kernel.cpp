@@ -469,11 +469,12 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 		sfloat4 ll; //total lighting (directional+sky)
 		if(rm.AnyTrue() && !(pkernel->flags & RENDER_TRANSPARENT && r == 0)){ //skip (sky)lighting calculations if all the incident rays scatter (don't reach sun or sky) (at least one of rm != 0)
 			sfloat4 lc = sfloat1::zero(); //total directional lighting
-			for(uint i = 0; i < KernelSampler::BaseLight::lights.size(); ++i)
+			for(uint i = 0, n = KernelSampler::BaseLight::lights.size(); i < n; ++i)
 				lc += KernelSampler::BaseLight::lights[i]->Evaluate(rd);
 
 			//skylighting
 			sfloat1 rdz = sfloat1::abs(rd.v[2]); //add/remove abs to remove/get ground
+			//sfloat1 rdz = rd.v[2]; //add/remove abs to remove/get ground
 			sfloat1 sth = sfloat1::sqrt(1.0f-rd.v[2]*rd.v[2]);
 			sfloat1 cth = rdz;
 			sfloat1 lth = sfloat1::zero(); //sun theta
@@ -505,6 +506,11 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 				ca.v[i] *= pkernel->pskyms->radiances[i];
 				ca.v[i] = 0.00035f*sfloat1::pow(ca.v[i],2.2f); //convert to linear and adjust exposure
 			}
+
+			/*sfloat1 rg = sfloat1::Greater(rdz,sfloat1::zero());
+			ca.v[0] = sfloat1::Or(sfloat1::And(rg,ca.v[0]),sfloat1::AndNot(rg,0.3f*ca.v[0]));
+			ca.v[1] = sfloat1::Or(sfloat1::And(rg,ca.v[1]),sfloat1::AndNot(rg,0.3f*ca.v[1]));
+			ca.v[2] = sfloat1::Or(sfloat1::And(rg,ca.v[2]),sfloat1::AndNot(rg,0.3f*ca.v[2]));*/
 
 			ll = lc+ca;
 			ll.v[3] = sfloat1::one(); //alpha doesn't matter when r > 0
@@ -650,16 +656,16 @@ RenderKernel::~RenderKernel(){
 }
 
 bool RenderKernel::Initialize(const Scene *pscene, const dmatrix44 *pviewi, const dmatrix44 *pproji, KernelSampler::PhaseFunction *ppf, uint scattevs,
-	float msigmas, float msigmaa, uint rx, uint ry, uint w, uint h, uint flags){
-	if(!(phb = (dfloat4*)_mm_malloc(rx*ry*16,16)))
+	float msigmas, float msigmaa, uint tilex, uint tiley, uint w, uint h, uint flags){
+	if(!(phb = (dfloat4*)_mm_malloc(tilex*tiley*16,16)))
 		return false;
 
 	this->pscene = pscene;
 	this->scattevs = scattevs;
 	this->msigmas = msigmas;
 	this->msigmaa = msigmaa;
-	this->rx = rx;
-	this->ry = ry;
+	//this->tilex = tilex;
+	//this->tiley = tiley;
 	this->w = w;
 	this->h = h;
 	this->flags = flags;
@@ -673,6 +679,7 @@ bool RenderKernel::Initialize(const Scene *pscene, const dmatrix44 *pviewi, cons
 	float se = XM_PIDIV2-th; //solar elevation
 
 	pskyms = arhosek_rgb_skymodelstate_alloc_init(2.2,0.6,se);
+	//pskyms = arhosek_rgb_skymodelstate_alloc_init(7.4,0.2,se);
 
 	if(KernelSampler::BaseLight::lights.size() != 1)
 		DebugPrintf("Warning: only one directional light is currently properly supported.\n");
@@ -682,7 +689,7 @@ bool RenderKernel::Initialize(const Scene *pscene, const dmatrix44 *pviewi, cons
 	return true;
 }
 
-void RenderKernel::Render(uint x0, uint y0, uint samples){
+void RenderKernel::Render(uint x0, uint y0, uint tilex, uint tiley, uint samples){
 	/*dim3 db = dim3(8,8,1); //[numthreads(...)]
 	dim3 dg = dim3(rx/8,ry/8,1); //Dispatch
 	K_Render<<<db,dg>>>(*(matrix*)&viewi,*(matrix*)&proji,ob,x0,y0,w,h,prt);
@@ -690,7 +697,7 @@ void RenderKernel::Render(uint x0, uint y0, uint samples){
 	if(cudaMemcpy(phb,prt,rx*ry*16,cudaMemcpyDeviceToHost) != cudaSuccess)
 		printf("cudaMemcpy() failure\n");*/
 
-	K_Render(&viewi,&proji,this,x0,y0,rx,ry,w,h,samples,phb);
+	K_Render(&viewi,&proji,this,x0,y0,tilex,tiley,w,h,samples,phb);
 }
 
 void RenderKernel::Destroy(){

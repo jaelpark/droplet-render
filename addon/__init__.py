@@ -14,7 +14,6 @@ from bpy.props import PointerProperty
 
 from bl_ui import properties_particle,properties_physics_common,properties_physics_field,properties_physics_smoke
 
-#NOTE: addon directory name cannot coincide with pyd module name
 import libdroplet #libblcloud #pyd/so filename
 import numpy as np
 
@@ -49,6 +48,7 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 	bl_use_preview = False;
 
 	#def update(self, data, scene):
+		#TODO: should construct the scene here, not in render()
 		#pass
 
 	def render(self, scene):
@@ -57,49 +57,61 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 		#h = int(s*scene.render.resolution_y);
 		w = max(int(scene.blcloudrender.res_p*scene.blcloudrender.res_x),1);
 		h = max(int(scene.blcloudrender.res_p*scene.blcloudrender.res_y),1);
-		scene.render.resolution_x = w;#scene.blcloudrender.res_x;
-		scene.render.resolution_y = h;#scene.blcloudrender.res_y;
+		scene.render.resolution_x = w;
+		scene.render.resolution_y = h;
 		scene.render.resolution_percentage = 100;#*scene.blcloudrender.res_p;
 
-		rx = scene.blcloudperf.tilex;
-		ry = scene.blcloudperf.tiley; #self.tile_x, tile_y
-		st = scene.blcloudsampling.samples;
-		sr = scene.blcloudperf.samples;
-		sc = int(ceil(st/sr)); #external sample count
+		tilew = scene.blcloudperf.tilex;
+		tileh = scene.blcloudperf.tiley; #self.tile_x, tile_y
+		samples_ext = scene.blcloudsampling.samples;
+		samples_int = scene.blcloudperf.samples;
+		sc = int(ceil(samples_ext/samples_int)); #external sample count
 
-		ny = int(ceil(h/ry));
-		nx = int(ceil(w/rx));
+		nx = int(ceil(w/tilew));
+		ny = int(ceil(h/tileh));
 
 		self.update_stats("Droplet","Initializing");
-
-		tl = [];
+		tiles = [];
 		for y in range(0,ny):
 			for x in range(0,nx):
-				tl.append((x*rx,y*ry)); #TODO: fix the alignment so that the first tile starts at the center
+				xadj = x*tilew-0.5*(nx*tilew-w);
+				yadj = y*tileh-0.5*(ny*tileh-h);
+				tiles.append((xadj,yadj));
 
-		libdroplet.BeginRender(scene,bpy.data,rx,ry,w,h);
+		libdroplet.BeginRender(scene,bpy.data,tilew,tileh,w,h);
 
-		while len(tl) > 0:
-			tc = min(tl,key=lambda tt: Vector((tt[0]+0.5*rx-0.5*w,tt[1]+0.5*ry-0.5*h)).length)
-			tl.remove(tc);
+		while len(tiles) > 0:
+			tile1 = min(tiles,key=lambda tileq: Vector((tileq[0]+0.5*tilew-0.5*w,tileq[1]+0.5*tileh-0.5*h)).length);
+			tiles.remove(tile1);
 
-			result = self.begin_result(tc[0],tc[1],rx,ry);
-			rr = np.zeros((rx*ry,4));
+			#crop the tile frame on edges
+			tilew1 = tilew;
+			if tile1[0]+tilew > w:
+				tilew1 += int(w-(tile1[0]+tilew));
+			tileh1 = tileh;
+			if tile1[1]+tileh > h:
+				tileh1 += int(h-(tile1[1]+tileh));
+			tile1 = ((
+				int(max(tile1[0],0)),
+				int(max(tile1[1],0))));
+
+			result = self.begin_result(tile1[0],tile1[1],tilew1,tileh1);
+			rr = np.zeros((tilew1*tileh1,4));
 
 			dd = 0;
 			for i in range(0,sc):
 				if self.test_break():
 					self.end_result(result);
 					break;
-				self.update_stats("Path tracing tile ("+str((nx*ny)-len(tl))+"/"+str(nx*ny)+")",str(dd)+"/"+str(st)+" samples");
-				d1 = min(st-i*sr,sr);
+				self.update_stats("Path tracing tile ("+str((nx*ny)-len(tiles))+"/"+str(nx*ny)+")",str(dd)+"/"+str(samples_ext)+" samples");
+				d1 = min(samples_ext-i*samples_int,samples_int);
 
 				dd += d1;
-				rr += libdroplet.Render(tc[0],tc[1],d1);
+				rr += libdroplet.Render(tile1[0],tile1[1],tilew1,tileh1,d1);
 
 				result.layers[0].passes[0].rect = rr/float(dd);
 				self.update_result(result); #TODO: draw rectangle if i < sc-1
-				self.update_progress(1.0-len(tl)/(nx*ny)+i/(sc*nx*ny));
+				self.update_progress(1.0-len(tiles)/(nx*ny)+i/(sc*nx*ny));
 			else:
 				self.end_result(result);
 				continue;
@@ -111,8 +123,6 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 			#self.update_memory_stats
 
 		libdroplet.EndRender();
-
-#bpy.utils.register_class(CloudRenderEngine)
 
 def register():
 	bpy.utils.register_module(__name__);

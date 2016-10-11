@@ -29,7 +29,7 @@ public:
 	RenderKernel();
 	~RenderKernel();
 	bool Initialize(const Scene *, const dmatrix44 *, const dmatrix44 *, KernelSampler::PhaseFunction *, uint, float, float, uint, uint, uint, uint, uint);
-	void Render(uint, uint, uint);
+	void Render(uint, uint, uint, uint, uint);
 	void Destroy();
 	//
 	dfloat4 *phb; //host buffer
@@ -42,8 +42,8 @@ public:
 	uint scattevs; //max number of scattering events
 	float msigmas; //macroscopic scattering cross section
 	float msigmaa; //-- absorption
-	uint rx;
-	uint ry;
+	//uint tilex; //max tile size
+	//uint tiley;
 	uint w;
 	uint h;
 	uint flags;
