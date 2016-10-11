@@ -227,6 +227,7 @@ bool BoundingBox::Intersects(const BoundingBox &bb) const{
 OctreeStructure::OctreeStructure(){
 	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
 		volx[i] = ~0u;
+	memset(chn,0,sizeof(chn));
 }
 
 OctreeStructure::~OctreeStructure(){
@@ -237,9 +238,9 @@ Octree::Octree(uint _x) : x(_x){//, lock(ATOMIC_FLAG_INIT){
 	memset(pch,0,sizeof(pch));
 }
 
-Octree::Octree(){
+/*Octree::Octree(){
 	//memset(pch,0,sizeof(pch));
-}
+}*/
 
 Octree::~Octree(){
 	//
@@ -349,8 +350,6 @@ enum PFP{
 
 static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT], Scene *pscene){
 	openvdb::math::Transform::Ptr pgridtr = openvdb::math::Transform::createLinearTransform(s);
-	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
-		pgrid[i] = 0;
 
 	//Find if SceneInfo distance output was used anywhere in the node trees and automatically determine if a query field should be constructed.
 	bool qfield =
@@ -359,6 +358,14 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 		std::find_if(SceneData::SmokeCache::objs.begin(),SceneData::SmokeCache::objs.end(),S_FindSceneInfo) != SceneData::SmokeCache::objs.end();
 	if(qfield)
 		DebugPrintf("SceneInfo.distance in use, will construct a query field.\n");
+
+	pgrid[VOLUME_BUFFER_SDF] = openvdb::FloatGrid::create(s*bvc);
+	pgrid[VOLUME_BUFFER_SDF]->setTransform(pgridtr);
+	pgrid[VOLUME_BUFFER_SDF]->setGridClass(openvdb::GRID_LEVEL_SET);
+
+	pgrid[VOLUME_BUFFER_FOG] = openvdb::FloatGrid::create();
+	pgrid[VOLUME_BUFFER_FOG]->setTransform(pgridtr);
+	pgrid[VOLUME_BUFFER_FOG]->setGridClass(openvdb::GRID_FOG_VOLUME);
 
 	//Low-res query field
 	openvdb::math::Transform::Ptr pqsdftr = openvdb::math::Transform::createLinearTransform(qb/bvc);
@@ -369,14 +376,8 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 	float4 scaabbmin = float4(FLT_MAX);
 	float4 scaabbmax = -scaabbmin;
 
-	//store the resulting surfaces - node trees are shared among objects, so the data is lost after each evaluation
-	std::vector<dfloat3> vl;
-	std::vector<duint3> tl;
-	std::vector<duint4> ql;
-	uint vca = 0;
-
-	std::vector<BoundingBox> fogbvs;
-	std::vector<PostFogParams> fogppl; //input grids to be post-processed
+	std::vector<BoundingBox,tbb::cache_aligned_allocator<BoundingBox>> gridbvs[VOLUME_BUFFER_COUNT];
+	std::vector<PostFogParams,tbb::cache_aligned_allocator<PostFogParams>> fogppl; //input grids to be post-processed
 
 	for(uint i = 0; i < SceneData::Surface::objs.size(); ++i){
 		Node::InputNodeParams snp(SceneData::Surface::objs[i],pgridtr,0,0,0,0);
@@ -391,28 +392,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 				openvdb::tools::csgUnion(*pqsdf,*phgrid);
 			}
 
-			for(uint j = 0; j < pdsn->vl.size(); ++j){
-				float4 p = float4::load((dfloat3*)&pdsn->vl[j]);
-				scaabbmin = float4::min(p,scaabbmin);
-				scaabbmax = float4::max(p,scaabbmax);
-
-				vl.push_back(*(dfloat3*)pdsn->vl[j].asPointer());
-			}
-
-			for(uint j = 0; j < pdsn->tl.size(); ++j){
-				openvdb::Vec3I t = pdsn->tl[j]+openvdb::Vec3I(vca);
-				tl.push_back(*(duint3*)t.asPointer());
-			}
-			for(uint j = 0; j < pdsn->ql.size(); ++j){
-				openvdb::Vec4I q = pdsn->ql[j]+openvdb::Vec4I(vca);
-				ql.push_back(*(duint4*)q.asPointer());
-			}
-
-			vca += vl.size();
-
-			if(pgrid[VOLUME_BUFFER_SDF])
-			   openvdb::tools::csgUnion(*pgrid[VOLUME_BUFFER_SDF],*ptgrid);
-			else pgrid[VOLUME_BUFFER_SDF] = ptgrid;
+			openvdb::tools::csgUnion(*pgrid[VOLUME_BUFFER_SDF],*ptgrid);
 		}
 	}
 
@@ -433,10 +413,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 			if(SceneData::SmokeCache::objs[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST){
 				fogppl.push_back(PostFogParams(SceneData::SmokeCache::objs[i],pdfn->pdgrid->deepCopy()));
 				openvdb::tools::compMax(*ptfog,*pdfn->pdgrid);
-			}else
-			if(pgrid[VOLUME_BUFFER_FOG])
-				openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid); //compSum
-			else pgrid[VOLUME_BUFFER_FOG] = pdfn->pdgrid;
+			}else openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
 		}
 	}
 
@@ -449,10 +426,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 			if(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST){
 				fogppl.push_back(PostFogParams(SceneData::ParticleSystem::prss[i],pdfn->pdgrid->deepCopy()));
 				openvdb::tools::compMax(*ptfog,*pdfn->pdgrid);
-			}else
-			if(pgrid[VOLUME_BUFFER_FOG])
-				openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
-			else pgrid[VOLUME_BUFFER_FOG] = pdfn->pdgrid;
+			}else openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
 		}
 
 		Node::BaseVectorFieldNode1 *pvfn = dynamic_cast<Node::BaseVectorFieldNode1*>(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_VECTOR]);
@@ -462,16 +436,13 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 
 	//fog post-processor
 	if(fogppl.size() > 0){
-		openvdb::FloatGrid::Ptr pqfog;
-		if(pgrid[VOLUME_BUFFER_FOG]){
-			pqfog = pgrid[VOLUME_BUFFER_FOG]->deepCopy();
-			openvdb::tools::compMax(*pqfog,*ptfog);
-		}else pqfog = ptfog;
+		openvdb::FloatGrid::Ptr pqfog = pgrid[VOLUME_BUFFER_FOG]->deepCopy();
+		openvdb::tools::compMax(*pqfog,*ptfog);
 
 		FloatGridBoxSampler *pqsampler = new FloatGridBoxSampler(*pqsdf);
 		FloatGridBoxSampler *ppsampler = new FloatGridBoxSampler(*pqfog);
 		VectorGridBoxSampler *pvsampler = new VectorGridBoxSampler(*ptvel);
-		FloatGridBoxSampler *pdsampler = pgrid[VOLUME_BUFFER_SDF]?new FloatGridBoxSampler(*pgrid[VOLUME_BUFFER_SDF]):pqsampler;
+		FloatGridBoxSampler *pdsampler = new FloatGridBoxSampler(*pgrid[VOLUME_BUFFER_SDF]);
 
 		for(uint i = 0; i < fogppl.size(); ++i){
 			SceneData::PostFog fobj(std::get<PFP_OBJECT>(fogppl[i])->pnt,std::get<PFP_INPUTGRID>(fogppl[i]));
@@ -479,16 +450,13 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 			fobj.pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOGPOST);
 
 			Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(fobj.pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOGPOST]);
-			if(pgrid[VOLUME_BUFFER_FOG])
-				openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
-			else pgrid[VOLUME_BUFFER_FOG] = pdfn->pdgrid;
+			openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
 		}
 
 		delete pqsampler;
 		delete ppsampler;
 		delete pvsampler;
-		if(pgrid[VOLUME_BUFFER_SDF])
-			delete pdsampler;
+		delete pdsampler;
 	}
 
 	/*
@@ -511,8 +479,8 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 	aabb = EvaluateBounds(final);
 	*/
 
-	if(pgrid[VOLUME_BUFFER_FOG]){
-		for(openvdb::FloatGrid::TreeType::LeafCIter m = pgrid[VOLUME_BUFFER_FOG]->tree().cbeginLeaf(); m; ++m){
+	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i){
+		for(openvdb::FloatGrid::TreeType::LeafCIter m = pgrid[i]->tree().cbeginLeaf(); m; ++m){
 			const openvdb::FloatGrid::TreeType::LeafNodeType *pl = m.getLeaf();
 
 			openvdb::math::CoordBBox bbox;// = pl->getNodeBoundingBox();
@@ -529,7 +497,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 			aabb.sc = dfloat3(posw.x(),posw.y(),posw.z());
 			aabb.se = dfloat3(extw.x(),extw.y(),extw.z());
 
-			fogbvs.push_back(aabb);
+			gridbvs[i].push_back(aabb);
 
 			float4 c = float4::load(&aabb.sc);
 			float4 e = float4::load(&aabb.se);
@@ -567,68 +535,25 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 	pscene->ob.emplace_back();
 
 	std::atomic<uint> indexa(0);
-	std::atomic<uint> leafxa(0); //sdf
-	std::atomic<uint> leafxb(0); //fog
+	std::array<std::atomic<uint>,VOLUME_BUFFER_COUNT> leafxn = {};
 
 #if 0
-	tbb::parallel_for(tbb::blocked_range<size_t>(0,tl.size()),[&](const tbb::blocked_range<size_t> &nr){
-		for(uint i = nr.begin(); i < nr.end(); ++i){
-			float4 v0 = float4::load(&vl[tl[i].x]);
-			float4 v1 = float4::load(&vl[tl[i].y]);
-			float4 v2 = float4::load(&vl[tl[i].z]);
-			proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,&pscene->root,&pscene->ob,VOLUME_BUFFER_SDF);
-		}
-	});
-
-	tbb::parallel_for(tbb::blocked_range<size_t>(0,ql.size()),[&](const tbb::blocked_range<size_t> &nr){
-		for(uint i = nr.begin(); i < nr.end(); ++i){
-			float4 v0, v1, v2;
-
-			v0 = float4::load(&vl[ql[i].x]);
-			v1 = float4::load(&vl[ql[i].y]);
-			v2 = float4::load(&vl[ql[i].z]);
-			proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,&pscene->root,&pscene->ob,VOLUME_BUFFER_SDF);
-
-			v0 = float4::load(&vl[ql[i].z]);
-			v1 = float4::load(&vl[ql[i].w]);
-			v2 = float4::load(&vl[ql[i].x]);
-			proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,&pscene->root,&pscene->ob,VOLUME_BUFFER_SDF);
-		}
-	});
-
-	tbb::parallel_for(tbb::blocked_range<size_t>(0,fogbvs.size()),[&](const tbb::blocked_range<size_t> &nr){
-		for(uint i = nr.begin(); i < nr.end(); ++i){
-			float4 c1 = float4::load(&fogbvs[i].sc);
-			float4 e1 = float4::load(&fogbvs[i].se);
-			proot->BuildPath(c,a,c1,e1,0,mlevel,&indexa,&leafxb,&pscene->root,&pscene->ob,VOLUME_BUFFER_FOG);
-		}
-	});
+	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i){
+		tbb::parallel_for(tbb::blocked_range<size_t>(0,gridbvs[i].size()),[&](const tbb::blocked_range<size_t> &nr){
+			for(uint j = nr.begin(); j < nr.end(); ++j){
+				float4 c1 = float4::load(&gridbvs[i][j].sc);
+				float4 e1 = float4::load(&gridbvs[i][j].se);
+				proot->BuildPath(c,a,c1,e1,0,mlevel,&indexa,&leafxb,&pscene->root,&pscene->ob,VOLUME_BUFFER_FOG);
+			}
+		});
+	}
 #else
-	for(uint i = 0; i < tl.size(); ++i){
-		float4 v0 = float4::load(&vl[tl[i].x]);
-		float4 v1 = float4::load(&vl[tl[i].y]);
-		float4 v2 = float4::load(&vl[tl[i].z]);
-		proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,&pscene->root,&pscene->ob,VOLUME_BUFFER_SDF);
-	}
-
-	for(uint i = 0; i < ql.size(); ++i){
-		float4 v0, v1, v2;
-
-		v0 = float4::load(&vl[ql[i].x]);
-		v1 = float4::load(&vl[ql[i].y]);
-		v2 = float4::load(&vl[ql[i].z]);
-		proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,&pscene->root,&pscene->ob,VOLUME_BUFFER_SDF);
-
-		v0 = float4::load(&vl[ql[i].z]);
-		v1 = float4::load(&vl[ql[i].w]);
-		v2 = float4::load(&vl[ql[i].x]);
-		proot->BuildPath(c,a,v0,v1,v2,0,mlevel,&indexa,&leafxa,&pscene->root,&pscene->ob,VOLUME_BUFFER_SDF);
-	}
-
-	for(uint i = 0; i < fogbvs.size(); ++i){
-		float4 c1 = float4::load(&fogbvs[i].sc);
-		float4 e1 = float4::load(&fogbvs[i].se);
-		proot->BuildPath(c,a,c1,e1,0,mlevel,&indexa,&leafxb,&pscene->root,&pscene->ob,VOLUME_BUFFER_FOG);
+	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i){
+		for(uint j = 0, n = gridbvs[i].size(); j < n; ++j){
+			float4 c1 = float4::load(&gridbvs[i][j].sc);
+			float4 e1 = float4::load(&gridbvs[i][j].se);
+			proot->BuildPath(c,a,c1,e1,0,mlevel,&indexa,&leafxn[i],&pscene->root,&pscene->ob,(VOLUME_BUFFER)i);
+		}
 	}
 #endif
 
@@ -637,8 +562,8 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 
 	pscene->lvoxc = (uint)lvc;
 	pscene->index = indexa;
-	pscene->leafx[VOLUME_BUFFER_SDF] = leafxa;
-	pscene->leafx[VOLUME_BUFFER_FOG] = leafxb;
+	pscene->leafx[VOLUME_BUFFER_SDF] = leafxn[VOLUME_BUFFER_SDF];
+	pscene->leafx[VOLUME_BUFFER_FOG] = leafxn[VOLUME_BUFFER_FOG];
 }
 
 namespace SceneData{
@@ -725,7 +650,8 @@ void Scene::Initialize(float s, uint maxd, float qb, SCENE_CACHE_MODE cm){
 
 		vdbc.open(false);
 		pgrid[VOLUME_BUFFER_SDF] = openvdb::gridPtrCast<openvdb::FloatGrid>(vdbc.readGrid("surface-levelset"));
-		pgrid[VOLUME_BUFFER_FOG] = 0;
+		pgrid[VOLUME_BUFFER_FOG] = openvdb::FloatGrid::create(); //TODO: load from cache
+		pgrid[VOLUME_BUFFER_FOG]->setTransform(pgrid[VOLUME_BUFFER_SDF]->transformPtr());
 		vdbc.close();
 
 		{
@@ -752,8 +678,7 @@ void Scene::Initialize(float s, uint maxd, float qb, SCENE_CACHE_MODE cm){
 		}
 
 		S_Create(s,qb,lvc,bvc,maxd,pgrid,this);
-		if(pgrid[VOLUME_BUFFER_SDF])
-			pgrid[VOLUME_BUFFER_SDF]->setName("surface-levelset");
+		pgrid[VOLUME_BUFFER_SDF]->setName("surface-levelset");
 
 		if(cm == SCENE_CACHE_WRITE){
 			openvdb::GridCPtrVec gvec{pgrid[VOLUME_BUFFER_SDF]}; //include the fog grid also
@@ -775,13 +700,8 @@ void Scene::Initialize(float s, uint maxd, float qb, SCENE_CACHE_MODE cm){
 
 	lvoxc3 = lvoxc*lvoxc*lvoxc;
 	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i){
-		if(pgrid[i]){
-			pvol[i] = new float[lvoxc3*leafx[i]];
-			psampler[i] = new FloatGridBoxSampler(*pgrid[i]); //non-cached, thread safe version
-		}else{
-			pvol[i] = 0;
-			psampler[i] = 0;
-		}
+		psampler[i] = new FloatGridBoxSampler(*pgrid[i]); //non-cached, thread safe version
+		pvol[i] = new float[lvoxc3*leafx[i]];
 	}
 
 	const uint uN = lvoxc;//BLCLOUD_uN;
@@ -798,14 +718,12 @@ void Scene::Initialize(float s, uint maxd, float qb, SCENE_CACHE_MODE cm){
 			if(ob[i].volx[VOLUME_BUFFER_SDF] == ~0u){
 				if(ob[i].volx[VOLUME_BUFFER_FOG] == ~0u)
 					continue; //not a leaf; exit early
-				if(psampler[VOLUME_BUFFER_SDF]){
-					float d = psampler[VOLUME_BUFFER_SDF]->wsSample(*(openvdb::Vec3f*)&ob[i].ce);
-					if(d < 0.0f){
-						//If the fog leaf is completely inside the sdf surface (no overlapping sdf leaf -> volx == ~0u),
-						//remove it. It's useless there, and removing it simplifies the space skipping algorithm.
-						ob[i].volx[VOLUME_BUFFER_FOG] = ~0u;
-						continue;
-					}
+				float d = psampler[VOLUME_BUFFER_SDF]->wsSample(*(openvdb::Vec3f*)&ob[i].ce);
+				if(d < 0.0f){
+					//If the fog leaf is completely inside the sdf surface (no overlapping sdf leaf -> volx == ~0u),
+					//remove it. It's useless there, and removing it simplifies the space skipping algorithm.
+					ob[i].volx[VOLUME_BUFFER_FOG] = ~0u;
+					continue;
 				}
 			}
 			//
@@ -834,8 +752,7 @@ void Scene::Initialize(float s, uint maxd, float qb, SCENE_CACHE_MODE cm){
 	});
 
 	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
-		if(psampler[i])
-			delete psampler[i];
+		delete psampler[i];
 
 	uint sdfs = leafx[VOLUME_BUFFER_SDF]*lvoxc3*sizeof(float);
 	uint fogs = leafx[VOLUME_BUFFER_FOG]*lvoxc3*sizeof(float);
@@ -845,7 +762,6 @@ void Scene::Initialize(float s, uint maxd, float qb, SCENE_CACHE_MODE cm){
 
 void Scene::Destroy(){
 	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
-		if(pvol[i])
-			delete []pvol[i];
+		delete []pvol[i];
 	ob.clear();
 }
