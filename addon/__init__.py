@@ -12,7 +12,7 @@ from bl_ui import properties_render
 import nodeitems_utils
 from bpy.props import PointerProperty
 
-from bl_ui import properties_particle,properties_physics_common,properties_physics_field,properties_physics_smoke
+from bl_ui import properties_data_mesh,properties_particle,properties_physics_common,properties_physics_field,properties_physics_smoke
 
 import libdroplet #libblcloud #pyd/so filename
 import numpy as np
@@ -143,12 +143,23 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 
 def register():
 	bpy.utils.register_module(__name__);
+	properties_data_mesh.DATA_PT_context_mesh.COMPAT_ENGINES.add(config.dre_engineid);
+	properties_data_mesh.DATA_PT_texture_space.COMPAT_ENGINES.add(config.dre_engineid);
+	properties_data_mesh.DATA_PT_vertex_groups.COMPAT_ENGINES.add(config.dre_engineid);
+	properties_data_mesh.DATA_PT_shape_keys.COMPAT_ENGINES.add(config.dre_engineid);
+	properties_data_mesh.DATA_PT_uv_texture.COMPAT_ENGINES.add(config.dre_engineid);
+	properties_data_mesh.DATA_PT_vertex_colors.COMPAT_ENGINES.add(config.dre_engineid);
+	properties_data_mesh.DATA_PT_customdata.COMPAT_ENGINES.add(config.dre_engineid);
+
 	properties_particle.PARTICLE_PT_context_particles.COMPAT_ENGINES.add(config.dre_engineid);
 	properties_particle.PARTICLE_PT_emission.COMPAT_ENGINES.add(config.dre_engineid);
 	properties_particle.PARTICLE_PT_draw.COMPAT_ENGINES.add(config.dre_engineid);
 	properties_particle.PARTICLE_PT_velocity.COMPAT_ENGINES.add(config.dre_engineid);
 	properties_particle.PARTICLE_PT_physics.COMPAT_ENGINES.add(config.dre_engineid);
 	properties_particle.PARTICLE_PT_field_weights.COMPAT_ENGINES.add(config.dre_engineid);
+	properties_particle.PARTICLE_PT_force_fields.COMPAT_ENGINES.add(config.dre_engineid);
+	properties_particle.PARTICLE_PT_vertexgroups.COMPAT_ENGINES.add(config.dre_engineid);
+	properties_particle.PARTICLE_PT_custom_props.COMPAT_ENGINES.add(config.dre_engineid);
 
 	properties_physics_common.PHYSICS_PT_add.COMPAT_ENGINES.add(config.dre_engineid);
 
