@@ -100,6 +100,10 @@ void ScalarMath::Evaluate(const void *pp){
 	case 'p': r = powf(a,b); break;
 	case '0': r = floorf(a); break;
 	case '1': r = ceilf(a); break;
+	case 'e': r = expf(a); break;
+	case 's': r = sinf(a); break;
+	case 'c': r = cosf(a); break;
+	case 't': r = tanf(a); break;
 	default:
 		r = 0.0f;
 	}
@@ -141,10 +145,29 @@ void VectorMath::Evaluate(const void *pp){
 	case '*': r = a*b; break;
 	case '/': r = a/b; break;
 	case 'X': r = float4::cross(a,b); break;
+	case 'n': r = float4::normalize3(a); break;
 	default:
 		r = float4::zero();
 	}
 	this->result.local().value[0] = dfloat3(r);
+}
+
+VectorMix::VectorMix(uint level, NodeTree *pnt) : BaseValueNode<dfloat3>(level,pnt), BaseNode(level,pnt){
+	//
+}
+
+VectorMix::~VectorMix(){
+	//
+}
+
+void VectorMix::Evaluate(const void *pp){
+	dfloat3 sa = dynamic_cast<BaseValueNode<dfloat3>*>(this->pnodes[0])->BaseValueNode<dfloat3>::result.local().value[this->indices[0]];
+	dfloat3 sb = dynamic_cast<BaseValueNode<dfloat3>*>(this->pnodes[1])->BaseValueNode<dfloat3>::result.local().value[this->indices[1]];
+	float4 a = float4::load(&sa);
+	float4 b = float4::load(&sb);
+	float t = dynamic_cast<BaseValueNode<float>*>(this->pnodes[2])->BaseValueNode<float>::result.local().value[this->indices[2]];
+	//
+	this->result.local().value[0] = dfloat3((1.0f-t)*a+t*b);
 }
 
 IFbmNoise::IFbmNoise(uint _level, NodeTree *pnt) : BaseValueNode<float>(_level,pnt), BaseValueNode<dfloat3>(_level,pnt), BaseNode(_level,pnt){
@@ -416,6 +439,8 @@ BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, No
 
 		return new VectorMath(level,pnt,opch);
 
+	}else if(strcmp(pname,"ClNodeVectorMix") == 0){
+		return new VectorMix(level,pnt);
 	}else if(strcmp(pname,"ClNodeFbmNoise") == 0){
 		return IFbmNoise::Create(level,pnt);
 

@@ -124,9 +124,6 @@ public:
 	dfloat3 SampleGlobalVector(const dfloat3 &) const;
 	//global
 	const InputNodeParams *pnodeparams;
-	/*const FloatGridBoxSampler *psampler[VOLUME_BUFFER_COUNT];
-	const FloatGridBoxSampler *pqsampler;
-	const VectorGridBoxSampler *pvsampler;*/
 	//local
 	const dfloat3 *pvoxw;
 	const dfloat3 *pcptw;

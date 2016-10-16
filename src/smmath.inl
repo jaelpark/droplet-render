@@ -526,6 +526,10 @@ public:
 #endif
 	}
 
+	static inline float4 normalize3(const float4 &s){
+		return s/dot3(s,s);
+	}
+
 	static inline float4 cross(const float4 &a, const float4 &b){
 		float4 r;
 		__m128 t1 = FL_PERMUTE(a.v,_MM_SHUFFLE(3,0,2,1));

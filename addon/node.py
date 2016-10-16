@@ -211,10 +211,11 @@ class ClNodeScalarMath(bpy.types.Node):
 		("q","Sqrt",""),
 		("p","Power",""),
 		("0","Floor",""),
-		("1","Ceil","")));
-		# ("s","Sin",""),
-		# ("c","Cos",""),
-		# ("t","Tan",""),
+		("1","Ceil",""),
+		("e","Exp",""),
+		("s","Sin",""),
+		("c","Cos",""),
+		("t","Tan","")));
 		# ("S","arcsin",""),
 		# ("C","arccos",""),
 		# ("T","arctan","")));
@@ -246,7 +247,8 @@ class ClNodeVectorMath(bpy.types.Node):
 		("-","Subtract",""),
 		("*","Multiply",""),
 		("/","Divide",""),
-		("X","Cross","")));
+		("X","Cross",""),
+		("n","Normalize","")));
 
 	def init(self, context):
 		self.inputs.new("ClNodeVectorSocket","a");
@@ -255,6 +257,16 @@ class ClNodeVectorMath(bpy.types.Node):
 
 	def draw_buttons(self, context, layout):
 		layout.prop(self,"op");
+
+class ClNodeVectorMix(bpy.types.Node):
+	bl_idname = "ClNodeVectorMix";
+	bl_label = "Vector Mix";
+
+	def init(self, context):
+		self.inputs.new("ClNodeVectorSocket","a");
+		self.inputs.new("ClNodeVectorSocket","b");
+		self.inputs.new("ClNodeFloatSocket","t");
+		self.outputs.new("ClNodeVectorSocket","Out");
 
 class ClNodeFbmNoise(bpy.types.Node):
 	bl_idname = "ClNodeFbmNoise";
@@ -356,6 +368,7 @@ categories = [
 	ClNodeCategory("MATH_CATEGORY","Math",items = [
 		NodeItem("ClNodeScalarMath"),
 		NodeItem("ClNodeVectorMath"),
+		NodeItem("ClNodeVectorMix"),
 	]),
 	ClNodeCategory("NOISE_CATEGORY","Noise",items = [
 		NodeItem("ClNodeFbmNoise"),

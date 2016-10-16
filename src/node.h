@@ -87,6 +87,13 @@ public:
 	char opch;
 };
 
+class VectorMix : public BaseValueNode<dfloat3>{
+public:
+	VectorMix(uint, NodeTree *);
+	~VectorMix();
+	void Evaluate(const void *);
+};
+
 class IFbmNoise : public virtual BaseValueNode<float>, public virtual BaseValueNode<dfloat3>{
 protected:
 	IFbmNoise(uint, NodeTree *);
