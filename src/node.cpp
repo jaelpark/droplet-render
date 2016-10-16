@@ -236,7 +236,7 @@ void AdvectionInfo::Evaluate(const void *pp){
 	rv.value[OUTPUT_VECTOR_VOXPOSW] = *pd->GetVoxPosWAdv();
 
 	BaseValueResult<float> &rs = this->BaseValueNode<float>::result.local();
-	rs.value[OUTPUT_FLOAT_ADVDISTANCE] = 0.0f;
+	rs.value[OUTPUT_FLOAT_ADVDISTANCE] = pd->GetAdvectionDistance();
 }
 
 SceneInfo::SceneInfo(uint _level, NodeTree *pnt) : BaseValueNode<float>(_level,pnt), BaseValueNode<dfloat3>(_level,pnt), BaseNode(_level,pnt){

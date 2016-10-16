@@ -12,6 +12,7 @@ public:
 	virtual float GetLocalDistance() const = 0;
 	virtual float GetLocalDensity() const = 0;
 	virtual const dfloat3 * GetVoxPosWAdv() const = 0;
+	virtual float GetAdvectionDistance() const = 0;
 	virtual float SampleGlobalDistance(const dfloat3 &, bool) const = 0;
 	virtual float SampleGlobalDensity(const dfloat3 &) const = 0;
 	virtual dfloat3 SampleGlobalVector(const dfloat3 &) const = 0;
