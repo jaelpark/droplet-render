@@ -11,6 +11,7 @@ public:
 	virtual const dfloat3 * GetCptPosW() const = 0;
 	virtual float GetLocalDistance() const = 0;
 	virtual float GetLocalDensity() const = 0;
+	virtual const dfloat3 * GetVoxPosWAdv() const = 0;
 	virtual float SampleGlobalDistance(const dfloat3 &, bool) const = 0;
 	virtual float SampleGlobalDensity(const dfloat3 &) const = 0;
 	virtual dfloat3 SampleGlobalVector(const dfloat3 &) const = 0;
@@ -155,6 +156,21 @@ public:
 	enum OUTPUT_FLOAT{
 		OUTPUT_FLOAT_DISTANCE,
 		OUTPUT_FLOAT_DENSITY,
+		OUTPUT_FLOAT_COUNT
+	};
+};
+
+class AdvectionInfo : public BaseValueNode<float>, public BaseValueNode<dfloat3>{
+public:
+	AdvectionInfo(uint, NodeTree *);
+	~AdvectionInfo();
+	void Evaluate(const void *);
+	enum OUTPUT_VECTOR{
+		OUTPUT_VECTOR_VOXPOSW,
+		OUTPUT_VECTOR_COUNT
+	};
+	enum OUTPUT_FLOAT{
+		OUTPUT_FLOAT_ADVDISTANCE,
 		OUTPUT_FLOAT_COUNT
 	};
 };

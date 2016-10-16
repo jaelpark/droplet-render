@@ -104,9 +104,7 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 			tilew1 += int(min(tile1[0],0));
 			tileh1 += int(min(tile1[1],0));
 
-			tile1 = ((
-				int(max(tile1[0],0)),
-				int(max(tile1[1],0))));
+			tile1 = ((int(max(tile1[0],0)),int(max(tile1[1],0))));
 
 			result = self.begin_result(tile1[0],tile1[1],tilew1,tileh1);
 			rr = np.zeros((tilew1*tileh1,4));

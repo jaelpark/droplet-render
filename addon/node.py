@@ -128,6 +128,14 @@ class ClNodeVoxelInfo(bpy.types.Node):
 		self.outputs.new("ClNodeFloatSocket","Distance");
 		self.outputs.new("ClNodeFloatSocket","Density");
 
+class ClNodeAdvectionInfo(bpy.types.Node):
+	bl_idname = "ClNodeAdvectionInfo";
+	bl_label = "Advection Info";
+
+	def init(self, context):
+		self.outputs.new("ClNodeVectorSocket","Vox.world");
+		self.outputs.new("ClNodeFloatSocket","Advection.%");
+
 class ClNodeSceneInfo(bpy.types.Node):
 	bl_idname = "ClNodeSceneInfo";
 	bl_label = "Scene Info";
@@ -339,6 +347,7 @@ categories = [
 		NodeItem("ClNodeFloatInput"),
 		NodeItem("ClNodeVectorInput"),
 		NodeItem("ClNodeVoxelInfo"),
+		NodeItem("ClNodeAdvectionInfo"),
 		NodeItem("ClNodeSceneInfo"),
 	]),
 	ClNodeCategory("OUTPUT_CATEGORY","Output",items = [

@@ -16,8 +16,8 @@
 
 namespace Node{
 
-ValueNodeParams::ValueNodeParams(const dfloat3 *_pvoxw, const dfloat3 *_pcptw, float _s, float _p, const FloatGridBoxSampler *_psampler[VOLUME_BUFFER_COUNT], const FloatGridBoxSampler *_pqsampler, const VectorGridBoxSampler *_pvsampler)
-	: pvoxw(_pvoxw), pcptw(_pcptw), distance(_s), density(_p){
+ValueNodeParams::ValueNodeParams(const dfloat3 *_pvoxw, const dfloat3 *_pcptw, float _s, float _p, const dfloat3 *_pvoxwa, const FloatGridBoxSampler *_psampler[VOLUME_BUFFER_COUNT], const FloatGridBoxSampler *_pqsampler, const VectorGridBoxSampler *_pvsampler)
+	: pvoxw(_pvoxw), pcptw(_pcptw), distance(_s), density(_p), pvoxwa(_pvoxwa){
 	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
 		psampler[i] = _psampler[i];
 	pqsampler = _pqsampler;
@@ -42,6 +42,10 @@ float ValueNodeParams::GetLocalDistance() const{
 
 float ValueNodeParams::GetLocalDensity() const{
 	return density;
+}
+
+const dfloat3 * ValueNodeParams::GetVoxPosWAdv() const{
+	return pvoxwa;
 }
 
 float ValueNodeParams::SampleGlobalDistance(const dfloat3 &p, bool q) const{
