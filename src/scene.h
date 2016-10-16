@@ -111,7 +111,7 @@ enum INP{
 
 class ValueNodeParams : public IValueNodeParams{
 public:
-	ValueNodeParams(const dfloat3 *, const dfloat3 *, float, float, const dfloat3 *, const FloatGridBoxSampler *[VOLUME_BUFFER_COUNT], const FloatGridBoxSampler *, const VectorGridBoxSampler *);
+	ValueNodeParams(const dfloat3 *, const dfloat3 *, float, float, const dfloat3 *, const InputNodeParams *);
 	~ValueNodeParams();
 	const dfloat3 * GetVoxPosW() const;
 	const dfloat3 * GetCptPosW() const;
@@ -122,9 +122,10 @@ public:
 	float SampleGlobalDensity(const dfloat3 &) const;
 	dfloat3 SampleGlobalVector(const dfloat3 &) const;
 	//global
-	const FloatGridBoxSampler *psampler[VOLUME_BUFFER_COUNT];
+	const InputNodeParams *pnodeparams;
+	/*const FloatGridBoxSampler *psampler[VOLUME_BUFFER_COUNT];
 	const FloatGridBoxSampler *pqsampler;
-	const VectorGridBoxSampler *pvsampler;
+	const VectorGridBoxSampler *pvsampler;*/
 	//local
 	const dfloat3 *pvoxw;
 	const dfloat3 *pcptw;

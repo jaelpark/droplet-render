@@ -100,8 +100,7 @@ void ParticleInput::Evaluate(const void *pp){
 	BaseValueNode<float> *pcoffn = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_CUTOFF]);
 
 	dfloat3 zr(0.0f);
-	const FloatGridBoxSampler *psamplers[] = {std::get<INP_SDFSAMPLER>(*pd),std::get<INP_FOGSAMPLER>(*pd)};
-	ValueNodeParams np(&zr,&zr,0.0f,0.0f,&zr,psamplers,std::get<INP_QGRSAMPLER>(*pd),std::get<INP_VELSAMPLER>(*pd));
+	ValueNodeParams np(&zr,&zr,0.0f,0.0f,&zr,pd);
 	pntree->EvaluateNodes0(&np,level+1,emask);
 
 	float size = psizen->locr(indices[INPUT_SIZE]); //TODO: these should be static. Remove EvaluateNodes0 above.
@@ -159,8 +158,7 @@ void FieldInput::Evaluate(const void *pp){
 	BaseValueNode<float> *pweight = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_WEIGHT]);
 
 	dfloat3 zr(0.0f);
-	const FloatGridBoxSampler *psamplers[] = {std::get<INP_SDFSAMPLER>(*pd),std::get<INP_FOGSAMPLER>(*pd)};
-	ValueNodeParams np(&zr,&zr,0.0f,0.0f,&zr,psamplers,std::get<INP_QGRSAMPLER>(*pd),std::get<INP_VELSAMPLER>(*pd));
+	ValueNodeParams np(&zr,&zr,0.0f,0.0f,&zr,pd);
 	pntree->EvaluateNodes0(&np,level+1,emask);
 
 	openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
@@ -197,8 +195,7 @@ void FieldInput::Evaluate(const void *pp){
 		openvdb::Vec3f b = c-f;
 		openvdb::Vec3f B = openvdb::Vec3f(1.0f)-b;
 
-		ValueNodeParams np1((dfloat3*)posw.asPointer(),&zr,0.0f,0.0f,(dfloat3*)posw.asPointer(),
-			psamplers,std::get<INP_QGRSAMPLER>(*pd),std::get<INP_VELSAMPLER>(*pd));
+		ValueNodeParams np1((dfloat3*)posw.asPointer(),&zr,0.0f,0.0f,(dfloat3*)posw.asPointer(),pd);
 		pntree->EvaluateNodes0(&np1,level+1,emask);
 
 		openvdb::Coord q((int)f.x(),(int)f.y(),(int)f.z());
@@ -357,8 +354,7 @@ void Composite::Evaluate(const void *pp){
 			openvdb::Coord c = m.getCoord();
 			openvdb::math::Vec3s posw = pnode->pdgrid->transform().indexToWorld(c); //should use the same pgridtr as here
 
-			ValueNodeParams np1((dfloat3*)posw.asPointer(),&zr,0.0f,m.getValue(),(dfloat3*)posw.asPointer(),
-				psamplers,std::get<INP_QGRSAMPLER>(*pd),std::get<INP_VELSAMPLER>(*pd));
+			ValueNodeParams np1((dfloat3*)posw.asPointer(),&zr,0.0f,m.getValue(),(dfloat3*)posw.asPointer(),pd);
 			pntree->EvaluateNodes0(&np1,level+1,emask);
 
 			float f = pvalue->locr(indices[IComposite::INPUT_VALUE]);
@@ -393,7 +389,7 @@ void Advection::Evaluate(const void *pp){
 	BaseFogNode1 *pnode = dynamic_cast<BaseFogNode1*>(pnodes[INPUT_FOG]);
 
 	dfloat3 zr(0.0f);
-	const FloatGridBoxSampler *psamplers[] = {std::get<INP_SDFSAMPLER>(*pd),std::get<INP_FOGSAMPLER>(*pd)};
+	//const FloatGridBoxSampler *psamplers[] = {std::get<INP_SDFSAMPLER>(*pd),std::get<INP_FOGSAMPLER>(*pd)};
 	//ValueNodeParams np(&zr,&zr,0.0f,0.0f,psamplers);
 	//pntree->EvaluateNodes0(&np,level+1,emask);
 
@@ -420,8 +416,7 @@ void Advection::Evaluate(const void *pp){
 			float f = m.getValue();
 			float4 rc = float4::load(posw.asPointer());
 
-			ValueNodeParams np1((dfloat3*)posw.asPointer(),(dfloat3*)posw.asPointer(),0.0f,f,(dfloat3*)posw.asPointer(),psamplers,
-				std::get<INP_QGRSAMPLER>(*pd),std::get<INP_VELSAMPLER>(*pd));
+			ValueNodeParams np1((dfloat3*)posw.asPointer(),(dfloat3*)posw.asPointer(),0.0f,f,(dfloat3*)posw.asPointer(),pd);
 			pntree->EvaluateNodes0(&np1,level+1,emask);
 
 			float th = pthrs->locr(indices[INPUT_THRESHOLD]);
@@ -446,8 +441,7 @@ void Advection::Evaluate(const void *pp){
 				//TODO: advection data to info node (current iteration, distance etc)?
 				openvdb::math::Vec3s poswa;
 				float4::store((dfloat3*)poswa.asPointer(),rc);
-				new(&np1) ValueNodeParams((dfloat3*)posw.asPointer(),&zr,0.0f,f,(dfloat3*)poswa.asPointer(),psamplers,
-					std::get<INP_QGRSAMPLER>(*pd),std::get<INP_VELSAMPLER>(*pd));
+				new(&np1) ValueNodeParams((dfloat3*)posw.asPointer(),&zr,0.0f,f,(dfloat3*)poswa.asPointer(),pd);
 				pntree->EvaluateNodes0(&np1,level+1,emask);
 			}
 

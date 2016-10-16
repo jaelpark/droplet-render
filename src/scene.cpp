@@ -16,12 +16,9 @@
 
 namespace Node{
 
-ValueNodeParams::ValueNodeParams(const dfloat3 *_pvoxw, const dfloat3 *_pcptw, float _s, float _p, const dfloat3 *_pvoxwa, const FloatGridBoxSampler *_psampler[VOLUME_BUFFER_COUNT], const FloatGridBoxSampler *_pqsampler, const VectorGridBoxSampler *_pvsampler)
-	: pvoxw(_pvoxw), pcptw(_pcptw), distance(_s), density(_p), pvoxwa(_pvoxwa){
-	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
-		psampler[i] = _psampler[i];
-	pqsampler = _pqsampler;
-	pvsampler = _pvsampler;
+ValueNodeParams::ValueNodeParams(const dfloat3 *_pvoxw, const dfloat3 *_pcptw, float _s, float _p, const dfloat3 *_pvoxwa, const InputNodeParams *pnp)
+	: pvoxw(_pvoxw), pcptw(_pcptw), distance(_s), density(_p), pvoxwa(_pvoxwa), pnodeparams(pnp){
+	//
 }
 
 ValueNodeParams::~ValueNodeParams(){
@@ -49,15 +46,17 @@ const dfloat3 * ValueNodeParams::GetVoxPosWAdv() const{
 }
 
 float ValueNodeParams::SampleGlobalDistance(const dfloat3 &p, bool q) const{
-	const FloatGridBoxSampler *ptsampler = q?pqsampler:psampler[VOLUME_BUFFER_SDF];
+	const FloatGridBoxSampler *ptsampler = q?std::get<INP_QGRSAMPLER>(*pnodeparams):std::get<INP_SDFSAMPLER>(*pnodeparams);
 	return ptsampler?ptsampler->wsSample(*(openvdb::Vec3f*)&p):FLT_MAX;
 }
 
 float ValueNodeParams::SampleGlobalDensity(const dfloat3 &p) const{
-	return psampler[VOLUME_BUFFER_FOG]?psampler[VOLUME_BUFFER_FOG]->wsSample(*(openvdb::Vec3f*)&p):0.0f;
+	const FloatGridBoxSampler *pfsampler = std::get<INP_FOGSAMPLER>(*pnodeparams);
+	return pfsampler?pfsampler->wsSample(*(openvdb::Vec3f*)&p):0.0f;
 }
 
 dfloat3 ValueNodeParams::SampleGlobalVector(const dfloat3 &p) const{
+	const VectorGridBoxSampler *pvsampler = std::get<INP_VELSAMPLER>(*pnodeparams);
 	return pvsampler?*((dfloat3*)pvsampler->wsSample(*(openvdb::Vec3f*)&p).asPointer()):dfloat3(0.0f);
 }
 
