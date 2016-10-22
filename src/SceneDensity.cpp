@@ -417,8 +417,10 @@ void Advection::Evaluate(const void *pp){
 			pntree->EvaluateNodes0(&np1,level+1,emask);
 
 			float th = pthrs->locr(indices[INPUT_THRESHOLD]);
-			if(f > th)
+			if(f > th){
+				std::get<1>(fgt).setValue(c,f);
 				continue;
+			}
 
 			float s = pdist->locr(indices[INPUT_DISTANCE])/(float)piters->locr(indices[INPUT_ITERATIONS]); //step size
 			float p; //density
@@ -442,7 +444,7 @@ void Advection::Evaluate(const void *pp){
 				pntree->EvaluateNodes0(&np1,level+1,emask);
 			}
 
-			std::get<1>(fgt).setValue(c,p);
+			std::get<1>(fgt).setValue(c,f+p);
 		}
 	});
 
