@@ -13,6 +13,7 @@ public:
 	virtual float GetLocalDensity() const = 0;
 	virtual const dfloat3 * GetVoxPosWAdv() const = 0;
 	virtual float GetAdvectionDistance() const = 0;
+	virtual float GetAdvectionDensity() const = 0;
 	virtual float SampleGlobalDistance(const dfloat3 &, bool) const = 0;
 	virtual float SampleGlobalDensity(const dfloat3 &) const = 0;
 	virtual dfloat3 SampleGlobalVector(const dfloat3 &) const = 0;
@@ -179,6 +180,7 @@ public:
 	};
 	enum OUTPUT_FLOAT{
 		OUTPUT_FLOAT_ADVDISTANCE,
+		OUTPUT_FLOAT_DENSITY,
 		OUTPUT_FLOAT_COUNT
 	};
 };

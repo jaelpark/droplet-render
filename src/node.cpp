@@ -260,6 +260,7 @@ void AdvectionInfo::Evaluate(const void *pp){
 
 	BaseValueResult<float> &rs = this->BaseValueNode<float>::result.local();
 	rs.value[OUTPUT_FLOAT_ADVDISTANCE] = pd->GetAdvectionDistance();
+	rs.value[OUTPUT_FLOAT_DENSITY] = pd->GetAdvectionDensity();
 }
 
 SceneInfo::SceneInfo(uint _level, NodeTree *pnt) : BaseValueNode<float>(_level,pnt), BaseValueNode<dfloat3>(_level,pnt), BaseNode(_level,pnt){

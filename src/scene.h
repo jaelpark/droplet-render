@@ -111,13 +111,14 @@ enum INP{
 
 class ValueNodeParams : public IValueNodeParams{
 public:
-	ValueNodeParams(const dfloat3 *, const dfloat3 *, float, float, const dfloat3 *, float, const InputNodeParams *);
+	ValueNodeParams(const dfloat3 *, const dfloat3 *, float, float, const dfloat3 *, float, float, const InputNodeParams *);
 	~ValueNodeParams();
 	const dfloat3 * GetVoxPosW() const;
 	const dfloat3 * GetCptPosW() const;
 	float GetLocalDistance() const;
 	float GetLocalDensity() const;
 	const dfloat3 * GetVoxPosWAdv() const;
+	float GetAdvectionDensity() const;
 	float GetAdvectionDistance() const;
 	float SampleGlobalDistance(const dfloat3 &, bool) const;
 	float SampleGlobalDensity(const dfloat3 &) const;
@@ -132,6 +133,7 @@ public:
 	//advection
 	const dfloat3 *pvoxwa;
 	float advdist;
+	float advdensity;
 };
 
 }

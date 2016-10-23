@@ -135,6 +135,7 @@ class ClNodeAdvectionInfo(bpy.types.Node):
 	def init(self, context):
 		self.outputs.new("ClNodeVectorSocket","Vox.world");
 		self.outputs.new("ClNodeFloatSocket","Advection.%");
+		self.outputs.new("ClNodeFloatSocket","Density");
 
 class ClNodeSceneInfo(bpy.types.Node):
 	bl_idname = "ClNodeSceneInfo";

@@ -16,7 +16,7 @@
 
 namespace Node{
 
-ValueNodeParams::ValueNodeParams(const dfloat3 *_pvoxw, const dfloat3 *_pcptw, float _s, float _p, const dfloat3 *_pvoxwa, float _advdist, const InputNodeParams *pnp) : pvoxw(_pvoxw), pcptw(_pcptw), distance(_s), density(_p), pvoxwa(_pvoxwa), advdist(_advdist), pnodeparams(pnp){
+ValueNodeParams::ValueNodeParams(const dfloat3 *_pvoxw, const dfloat3 *_pcptw, float _s, float _p, const dfloat3 *_pvoxwa, float _advdensity, float _advdist, const InputNodeParams *pnp) : pvoxw(_pvoxw), pcptw(_pcptw), distance(_s), density(_p), pvoxwa(_pvoxwa), advdensity(_advdensity), advdist(_advdist), pnodeparams(pnp){
 	//
 }
 
@@ -46,6 +46,10 @@ const dfloat3 * ValueNodeParams::GetVoxPosWAdv() const{
 
 float ValueNodeParams::GetAdvectionDistance() const{
 	return advdist;
+}
+
+float ValueNodeParams::GetAdvectionDensity() const{
+	return advdensity;
 }
 
 float ValueNodeParams::SampleGlobalDistance(const dfloat3 &p, bool q) const{

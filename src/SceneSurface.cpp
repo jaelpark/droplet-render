@@ -90,7 +90,7 @@ void Displacement::Evaluate(const void *pp){
 	BaseSurfaceNode1 *pnode = dynamic_cast<BaseSurfaceNode1*>(pnodes[INPUT_SURFACE]);
 
 	dfloat3 zr(0.0f);
-	ValueNodeParams np(&zr,&zr,0.0f,0.0f,&zr,0.0f,pd);
+	ValueNodeParams np(&zr,&zr,0.0f,0.0f,&zr,0.0,0.0f,pd);
 	pntree->EvaluateNodes0(&np,level+1,emask);
 	float amp = pmaxn->locr(indices[INPUT_MAXIMUM]);
 
@@ -123,7 +123,7 @@ void Displacement::Evaluate(const void *pp){
 			openvdb::Vec3s posw = pgridtr->indexToWorld(c.asVec3d());
 			openvdb::Vec3s cptw = cptr.result(*pgridtr->map<openvdb::math::UniformScaleMap>(),std::get<2>(fgt),c);
 
-			ValueNodeParams np1((dfloat3*)posw.asPointer(),(dfloat3*)cptw.asPointer(),m.getValue(),0.0f,(dfloat3*)posw.asPointer(),0.0f,pd);
+			ValueNodeParams np1((dfloat3*)posw.asPointer(),(dfloat3*)cptw.asPointer(),m.getValue(),0.0f,(dfloat3*)posw.asPointer(),0.0f,0.0f,pd);
 			pntree->EvaluateNodes0(&np1,level+1,emask);
 
 			float f = fabs(pnoisen->locr(indices[INPUT_DISTANCE]));
