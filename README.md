@@ -32,7 +32,7 @@ Only Linux operating systems on x86_64 are currently supported. It should be pos
     $ cd build-release
     ```
 
-3. Droplet uses Cmake to configure itself. By default a release version with SSE3 support will be built. SSE4.2 can be enabled by passing an additional definition:
+3. Droplet uses Cmake to configure itself. By default a release version with SSE3 support will be built. AVX2 or SSE4.2 can be enabled by passing an additional definition. For SSE4.2, for example:
 
     ```sh
     $ cmake -DUSE_SSE4=ON ..

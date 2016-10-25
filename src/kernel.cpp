@@ -420,9 +420,12 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 					break;
 				sc = s0+sr;
 
-				rc.v[0] = sfloat1::Or(sfloat1::And(sm,lo.v[0]+rd.v[0]*sc),sfloat1::AndNot(sm,rc.v[0]));
+				/*rc.v[0] = sfloat1::Or(sfloat1::And(sm,lo.v[0]+rd.v[0]*sc),sfloat1::AndNot(sm,rc.v[0]));
 				rc.v[1] = sfloat1::Or(sfloat1::And(sm,lo.v[1]+rd.v[1]*sc),sfloat1::AndNot(sm,rc.v[1]));
-				rc.v[2] = sfloat1::Or(sfloat1::And(sm,lo.v[2]+rd.v[2]*sc),sfloat1::AndNot(sm,rc.v[2]));
+				rc.v[2] = sfloat1::Or(sfloat1::And(sm,lo.v[2]+rd.v[2]*sc),sfloat1::AndNot(sm,rc.v[2]));*/
+				rc.v[0] = sfloat1::Or(sfloat1::And(sm,rd.v[0].madd(sc,lo.v[0])),sfloat1::AndNot(sm,rc.v[0]));
+				rc.v[1] = sfloat1::Or(sfloat1::And(sm,rd.v[1].madd(sc,lo.v[1])),sfloat1::AndNot(sm,rc.v[1]));
+				rc.v[2] = sfloat1::Or(sfloat1::And(sm,rd.v[2].madd(sc,lo.v[2])),sfloat1::AndNot(sm,rc.v[2]));
 
 				sm = sfloat1::And(sm,sfloat1::Less(sc,tr1)); //check if out of extents
 				sh = sfloat1::Or(sm,sfloat1::AndNot(rm,sint1::trueI())); //prevent modifications if rm == false

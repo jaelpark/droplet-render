@@ -5,8 +5,13 @@
 #define BLCLOUD_VX 2
 #define BLCLOUD_VY 2
 
+#ifdef USE_AVX2
+#define FL_PERMUTE(v,c) _mm_permute_ps(v,c)
+#define IL_PERMUTE(v,c) _mm_castps_si128(_mm_permute_ps(_mm_castsi128_ps(v),c))
+#else
 #define FL_PERMUTE(v,c) _mm_shuffle_ps(v,v,c)
 #define IL_PERMUTE(v,c) _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(v),_mm_castsi128_ps(v),c))//_mm_shuffle_epi32(v,c)
+#endif
 
 #define SM_PI 3.14159265358979f
 #define SM_LN2 0.69315f
@@ -233,6 +238,22 @@ public:
 		return _mm_div_ps(v,_mm_set1_ps(s));
 	}
 
+	inline sfloat1 madd(const sfloat1 &b, const sfloat1 &c) const{
+#ifdef USE_AVX2
+		return _mm_fmadd_ps(v,b.v,c.v);
+#else
+		return v*b.v+c.v;
+#endif
+	}
+
+	inline sfloat1 msub(const sfloat1 &b, const sfloat1 &c) const{
+#ifdef USE_AVX2
+		return _mm_fmsub_ps(v,b.v,c.v);
+#else
+		return v*b.v-c.v;
+#endif
+	}
+
 	template<uint x>
 	inline float get() const{
 		__m128 t = FL_PERMUTE(v,_MM_SHUFFLE(x,x,x,x));
@@ -367,7 +388,11 @@ public:
 	}
 
 	static inline sfloat1 lerp(const sfloat1 &a, const sfloat1 &b, const sfloat1 &t){
+#ifdef USE_AVX2
+		return _mm_fmadd_ps(a.v,(sfloat1::one()-t).v,(b*t).v);
+#else
 		return a*(sfloat1::one()-t)+b*t;
+#endif
 	}
 
 	static inline sfloat1 sqrt(const sfloat1 &s){
@@ -390,7 +415,8 @@ public:
 	static inline sfloat1 acos(const sfloat1 &s){
 		//http://http.developer.nvidia.com/Cg/index_stdlib.html
 		sfloat1 x = sfloat1::abs(s);
-		sfloat1 r = ((((sfloat1(-0.0187293f)*x)+0.0742610f)*x-0.2121144f)*x+1.5707288f)*sfloat1::sqrt(sfloat1(1.0f)-x);
+		sfloat1 r = sfloat1(-0.0187293f).madd(x,0.0742610f).msub(x,0.2121144f).madd(x,1.5707288f)*sfloat1::sqrt(sfloat1(1.0f)-x);
+		//sfloat1 r = ((((sfloat1(-0.0187293f)*x)+0.0742610f)*x-0.2121144f)*x+1.5707288f)*sfloat1::sqrt(sfloat1(1.0f)-x);
 		sfloat1 n = sfloat1::Less(x,sfloat1::zero());
 		r = r-sfloat1::And(sfloat1(2.0f)*r,n);
 		return sfloat1::And(sfloat1(SM_PI),n)+r;
@@ -398,7 +424,8 @@ public:
 
 	static inline sfloat1 asin(const sfloat1 &s){
 		sfloat1 x = sfloat1::abs(s);
-		sfloat1 r = sfloat1(0.5f*SM_PI)-((((sfloat1(-0.0187293f)*x)+0.0742610f)*x-0.2121144f)*x+1.5707288f)*sfloat1::sqrt(sfloat1(1.0f)-x);
+		sfloat1 r = sfloat1(0.5f*SM_PI)-sfloat1(-0.0187293f).madd(x,0.0742610f).msub(x,0.2121144f).madd(x,1.5707288f)*sfloat1::sqrt(sfloat1(1.0f)-x);
+		//sfloat1 r = sfloat1(0.5f*SM_PI)-((((sfloat1(-0.0187293f)*x)+0.0742610f)*x-0.2121144f)*x+1.5707288f)*sfloat1::sqrt(sfloat1(1.0f)-x);
 		sfloat1 n = sfloat1::Less(x,sfloat1::zero());
 		return r-sfloat1::And(sfloat1(2.0f)*r,n);
 	}
@@ -784,11 +811,22 @@ public:
 	}
 
 	static inline sfloat1 dot3(const sfloat4 &a, const sfloat4 &b){
+#ifdef USE_AVX2
+		return _mm_fmadd_ps(a.v[0],b.v[0],
+			_mm_fmadd_ps(a.v[1],b.v[1],a.v[2]*b.v[2]));
+#else
 		return a.v[0]*b.v[0]+a.v[1]*b.v[1]+a.v[2]*b.v[2];
+#endif
 	}
 
 	static inline sfloat1 dot4(const sfloat4 &a, const sfloat4 &b){
+#ifdef USE_AVX2
+		return _mm_fmadd_ps(a.v[0],b.v[0],
+			_mm_fmadd_ps(a.v[1],b.v[1],
+			_mm_fmadd_ps(a.v[2],b.v[2],a.v[3]*b.v[3])));
+#else
 		return a.v[0]*b.v[0]+a.v[1]*b.v[1]+a.v[2]*b.v[2]+a.v[3]*b.v[3];
+#endif
 	}
 
 	static inline sfloat1 length3(const sfloat4 &v){
@@ -801,9 +839,15 @@ public:
 
 	static inline sfloat4 cross3(const sfloat4 &a, const sfloat4 &b){
 		sfloat4 r;
+#ifdef USE_AVX2
+		r.v[0] = _mm_fmsub_ps(a.v[1],b.v[2],a.v[2]*b.v[1]);
+		r.v[1] = _mm_fmsub_ps(a.v[2],b.v[0],a.v[0]*b.v[2]);
+		r.v[2] = _mm_fmsub_ps(a.v[0],b.v[1],a.v[1]*b.v[0]);
+#else
 		r.v[0] = a.v[1]*b.v[2]-a.v[2]*b.v[1];
 		r.v[1] = a.v[2]*b.v[0]-a.v[0]*b.v[2];
 		r.v[2] = a.v[0]*b.v[1]-a.v[1]*b.v[0];
+#endif
 		r.v[3] = sfloat1::zero();
 		return r;
 	}
@@ -829,10 +873,17 @@ public:
 	static inline sfloat4 lerp(const sfloat4 &a, const sfloat4 &b, const sfloat1 &t){
 		sfloat4 r;
 		sfloat1 s = sfloat1::one()-t;
+#ifdef USE_AVX2
+		r.v[0] = _mm_fmadd_ps(a.v[0],s,b.v[0]*t);
+		r.v[1] = _mm_fmadd_ps(a.v[1],s,b.v[1]*t);
+		r.v[2] = _mm_fmadd_ps(a.v[2],s,b.v[2]*t);
+		r.v[3] = _mm_fmadd_ps(a.v[3],s,b.v[3]*t);
+#else
 		r.v[0] = a.v[0]*s+b.v[0]*t;
 		r.v[1] = a.v[1]*s+b.v[1]*t;
 		r.v[2] = a.v[2]*s+b.v[2]*t;
 		r.v[3] = a.v[3]*s+b.v[3]*t;
+#endif
 		return r;
 	}
 
