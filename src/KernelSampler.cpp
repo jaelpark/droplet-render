@@ -527,13 +527,13 @@ static const dfloat3 miecdf[] = {
 static const uint miedl = sizeof(mied)/sizeof(mied[0]);
 
 inline void SamplingBasis(const sfloat4 &iv, sfloat4 *pb1, sfloat4 *pb2){
-    //TODO: Should probably handle zero-cases. Might even fix something.
-    pb1->v[0] = -iv.v[2];
-    pb1->v[1] = sfloat1::zero();
-    pb1->v[2] = iv.v[0];
-    pb1->v[3] = sfloat1::zero();
-    *pb1 /= sfloat4::length3(iv.swizzle<0,3,2,3>()); //assume iv.w to be zero
-    *pb2 = sfloat4::cross3(iv,*pb1);
+	//TODO: Should probably handle zero-cases. Might even fix something.
+	pb1->v[0] = -iv.v[2];
+	pb1->v[1] = sfloat1::zero();
+	pb1->v[2] = iv.v[0];
+	pb1->v[3] = sfloat1::zero();
+	*pb1 /= sfloat4::length3(iv.swizzle<0,3,2,3>()); //assume iv.w to be zero
+	*pb2 = sfloat4::cross3(iv,*pb1);
 }
 
 namespace KernelSampler{
@@ -555,27 +555,27 @@ HGPhase::~HGPhase(){
 }
 
 sfloat1 HGPhase::Evaluate(const sfloat1 &ct) const{
-    sfloat1 g = sfloat1(g1);
-    sfloat1 e = sfloat1(1.50f);
-    return (1.0f-g*g)/(4.0f*SM_PI*sfloat1::pow(1.0f+g*g-2.0f*g*ct,e));
+	sfloat1 g = sfloat1(g1);
+	sfloat1 e = sfloat1(1.50f);
+	return (1.0f-g*g)/(4.0f*SM_PI*sfloat1::pow(1.0f+g*g-2.0f*g*ct,e));
 }
 
 sfloat4 HGPhase::EvaluateRGB(const sfloat1 &ct) const{
-    return sfloat4(HGPhase::Evaluate(ct));
+	return sfloat4(HGPhase::Evaluate(ct));
 }
 
 sfloat4 HGPhase::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2) const{
-    sfloat1 g = sfloat1(g1);
-    sfloat1 sq = (1.0f-g*g)/(1.0f-g+2.0f*g*u1);
-    sfloat1 ct = (1.0f+g*g-sq*sq)/(2.0f*g);
-    sfloat1 st = sfloat1::sqrt(sfloat1::max(1.0f-ct*ct,sfloat1::zero()));
-    sfloat1 ph = 2.0f*SM_PI*u2;
+	sfloat1 g = sfloat1(g1);
+	sfloat1 sq = (1.0f-g*g)/(1.0f-g+2.0f*g*u1);
+	sfloat1 ct = (1.0f+g*g-sq*sq)/(2.0f*g);
+	sfloat1 st = sfloat1::sqrt(sfloat1::max(1.0f-ct*ct,sfloat1::zero()));
+	sfloat1 ph = 2.0f*SM_PI*u2;
 
-    sfloat4 b1, b2;
-    SamplingBasis(iv,&b1,&b2);
-    sfloat1 sph, cph;
-    sincos_ps(ph.v,&sph.v,&cph.v);
-    return b1*st*cph+b2*st*sph+iv*ct;
+	sfloat4 b1, b2;
+	SamplingBasis(iv,&b1,&b2);
+	sfloat1 sph, cph;
+	sincos_ps(ph.v,&sph.v,&cph.v);
+	return b1*st*cph+b2*st*sph+iv*ct;
 }
 
 HGPhase HGPhase::ghg(0.35f); //also panel.py description
@@ -633,15 +633,6 @@ sfloat4 MiePhase::EvaluateRGB(const sfloat1 &ct) const{
 sfloat4 MiePhase::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2) const{
 	sfloat1 th = sfloat1::zero();
 	for(uint i = 0; i < miedl-1; ++i){
-		/*//sfloat1 cdf0 = sfloat1(miecdf[i+0].x);
-		sfloat1 cdf1 = sfloat1(miecdf[i+1].x);
-		//sfloat1 t = u1-cdf0;
-		//sfloat1 b = sfloat1((float)miedl*u1);
-		sfloat1 m = sfloat1::Less(cdf1,u1);
-		sfloat1 s = sfloat1((float)i/(float)miedl);
-		th = sfloat1::Or(sfloat1::And(m,s),sfloat1::AndNot(m,th));
-		if(m.AllFalse())
-			break;*/
 		sfloat1 cdf0 = sfloat1(miecdf[i+0].x);
 		sfloat1 cdf1 = sfloat1(miecdf[i+1].x);
 		//sfloat1 t = u1-cdf0;
@@ -661,12 +652,12 @@ sfloat4 MiePhase::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2
 	sfloat1 ph = 2.0f*SM_PI*u2;
 
 	sfloat4 b1, b2;
-    SamplingBasis(iv,&b1,&b2);
+	SamplingBasis(iv,&b1,&b2);
 	sfloat1 st, ct;
 	sincos_ps(th,&st.v,&ct.v);
-    sfloat1 sph, cph;
-    sincos_ps(ph.v,&sph.v,&cph.v);
-    return b1*st*cph+b2*st*sph+iv*ct;
+	sfloat1 sph, cph;
+	sincos_ps(ph.v,&sph.v,&cph.v);
+	return b1*st*cph+b2*st*sph+iv*ct;
 }
 
 MiePhase MiePhase::gmie;
@@ -709,23 +700,23 @@ sfloat4 SunLight::Evaluate(const sfloat4 &rd) const{
 
 sfloat1 SunLight::Pdf(const sfloat4 &iv) const{
 	sfloat1 ctm = sfloat1::sqrt(1.0f-angle*angle);
-    return sfloat1(1.0f/(2.0f*SM_PI*(1.0f-ctm)));
+	return sfloat1(1.0f/(2.0f*SM_PI*(1.0f-ctm)));
 }
 
 sfloat4 SunLight::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2) const{
-    //t = asin(theta = r/d)
-    //cos(asin(t)) = sqrt(1-(r/d)^2)
-    sfloat1 ctm = sfloat1::sqrt(1.0f-angle*angle);
-    sfloat1 ct = (1.0f-u1)+u1*ctm;
-    sfloat1 st = sfloat1::sqrt(1.0f-ct*ct);
-    sfloat1 ph = 2.0f*SM_PI*u2;
+	//t = asin(theta = r/d)
+	//cos(asin(t)) = sqrt(1-(r/d)^2)
+	sfloat1 ctm = sfloat1::sqrt(1.0f-angle*angle);
+	sfloat1 ct = (1.0f-u1)+u1*ctm;
+	sfloat1 st = sfloat1::sqrt(1.0f-ct*ct);
+	sfloat1 ph = 2.0f*SM_PI*u2;
 
-    sfloat4 b1, b2;
+	sfloat4 b1, b2;
 	sfloat4 lrd = sfloat4(float4::load(&direction));
-    SamplingBasis(lrd,&b1,&b2);
-    sfloat1 sph, cph;
-    sincos_ps(ph.v,&sph.v,&cph.v);
-    return b1*st*cph+b2*st*sph+lrd*ct;
+	SamplingBasis(lrd,&b1,&b2);
+	sfloat1 sph, cph;
+	sincos_ps(ph.v,&sph.v,&cph.v);
+	return b1*st*cph+b2*st*sph+lrd*ct;
 }
 
 }
