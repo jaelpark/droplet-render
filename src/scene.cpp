@@ -660,7 +660,7 @@ void Scene::Initialize(float s, uint maxd, float qb, SCENE_CACHE_MODE cm){
 
 		vdbc.open(false);
 		pgrid[VOLUME_BUFFER_SDF] = openvdb::gridPtrCast<openvdb::FloatGrid>(vdbc.readGrid("surface-levelset"));
-		pgrid[VOLUME_BUFFER_FOG] = openvdb::FloatGrid::create(); //TODO: load from cache
+		pgrid[VOLUME_BUFFER_FOG] = openvdb::gridPtrCast<openvdb::FloatGrid>(vdbc.readGrid("fog-density"));
 		pgrid[VOLUME_BUFFER_FOG]->setTransform(pgrid[VOLUME_BUFFER_SDF]->transformPtr());
 		vdbc.close();
 
@@ -671,7 +671,7 @@ void Scene::Initialize(float s, uint maxd, float qb, SCENE_CACHE_MODE cm){
 			fread(&lvoxc,1,4,pf);
 			fread(&index,1,4,pf);
 			fread(&leafx[VOLUME_BUFFER_SDF],1,4,pf);
-			leafx[VOLUME_BUFFER_FOG] = 0;
+			fread(&leafx[VOLUME_BUFFER_FOG],1,4,pf);
 
 			uint pobl = index+1;
 			ob.grow_to_at_least(pobl);
@@ -689,9 +689,10 @@ void Scene::Initialize(float s, uint maxd, float qb, SCENE_CACHE_MODE cm){
 
 		S_Create(s,qb,lvc,bvc,maxd,pgrid,this);
 		pgrid[VOLUME_BUFFER_SDF]->setName("surface-levelset");
+		pgrid[VOLUME_BUFFER_FOG]->setName("fog-density");
 
 		if(cm == SCENE_CACHE_WRITE){
-			openvdb::GridCPtrVec gvec{pgrid[VOLUME_BUFFER_SDF]}; //include the fog grid also
+			openvdb::GridCPtrVec gvec{pgrid[VOLUME_BUFFER_SDF],pgrid[VOLUME_BUFFER_FOG]};
 			vdbc.write(gvec);
 			vdbc.close();
 
@@ -699,6 +700,7 @@ void Scene::Initialize(float s, uint maxd, float qb, SCENE_CACHE_MODE cm){
 			fwrite(&lvoxc,1,4,pf);
 			fwrite(&index,1,4,pf);
 			fwrite(&leafx[VOLUME_BUFFER_SDF],1,4,pf);
+			fwrite(&leafx[VOLUME_BUFFER_FOG],1,4,pf);
 			for(uint i = 0; i < index+1; ++i)
 				fwrite(&ob[i],1,sizeof(OctreeStructure),pf);
 
