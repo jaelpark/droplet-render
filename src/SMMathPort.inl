@@ -3,6 +3,28 @@
 
 //Some stuff ported from DirectXMath - temporary placeholders for some other replacement library.
 //------------------------------------------------------------------------------
+/*
+                               The MIT License (MIT)
+
+Copyright (c) 2016 Microsoft Corp
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this
+software and associated documentation files (the "Software"), to deal in the Software
+without restriction, including without limitation the rights to use, copy, modify,
+merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice shall be included in all copies
+or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
 
 const float XM_PI = 3.141592654f;
 const float XM_2PI = 6.283185307f;
@@ -31,8 +53,7 @@ inline XMVECTOR XMVectorMultiplyAdd
 	FXMVECTOR V3
 )
 {
-	XMVECTOR vResult = _mm_mul_ps( V1, V2 );
-	return _mm_add_ps(vResult, V3 );
+	return float4(V1).madd(V2,V3);
 }
 
 inline XMVECTOR XMVector3Dot
@@ -41,14 +62,7 @@ inline XMVECTOR XMVector3Dot
 	FXMVECTOR V2
 )
 {
-#if defined(USE_SSE4)
-	return _mm_dp_ps(V1,V2,0x7f);
-#else
-	XMVECTOR vTemp = _mm_mul_ps(V1,V2);
-	vTemp = _mm_and_ps( vTemp, g_XMMask3 );
-	vTemp = _mm_hadd_ps(vTemp,vTemp);
-	return _mm_hadd_ps(vTemp,vTemp);
-#endif
+	return float4::dot3(V1,V2);
 }
 
 inline XMVECTOR XMVector3Length
@@ -75,13 +89,7 @@ inline XMVECTOR XMVector4Dot
 	FXMVECTOR V2
 )
 {
-#if defined(USE_SSE4)
-	return _mm_dp_ps(V1,V2,0xff);
-#else
-	XMVECTOR r = _mm_mul_ps(V1,V2);
-	r = _mm_hadd_ps(r,r);
-	return _mm_hadd_ps(r,r);
-#endif
+	return float4::dot4(V1,V2);
 }
 
 //------------------------------------------------------------------------------
@@ -471,5 +479,9 @@ inline XMMATRIX XMMatrixLookToRH
 
 #undef XMVECTOR
 #undef FXMVECTOR
+
+#undef XM_PERMUTE_PS
+#undef g_XMMaskY
+#undef g_XMMask3
 
 #endif
