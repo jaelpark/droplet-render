@@ -61,45 +61,39 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 	# 		result.layers[0].passes[0].rect[tileh*y+(tilew1-1)] = bcolor;
 
 	def render(self, scene):
-		#s = scene.render.resolution_percentage/100.0;
-		#w = int(s*scene.render.resolution_x);
-		#h = int(s*scene.render.resolution_y);
-		w = max(int(scene.blcloudrender.res_p*scene.blcloudrender.res_x),1);
-		h = max(int(scene.blcloudrender.res_p*scene.blcloudrender.res_y),1);
-		scene.render.resolution_x = w;
-		scene.render.resolution_y = h;
-		scene.render.resolution_percentage = 100;#*scene.blcloudrender.res_p;
-
+		self.w = scene.render.resolution_x;
+		self.h = scene.render.resolution_y;
 		tilew = scene.blcloudperf.tilex;
 		tileh = scene.blcloudperf.tiley; #self.tile_x, tile_y
+		
 		samples_ext = scene.blcloudsampling.samples;
 		samples_int = scene.blcloudperf.samples;
 		sc = int(ceil(samples_ext/samples_int)); #external sample count
 
-		nx = int(ceil(w/tilew));
-		ny = int(ceil(h/tileh));
+		nx = int(ceil(self.w/tilew));
+		ny = int(ceil(self.h/tileh));
 
 		self.update_stats("Droplet","Initializing");
 		tiles = [];
 		for y in range(0,ny):
 			for x in range(0,nx):
-				xadj = x*tilew-0.5*(nx*tilew-w);
-				yadj = y*tileh-0.5*(ny*tileh-h);
+				xadj = x*tilew-0.5*(nx*tilew-self.w);
+				yadj = y*tileh-0.5*(ny*tileh-self.h);
 				tiles.append((xadj,yadj));
 
-		libdroplet.BeginRender(scene,bpy.data,tilew,tileh,w,h);
+		libdroplet.BeginRender(scene,bpy.data,tilew,tileh,self.w,self.h);
 
 		while len(tiles) > 0:
-			tile1 = min(tiles,key=lambda tileq: Vector((tileq[0]+0.5*tilew-0.5*w,tileq[1]+0.5*tileh-0.5*h)).length);
+			tile1 = min(tiles,key=lambda tileq: Vector((tileq[0]+0.5*tilew-0.5*self.w,tileq[1]+0.5*tileh-0.5*self.h)).length);
 			tiles.remove(tile1);
 
 			#crop the tile frame on edges
 			tilew1 = tilew;
-			if tile1[0]+tilew > w:
-				tilew1 += int(w-(tile1[0]+tilew));
+			if tile1[0]+tilew > self.w:
+				tilew1 += int(self.w-(tile1[0]+tilew));
 			tileh1 = tileh;
-			if tile1[1]+tileh > h:
-				tileh1 += int(h-(tile1[1]+tileh));
+			if tile1[1]+tileh > self.h:
+				tileh1 += int(self.h-(tile1[1]+tileh));
 
 			tilew1 += int(min(tile1[0],0));
 			tileh1 += int(min(tile1[1],0));

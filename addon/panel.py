@@ -5,12 +5,18 @@ from bpy.props import BoolProperty, IntProperty, FloatProperty, EnumProperty, Po
 
 from . import config
 
+def SetResolution(self, context):
+	self.w = max(int(context.scene.blcloudrender.res_p*context.scene.blcloudrender.res_x),1);
+	self.h = max(int(context.scene.blcloudrender.res_p*context.scene.blcloudrender.res_y),1);
+	context.scene.render.resolution_x = self.w;
+	context.scene.render.resolution_y = self.h;
+	context.scene.render.resolution_percentage = 100;
+
 class ClRenderProperties(bpy.types.PropertyGroup):
-	res_x = IntProperty(name="Res.X",default=1920,min=1,description="Image width in pixels");
-	res_y = IntProperty(name="Res.Y",default=1080,min=1,description="Image height in pixels");
-	res_p = FloatProperty(name="Res.%",default=0.5,min=0.01,max=1,description="Resolution percentage");
+	res_x = IntProperty(name="Res.X",default=1920,min=1,description="Image width in pixels",update=SetResolution);
+	res_y = IntProperty(name="Res.Y",default=1080,min=1,description="Image height in pixels",update=SetResolution);
+	res_p = FloatProperty(name="Res.%",default=0.5,min=0.01,max=1,description="Resolution percentage",update=SetResolution);
 	transparent = BoolProperty(name="Transparent",default=False,description="Enable alpha channel and ignore background for 0th order scattering.");
-	#nodetree = EnumProperty(name="Node tree",items=NodeTreeSelection,description="Node tree to be used globally");
 
 	def draw(self, context, layout):
 		layout.row().label("Dimensions:");
@@ -23,8 +29,6 @@ class ClRenderProperties(bpy.types.PropertyGroup):
 		c = s.column();
 		c.row().prop(self,"res_p");
 		c.row().prop(self,"transparent");
-
-		#layout.row().prop(self,"nodetree");
 
 class ClRenderPanel(bpy.types.Panel):
 	bl_idname = "ClRenderPanel";
@@ -83,8 +87,6 @@ class ClSamplingPanel(bpy.types.Panel):
 class ClGridProperties(bpy.types.PropertyGroup):
 	detailsize = FloatProperty(name="Detail size",default=0.02,min=0.0001,precision=4,description="Smallest detail size in blender units.");
 	maxdepth = IntProperty(name="Max Depth",default=12,min=1,description="Maximum octree depth. Limiting depth to smaller values increases render performance, but at the cost of less sparse data and higher memory requirements.");
-	#adaptive = BoolProperty(name="Adaptive resolution",default=False,description="Distance and FOV based resolution level of detail");
-	#qfield = BoolProperty(name="Construct Field",default=False,description="Construct low-resolution SDF for distance queries from the SceneInfo node. Queries made without this field will return a constant positive value over entire domain.");
 	qfbandw = FloatProperty(name="Band",default=1.0,min=0.01,precision=2,description="Outer narrow-band width of the low-resolution distance query field. This field is only constructed when the 'distance' output of the SceneInfo-node is used. A separate low-resolution field is created to allow approximate distance evaluation in larger global domains, as opposed to tight and local surface-surrounding field of the high-resolution field.");
 
 	def draw(self, context, layout):
@@ -99,12 +101,6 @@ class ClGridProperties(bpy.types.PropertyGroup):
 		c.row().label("SceneInfo Query:");
 		c.row().prop(self,"qfbandw");
 
-		#c = s.column();
-		#c.row().prop(self,"adaptive");
-
-		#layout.row().prop(self,"voxelsize");
-		#TODO: calculate and show resolution and octree depth
-
 class ClGridPanel(bpy.types.Panel):
 	bl_idname = "ClGridPanel";
 	bl_label = "Grid";
@@ -118,13 +114,6 @@ class ClGridPanel(bpy.types.Panel):
 
 	def draw(self, context):
 		context.scene.blcloudgrid.draw(context,self.layout);
-
-#def ClPerformanceCacheTick(self, context):
-#	#TODO: need to set also for new nodes
-#	for n in bpy.data.node_groups[context.scene.blcloudrender.nodetree].nodes:
-#		if n.outputs and n.outputs[0].bl_idname == "ClNodeSurfaceSocket":
-#			n.color = (1.0,0.7,0.0);
-#			n.use_custom_color = self.cache;
 
 class ClPerformanceProperties(bpy.types.PropertyGroup):
 	tilex = IntProperty(name="X",default=128,min=4,description="Horizontal tile size. By design all threads contribute to one tile simultaneously."); #step=2
@@ -204,7 +193,6 @@ class ClParticleSystemPanel(bpy.types.Panel):
 
 	def draw(self, context):
 		context.particle_system.settings.droplet.draw(context,self.layout);
-		#context.particle_system.droplet[1]['type'].draw(context,self.layout); #wtf is this tuple nonsense
 
 def TextureSelection(self, context):
 	return [(m.name,m.name,m.name,"TEXTURE",x) for x, m in enumerate(bpy.data.images)];
