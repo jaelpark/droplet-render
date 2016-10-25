@@ -1,7 +1,7 @@
 #ifndef SMMATH_INL
 #define SMMATH_INL
 
-#define BLCLOUD_VSIZE 4 //SSE4
+#define BLCLOUD_VSIZE 4 //128-bit vectors
 #define BLCLOUD_VX 2
 #define BLCLOUD_VY 2
 
@@ -794,19 +794,15 @@ public:
 
 	static inline sfloat4 min(const sfloat4 &a, const sfloat4 &b){
 		sfloat4 r;
-		r.v[0] = sfloat1::min(a.v[0],b.v[0]);
-		r.v[1] = sfloat1::min(a.v[1],b.v[1]);
-		r.v[2] = sfloat1::min(a.v[2],b.v[2]);
-		r.v[3] = sfloat1::min(a.v[3],b.v[3]);
+		for(uint i = 0; i < 4; ++i)
+			r.v[i] = sfloat1::min(a.v[i],b.v[i]);
 		return r;
 	}
 
 	static inline sfloat4 max(const sfloat4 &a, const sfloat4 &b){
 		sfloat4 r;
-		r.v[0] = sfloat1::max(a.v[0],b.v[0]);
-		r.v[1] = sfloat1::max(a.v[1],b.v[1]);
-		r.v[2] = sfloat1::max(a.v[2],b.v[2]);
-		r.v[3] = sfloat1::max(a.v[3],b.v[3]);
+		for(uint i = 0; i < 4; ++i)
+			r.v[i] = sfloat1::max(a.v[i],b.v[i]);
 		return r;
 	}
 
@@ -839,51 +835,32 @@ public:
 
 	static inline sfloat4 cross3(const sfloat4 &a, const sfloat4 &b){
 		sfloat4 r;
-#ifdef USE_AVX2
-		r.v[0] = _mm_fmsub_ps(a.v[1],b.v[2],a.v[2]*b.v[1]);
-		r.v[1] = _mm_fmsub_ps(a.v[2],b.v[0],a.v[0]*b.v[2]);
-		r.v[2] = _mm_fmsub_ps(a.v[0],b.v[1],a.v[1]*b.v[0]);
-#else
-		r.v[0] = a.v[1]*b.v[2]-a.v[2]*b.v[1];
-		r.v[1] = a.v[2]*b.v[0]-a.v[0]*b.v[2];
-		r.v[2] = a.v[0]*b.v[1]-a.v[1]*b.v[0];
-#endif
+		r.v[0] = a.v[1].msub(b.v[2],a.v[2]*b.v[1]);
+		r.v[1] = a.v[2].msub(b.v[0],a.v[0]*b.v[2]);
+		r.v[2] = a.v[0].msub(b.v[1],a.v[1]*b.v[0]);
 		r.v[3] = sfloat1::zero();
 		return r;
 	}
 
 	static inline sfloat4 floor(const sfloat4 &s){
 		sfloat4 r;
-		r.v[0] = sfloat1::floor(s.v[0]);
-		r.v[1] = sfloat1::floor(s.v[1]);
-		r.v[2] = sfloat1::floor(s.v[2]);
-		r.v[3] = sfloat1::floor(s.v[3]);
+		for(uint i = 0; i < 4; ++i)
+			r.v[i] = sfloat1::floor(s.v[i]);
 		return r;
 	}
 
 	static inline sfloat4 ceil(const sfloat4 &s){
 		sfloat4 r;
-		r.v[0] = sfloat1::ceil(s.v[0]);
-		r.v[1] = sfloat1::ceil(s.v[1]);
-		r.v[2] = sfloat1::ceil(s.v[2]);
-		r.v[3] = sfloat1::ceil(s.v[3]);
+		for(uint i = 0; i < 4; ++i)
+			r.v[i] = sfloat1::ceil(s.v[i]);
 		return r;
 	}
 
 	static inline sfloat4 lerp(const sfloat4 &a, const sfloat4 &b, const sfloat1 &t){
 		sfloat4 r;
 		sfloat1 s = sfloat1::one()-t;
-#ifdef USE_AVX2
-		r.v[0] = _mm_fmadd_ps(a.v[0],s,b.v[0]*t);
-		r.v[1] = _mm_fmadd_ps(a.v[1],s,b.v[1]*t);
-		r.v[2] = _mm_fmadd_ps(a.v[2],s,b.v[2]*t);
-		r.v[3] = _mm_fmadd_ps(a.v[3],s,b.v[3]*t);
-#else
-		r.v[0] = a.v[0]*s+b.v[0]*t;
-		r.v[1] = a.v[1]*s+b.v[1]*t;
-		r.v[2] = a.v[2]*s+b.v[2]*t;
-		r.v[3] = a.v[3]*s+b.v[3]*t;
-#endif
+		for(uint i = 0; i < 4; ++i)
+			r.v[i] = a.v[i].madd(s,b.v[i]*t);
 		return r;
 	}
 
