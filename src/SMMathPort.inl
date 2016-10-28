@@ -100,23 +100,7 @@ inline XMVECTOR XMVector3Cross
 	FXMVECTOR V2
 )
 {
-	// [ V1.y*V2.z - V1.z*V2.y, V1.z*V2.x - V1.x*V2.z, V1.x*V2.y - V1.y*V2.x ]
-	// y1,z1,x1,w1
-	XMVECTOR vTemp1 = XM_PERMUTE_PS(V1,_MM_SHUFFLE(3,0,2,1));
-	// z2,x2,y2,w2
-	XMVECTOR vTemp2 = XM_PERMUTE_PS(V2,_MM_SHUFFLE(3,1,0,2));
-	// Perform the left operation
-	XMVECTOR vResult = _mm_mul_ps(vTemp1,vTemp2);
-	// z1,x1,y1,w1
-	vTemp1 = XM_PERMUTE_PS(vTemp1,_MM_SHUFFLE(3,0,2,1));
-	// y2,z2,x2,w2
-	vTemp2 = XM_PERMUTE_PS(vTemp2,_MM_SHUFFLE(3,1,0,2));
-	// Perform the right operation
-	vTemp1 = _mm_mul_ps(vTemp1,vTemp2);
-	// Subract the right from left, and return answer
-	vResult = _mm_sub_ps(vResult,vTemp1);
-	// Set w to zero
-	return _mm_and_ps(vResult,g_XMMask3);
+	return float4::cross(V1,V2);
 }
 
 inline XMVECTOR XMVectorNegate
