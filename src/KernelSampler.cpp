@@ -694,7 +694,7 @@ SunLight::~SunLight(){
 }
 
 sfloat4 SunLight::Evaluate(const sfloat4 &rd) const{
-	sfloat4 lc = sfloat4(float4::zero());
+	sfloat4 lc = sfloat4::zero();
 	sfloat1 lt = sfloat1::Greater(sfloat4::dot3(rd,sfloat4(float4::load(&direction))),sfloat1(angle));
 
 	float4 c = float4::load(&color);

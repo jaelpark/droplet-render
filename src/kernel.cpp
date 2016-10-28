@@ -299,7 +299,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 			OctreeProcessSubtree(t0s,t1s,a,&pkernel->pscene->ob,0,0,&ls.ls[r][i]);
 	}
 
-	sfloat4 c = float4::zero();
+	sfloat4 c = sfloat4::zero();
 
 	//rc-tr1[0],tr1[0]-tr1[1],...
 	/*rc = ro;
@@ -364,7 +364,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 			if(qm.AllFalse())
 				break;
 
-			sfloat4 ce = float4::zero();
+			sfloat4 ce = sfloat4::zero();
 			for(uint j = 0; j < BLCLOUD_VSIZE; ++j)
 				if(i < ls.GetLeafCount(r,j))
 					ce.set(j,float4::load(&pkernel->pscene->ob[ls.GetLeaf(r,j,i)].ce));
@@ -474,7 +474,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
 		sfloat4 ll; //total lighting (directional+sky)
 		if(rm.AnyTrue() && !(pkernel->flags & RENDER_TRANSPARENT && r == 0)){ //skip (sky)lighting calculations if all the incident rays scatter (don't reach sun or sky) (at least one of rm != 0)
-			sfloat4 lc = float4::zero(); //total directional lighting
+			sfloat4 lc = sfloat4::zero(); //total directional lighting
 			for(uint i = 0, n = KernelSampler::BaseLight::lights.size(); i < n; ++i)
 				lc += KernelSampler::BaseLight::lights[i]->Evaluate(rd);
 
@@ -521,7 +521,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 			ll = lc+ca;
 			ll.v[3] = sfloat1::one(); //alpha doesn't matter when r > 0
 		}else{
-			ll = float4::zero();
+			ll = sfloat4::zero();
 			ll.v[3] = sfloat1::AndNot(rm,sfloat1::one()); //alpha = 1 when scattering
 		}
 

@@ -1080,6 +1080,13 @@ public:
 		return r;
 	}
 
+	static inline sfloat4 zero(){
+		sfloat4 r;
+		for(uint i = 0; i < 4; ++i)
+			r.v[i] = sfloat1::zero();
+		return r;
+	}
+
 	static inline sfloat4 min(const sfloat4 &a, const sfloat4 &b){
 		sfloat4 r;
 		for(uint i = 0; i < 4; ++i)
