@@ -275,6 +275,15 @@ public:
 	}*/
 
 	template<uint x>
+	inline __m128 splat4() const{
+		return FL_PERMUTE(v,_MM_SHUFFLE(x,x,x,x));
+	}
+
+	inline __m128 splat4(uint x) const{
+		return swizzle(x,x,x,x).get4();
+	}
+
+	template<uint x>
 	inline sfloat1 splat() const{
 		return FL_PERMUTE(v,_MM_SHUFFLE(x,x,x,x));
 	}
@@ -328,7 +337,6 @@ public:
 
 	static inline sfloat1 selectctrl(uint a, uint b, uint c, uint d){
 		__m128i t = _mm_set_epi32(d,c,b,a);
-		//t = _mm_cmpgt_epi32(t,_mm_set_epi32(0,0,0,0));
 		t = _mm_cmpgt_epi32(t,_mm_setzero_si128());
 		return _mm_castsi128_ps(t);
 	}
@@ -385,11 +393,7 @@ public:
 	}
 
 	static inline sfloat1 lerp(const sfloat1 &a, const sfloat1 &b, const sfloat1 &t){
-#ifdef USE_AVX2
-		return _mm_fmadd_ps(a.v,(sfloat1::one()-t).v,(b*t).v);
-#else
-		return a*(sfloat1::one()-t)+b*t;
-#endif
+		return t.madd(b-a,a);
 	}
 
 	static inline sfloat1 sqrt(const sfloat1 &s){
@@ -748,11 +752,7 @@ public:
 	}
 
 	static inline float4 lerp(const float4 &a, const float4 &b, const float4 &t){
-#ifdef USE_AVX2
-		return _mm_fmadd_ps(a.v,(float4::one()-t).v,(b*t).v);
-#else
-		return a*(float4::one()-t)+b*t;
-#endif
+		return t.madd(b-a,a);
 	}
 
 	static inline float4 cross(const float4 &a, const float4 &b){
@@ -1051,15 +1051,15 @@ public:
 
 	template<uint x>
 	inline float4 get() const{
-		return sfloat1::select(
-			sfloat1::select(sfloat1::splat<x>(v[0]),sfloat1::splat<x>(v[1]),sfloat1::selectctrl(0,1,0,1)),
-			sfloat1::select(sfloat1::splat<x>(v[2]),sfloat1::splat<x>(v[3]),sfloat1::selectctrl(0,1,0,1)),sfloat1::selectctrl(0,0,1,1)).v;
+		return float4::select(
+			float4::select(sfloat1::splat4<x>(v[0]),sfloat1::splat4<x>(v[1]),float4::selectctrl(0,1,0,1)),
+			float4::select(sfloat1::splat4<x>(v[2]),sfloat1::splat4<x>(v[3]),float4::selectctrl(0,1,0,1)),float4::selectctrl(0,0,1,1));
 	}
 
 	inline float4 get(uint x) const{
-		return sfloat1::select(
-			sfloat1::select(v[0].splat(x),v[1].splat(x),sfloat1::selectctrl(0,1,0,1)),
-			sfloat1::select(v[2].splat(x),v[3].splat(x),sfloat1::selectctrl(0,1,0,1)),sfloat1::selectctrl(0,0,1,1)).v;
+		return float4::select(
+			float4::select(v[0].splat4(x),v[1].splat4(x),float4::selectctrl(0,1,0,1)),
+			float4::select(v[2].splat4(x),v[3].splat4(x),float4::selectctrl(0,1,0,1)),float4::selectctrl(0,0,1,1));
 	}
 
 	inline void set(uint x, const float4 &s){
@@ -1153,9 +1153,8 @@ public:
 
 	static inline sfloat4 lerp(const sfloat4 &a, const sfloat4 &b, const sfloat1 &t){
 		sfloat4 r;
-		sfloat1 s = sfloat1::one()-t;
 		for(uint i = 0; i < 4; ++i)
-			r.v[i] = a.v[i].madd(s,b.v[i]*t);
+			r.v[i] = t.madd(b.v[i]-a.v[i],a.v[i]);
 		return r;
 	}
 
