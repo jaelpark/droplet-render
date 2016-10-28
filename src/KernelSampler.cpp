@@ -561,7 +561,14 @@ sfloat1 HGPhase::Evaluate(const sfloat1 &ct) const{
 }
 
 sfloat4 HGPhase::EvaluateRGB(const sfloat1 &ct) const{
-	return sfloat4(HGPhase::Evaluate(ct));
+	//return sfloat4(HGPhase::Evaluate(ct));
+	sfloat1 phase = HGPhase::Evaluate(ct);
+	sfloat4 r;
+	r.v[0] = phase;
+	r.v[1] = phase;
+	r.v[2] = phase;
+	r.v[3] = phase;
+	return r;
 }
 
 sfloat4 HGPhase::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2) const{
@@ -687,13 +694,13 @@ SunLight::~SunLight(){
 }
 
 sfloat4 SunLight::Evaluate(const sfloat4 &rd) const{
-	sfloat4 lc = sfloat1::zero();
+	sfloat4 lc = sfloat4(float4::zero());
 	sfloat1 lt = sfloat1::Greater(sfloat4::dot3(rd,sfloat4(float4::load(&direction))),sfloat1(angle));
 
 	float4 c = float4::load(&color);
-	lc.v[0] = sfloat1::Or(sfloat1::And(lt,c.splat<0>()),sfloat1::AndNot(lt,lc.v[0]));
-	lc.v[1] = sfloat1::Or(sfloat1::And(lt,c.splat<1>()),sfloat1::AndNot(lt,lc.v[1]));
-	lc.v[2] = sfloat1::Or(sfloat1::And(lt,c.splat<2>()),sfloat1::AndNot(lt,lc.v[2]));
+	lc.v[0] = sfloat1::Or(sfloat1::And(lt,c.splatN<0>()),sfloat1::AndNot(lt,lc.v[0]));
+	lc.v[1] = sfloat1::Or(sfloat1::And(lt,c.splatN<1>()),sfloat1::AndNot(lt,lc.v[1]));
+	lc.v[2] = sfloat1::Or(sfloat1::And(lt,c.splatN<2>()),sfloat1::AndNot(lt,lc.v[2]));
 
 	return lc;
 }

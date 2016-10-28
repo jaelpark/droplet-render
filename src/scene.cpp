@@ -93,7 +93,7 @@ const uint32_t XM_PERMUTE_1Z = 6;
 const uint32_t XM_PERMUTE_1W = 7;
 
 bool BoundingBox::Intersects(const float4 &v0, const float4 &v1, const float4 &v2) const{
-	float4 z = sfloat1::zero();
+	float4 z = float4::zero();
 	float4 c = float4::load(&sc);
 	float4 e = float4::load(&se);
 	float4 bmin = c-e;

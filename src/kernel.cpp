@@ -80,15 +80,18 @@ inline void RNG_Init(sint4 *prs){
 //multiply four vectors simultaneously
 inline sfloat4 mul(const sfloat4 &v, const matrix44 &m){
 	sfloat4 r;
-	r.v[0] = v.v[0]*m.r[0].splat<0>()+v.v[1]*m.r[1].splat<0>()+v.v[2]*m.r[2].splat<0>()+v.v[3]*m.r[3].splat<0>();
-	r.v[1] = v.v[0]*m.r[0].splat<1>()+v.v[1]*m.r[1].splat<1>()+v.v[2]*m.r[2].splat<1>()+v.v[3]*m.r[3].splat<1>();
-	r.v[2] = v.v[0]*m.r[0].splat<2>()+v.v[1]*m.r[1].splat<2>()+v.v[2]*m.r[2].splat<2>()+v.v[3]*m.r[3].splat<2>();
-	r.v[3] = v.v[0]*m.r[0].splat<3>()+v.v[1]*m.r[1].splat<3>()+v.v[2]*m.r[2].splat<3>()+v.v[3]*m.r[3].splat<3>();
+	r.v[0] = v.v[0]*m.r[0].splatN<0>()+v.v[1]*m.r[1].splatN<0>()+v.v[2]*m.r[2].splatN<0>()+v.v[3]*m.r[3].splatN<0>();
+	r.v[1] = v.v[0]*m.r[0].splatN<1>()+v.v[1]*m.r[1].splatN<1>()+v.v[2]*m.r[2].splatN<1>()+v.v[3]*m.r[3].splatN<1>();
+	r.v[2] = v.v[0]*m.r[0].splatN<2>()+v.v[1]*m.r[1].splatN<2>()+v.v[2]*m.r[2].splatN<2>()+v.v[3]*m.r[3].splatN<2>();
+	r.v[3] = v.v[0]*m.r[0].splatN<3>()+v.v[1]*m.r[1].splatN<3>()+v.v[2]*m.r[2].splatN<3>()+v.v[3]*m.r[3].splatN<3>();
 	return r;
 }
 
 inline sfloat1 IntersectSphere(const sfloat4 &pp, const sfloat4 &r, const sfloat1 &sp, float sr){
-	sfloat4 p = pp-sfloat4(sp);
+	//sfloat4 p = pp-sfloat4(sp);
+	sfloat4 p;
+	for(uint i = 0; i < 4; ++i)
+		p.v[i] = pp.v[i]-sp;
 	sfloat1 b = sfloat4::dot3(r,p);
 	sfloat1 c = sfloat4::dot3(p,p)-sfloat1(sr*sr);
 	sfloat1 d2 = b*b-c;
@@ -296,7 +299,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 			OctreeProcessSubtree(t0s,t1s,a,&pkernel->pscene->ob,0,0,&ls.ls[r][i]);
 	}
 
-	sfloat4 c = sfloat1::zero();
+	sfloat4 c = float4::zero();
 
 	//rc-tr1[0],tr1[0]-tr1[1],...
 	/*rc = ro;
@@ -361,7 +364,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 			if(qm.AllFalse())
 				break;
 
-			sfloat4 ce = sfloat1::zero();
+			sfloat4 ce = float4::zero();
 			for(uint j = 0; j < BLCLOUD_VSIZE; ++j)
 				if(i < ls.GetLeafCount(r,j))
 					ce.set(j,float4::load(&pkernel->pscene->ob[ls.GetLeaf(r,j,i)].ce));
@@ -471,7 +474,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
 		sfloat4 ll; //total lighting (directional+sky)
 		if(rm.AnyTrue() && !(pkernel->flags & RENDER_TRANSPARENT && r == 0)){ //skip (sky)lighting calculations if all the incident rays scatter (don't reach sun or sky) (at least one of rm != 0)
-			sfloat4 lc = sfloat1::zero(); //total directional lighting
+			sfloat4 lc = float4::zero(); //total directional lighting
 			for(uint i = 0, n = KernelSampler::BaseLight::lights.size(); i < n; ++i)
 				lc += KernelSampler::BaseLight::lights[i]->Evaluate(rd);
 
@@ -518,7 +521,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 			ll = lc+ca;
 			ll.v[3] = sfloat1::one(); //alpha doesn't matter when r > 0
 		}else{
-			ll = sfloat1::zero();
+			ll = float4::zero();
 			ll.v[3] = sfloat1::AndNot(rm,sfloat1::one()); //alpha = 1 when scattering
 		}
 

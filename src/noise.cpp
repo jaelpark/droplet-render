@@ -403,11 +403,11 @@ void FbmNoise::Evaluate(const void *pp){
 	BaseValueNode<dfloat3> *pnode = dynamic_cast<BaseValueNode<dfloat3>*>(pnodes[INPUT_POSITION]);
 
 	dfloat3 dposw = pnode->locr(indices[INPUT_POSITION]);
-	sfloat4 sposw = sfloat4(sfloat1(dposw.x,dposw.y,dposw.z,0.0f))+sfloat4(
-		sfloat1(0.0f),
-		sfloat1(1.0f,0.0f,0.0f,0.0f),
-		sfloat1(0.0f,1.0f,0.0f,0.0f),
-		sfloat1(0.0f,0.0f,1.0f,0.0f))*sfloat1(154.7f);
+	sfloat4 sposw = sfloat4(float4(dposw.x,dposw.y,dposw.z,0.0f))+sfloat4(
+		float4(0.0f),
+		float4(1.0f,0.0f,0.0f,0.0f),
+		float4(0.0f,1.0f,0.0f,0.0f),
+		float4(0.0f,0.0f,1.0f,0.0f))*float4(154.7f);
 
 	sfloat1 f = fBm::noise(sposw,poctn->locr(indices[INPUT_OCTAVES]),pfreqn->locr(indices[INPUT_FREQ]),
 		pampn->locr(indices[INPUT_AMP]),pfjumpn->locr(indices[INPUT_FJUMP]),pgainn->locr(indices[INPUT_GAIN]));
@@ -417,7 +417,7 @@ void FbmNoise::Evaluate(const void *pp){
 	rs.value[OUTPUT_FLOAT_MAXIMUM] = fBm::GetAmplitudeMax(poctn->locr(indices[INPUT_OCTAVES]),pampn->locr(indices[INPUT_AMP]),
 		pgainn->locr(indices[INPUT_GAIN])); //Calculate the maximum value given. Works only when all the input parameters are constant.
 	BaseValueResult<dfloat3> &rv = this->BaseValueNode<dfloat3>::result.local();
-	rv.value[OUTPUT_VECTOR_NOISE] = dfloat3(0.57735f*f); //normalize by 1/sqrt(3) to have max length equal to amplitude
+	rv.value[OUTPUT_VECTOR_NOISE] = dfloat3(0.57735f*float4(f.get4())); //normalize by 1/sqrt(3) to have max length equal to amplitude
 }
 
 IFbmNoise * IFbmNoise::Create(uint level, NodeTree *pnt){

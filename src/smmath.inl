@@ -154,6 +154,7 @@ public:
 } __attribute__((aligned(16)));
 
 class sfloat1;
+class float4;
 class sfloat4;
 class sint1;
 class sint4;
@@ -260,22 +261,18 @@ public:
 		return _mm_cvtss_f32(t);
 	}
 
+	/*inline float4 get4() const{ //TODO: incomplete type
+		return float4(v);
+	}*/
+
+	inline __m128 get4() const{
+		return v;
+	}
+
 	/*template<>
 	inline float get<0>() const{
 		return _mm_cvtss_f32(v);
 	}*/
-
-	template<uint x>
-	inline void set(float f){
-		//might wanna fix this for all cases
-		static_assert(x == 3);
-		//if(x == 3){
-		__m128 r = FL_PERMUTE(v,_MM_SHUFFLE(0,2,1,3));
-		__m128 t = _mm_set_ss(f);
-		r = _mm_move_ss(r,t);
-		v = FL_PERMUTE(r,_MM_SHUFFLE(0,2,1,3));
-		//}
-	}
 
 	template<uint x>
 	inline sfloat1 splat() const{
@@ -517,19 +514,164 @@ inline dfloatN::dfloatN(const sfloat1 &s){
 	sfloat1::store(v,s);
 }
 
-class float4 : public sfloat1{
+class float4{
 public:
 	float4(){}
-	float4(__m128 _v){
+	float4(const __m128 &_v){
 		v = _v;
+	}
+
+	float4(float a){
+		v = _mm_set1_ps(a);
 	}
 
 	float4(float x, float y, float z, float w){
 		v = _mm_set_ps(w,z,y,x);
 	}
 
-	float4(sfloat1 _v){
-		v = _v.v;
+	inline operator __m128() const{
+		return v;
+	}
+
+	inline float4 operator+(const float4 &s) const{
+		return _mm_add_ps(v,s.v);
+	}
+
+	inline void operator+=(const float4 &s){
+		v = _mm_add_ps(v,s.v);
+	}
+
+	inline float4 operator-() const{
+		return _mm_sub_ps(_mm_setzero_ps(),v);
+	}
+
+	inline float4 operator-(const float4 &s) const{
+		return _mm_sub_ps(v,s.v);
+	}
+
+	inline void operator-=(const float4 &s){
+		v = _mm_sub_ps(v,s.v);
+	}
+
+	inline float4 operator*(const float4 &s) const{
+		return _mm_mul_ps(v,s.v);
+	}
+
+	inline void operator*=(const float4 &s){
+		v = _mm_mul_ps(v,s.v);
+	}
+
+	inline float4 operator/(const float4 &s) const{
+		return _mm_div_ps(v,s.v);
+	}
+
+	inline void operator/=(const float4 &s){
+		v = _mm_div_ps(v,s.v);
+	}
+
+	inline float4 operator+(float s) const{
+		return _mm_add_ps(v,_mm_set1_ps(s));
+	}
+
+	inline float4 operator-(float s) const{
+		return _mm_sub_ps(v,_mm_set1_ps(s));
+	}
+
+	inline float4 operator*(float s) const{
+		return _mm_mul_ps(v,_mm_set1_ps(s));
+	}
+
+	inline float4 operator/(float s) const{
+		return _mm_div_ps(v,_mm_set1_ps(s));
+	}
+
+	inline float4 madd(const float4 &b, const float4 &c) const{
+#ifdef USE_AVX2
+		return _mm_fmadd_ps(v,b.v,c.v);
+#else
+		return v*b.v+c.v;
+#endif
+	}
+
+	inline float4 msub(const float4 &b, const float4 &c) const{
+#ifdef USE_AVX2
+		return _mm_fmsub_ps(v,b.v,c.v);
+#else
+		return v*b.v-c.v;
+#endif
+	}
+
+	template<uint x>
+	inline float get() const{
+		__m128 t = FL_PERMUTE(v,_MM_SHUFFLE(x,x,x,x));
+		return _mm_cvtss_f32(t);
+	}
+
+	template<uint x>
+	inline void set(float f){
+		static_assert(x == 3);
+		__m128 r = FL_PERMUTE(v,_MM_SHUFFLE(0,2,1,3));
+		__m128 t = _mm_set_ss(f);
+		r = _mm_move_ss(r,t);
+		v = FL_PERMUTE(r,_MM_SHUFFLE(0,2,1,3));
+	}
+
+	template<uint x>
+	inline float4 splat() const{
+		return FL_PERMUTE(v,_MM_SHUFFLE(x,x,x,x));
+	}
+
+	template<uint x>
+	inline sfloat1 splatN() const{
+		return FL_PERMUTE(v,_MM_SHUFFLE(x,x,x,x));
+	}
+
+	/*inline float4 splat(uint x) const{
+		return swizzle(x,x,x,x);
+	}*/
+
+	template<uint a, uint b, uint c, uint d>
+	inline float4 swizzle() const{
+		return FL_PERMUTE(v,_MM_SHUFFLE(d,c,b,a));
+	}
+
+	inline bool AllTrue() const{
+		return _mm_movemask_ps(v) == 0b1111;
+	}
+
+	inline bool AllFalse() const{
+		return _mm_movemask_ps(v) == 0;
+	}
+
+	inline bool AnyTrue() const{
+		return _mm_movemask_ps(v) > 0;
+	}
+
+	inline bool AnyFalse() const{
+		return _mm_movemask_ps(v) != 0b1111;
+	}
+
+	///////////
+
+	static inline float4 zero(){
+		return _mm_setzero_ps();
+	}
+
+	static inline float4 one(){
+		return _mm_set1_ps(1.0f);
+	}
+
+	static inline float4 selectctrl(uint a, uint b, uint c, uint d){
+		__m128i t = _mm_set_epi32(d,c,b,a);
+		//t = _mm_cmpgt_epi32(t,_mm_set_epi32(0,0,0,0));
+		t = _mm_cmpgt_epi32(t,_mm_setzero_si128());
+		return _mm_castsi128_ps(t);
+	}
+
+	static inline float4 select(const float4 &a, const float4 &b, const float4 &c){
+		__m128 t1 = _mm_andnot_ps(c.v,a.v);
+		__m128 t2 = _mm_and_ps(c.v,b.v);
+		return _mm_or_ps(t1,t2);
 	}
 
 	static inline float4 dot3(const float4 &a, const float4 &b){
@@ -553,8 +695,64 @@ public:
 #endif
 	}
 
+	static inline float4 min(const float4 &a, const float4 &b){
+		return _mm_min_ps(a.v,b.v);
+	}
+
+	static inline float4 max(const float4 &a, const float4 &b){
+		return _mm_max_ps(a.v,b.v);
+	}
+
+	static inline float4 floor(const float4 &s){
+#ifdef USE_SSE4
+		return _mm_floor_ps(s.v);
+#else
+		float4 r;
+		__attribute__((aligned(16))) float a[4];
+		_mm_store_ps(a,s.v);
+		r.v = _mm_setr_ps(
+			floorf(a[0]),
+			floorf(a[1]),
+			floorf(a[2]),
+			floorf(a[3]));
+		return r;
+#endif
+	}
+
+	static inline float4 ceil(const float4 &s){
+#ifdef USE_SSE4
+		return _mm_ceil_ps(s.v);
+#else
+		float4 r;
+		__attribute__((aligned(16))) float a[4];
+		_mm_store_ps(a,s.v);
+		r.v = _mm_setr_ps(
+			ceilf(a[0]),
+			ceilf(a[1]),
+			ceilf(a[2]),
+			ceilf(a[3]));
+		return r;
+#endif
+	}
+
+	static inline float4 abs(const float4 &s){
+		float4 r;
+		r.v = _mm_setzero_ps();
+		r.v = _mm_sub_ps(r.v,s.v);
+		r.v = _mm_max_ps(r.v,s.v);
+		return r;
+	}
+
 	static inline float4 normalize3(const float4 &s){
 		return s/dot3(s,s);
+	}
+
+	static inline float4 lerp(const float4 &a, const float4 &b, const float4 &t){
+#ifdef USE_AVX2
+		return _mm_fmadd_ps(a.v,(float4::one()-t).v,(b*t).v);
+#else
+		return a*(float4::one()-t)+b*t;
+#endif
 	}
 
 	static inline float4 cross(const float4 &a, const float4 &b){
@@ -594,6 +792,38 @@ public:
 		return r;
 	}
 
+	static inline float4 Equal(const float4 &a, const float4 &b){
+		return _mm_cmpeq_ps(a.v,b.v);
+	}
+
+	static inline float4 Greater(const float4 &a, const float4 &b){
+		return _mm_cmpgt_ps(a.v,b.v);
+	}
+
+	static inline float4 GreaterOrEqual(const float4 &a, const float4 &b){
+		return _mm_cmpge_ps(a.v,b.v);
+	}
+
+	static inline float4 Less(const float4 &a, const float4 &b){
+		return _mm_cmplt_ps(a.v,b.v);
+	}
+
+	static inline float4 LessOrEqual(const float4 &a, const float4 &b){
+		return _mm_cmple_ps(a.v,b.v);
+	}
+
+	static inline float4 And(const float4 &a, const float4 &b){
+		return _mm_and_ps(a.v,b.v);
+	}
+
+	static inline float4 AndNot(const float4 &a, const float4 &b){
+		return _mm_andnot_ps(a.v,b.v);
+	}
+
+	static inline float4 Or(const float4 &a, const float4 &b){
+		return _mm_or_ps(a.v,b.v);
+	}
+
 	static inline void store(float *p, const float4 &s){
 		_mm_store_ps(p,s.v);
 	}
@@ -620,7 +850,33 @@ public:
 	static inline float4 load(const dfloat4 *p){
 		return _mm_load_ps(&p->x);
 	}
+
+	__m128 v;
 };
+
+inline __m128 operator*(const __m128 &a, const float4 &b){
+	return _mm_mul_ps(a,b.v);
+}
+
+inline __m128 operator/(const __m128 &a, const float4 &b){
+	return _mm_div_ps(a,b.v);
+}
+
+inline float4 operator+(float a, const float4 &b){
+	return _mm_add_ps(_mm_set1_ps(a),b.v);
+}
+
+inline float4 operator-(float a, const float4 &b){
+	return _mm_sub_ps(_mm_set1_ps(a),b.v);
+}
+
+inline float4 operator*(float a, const float4 &b){
+	return _mm_mul_ps(_mm_set1_ps(a),b.v);
+}
+
+inline float4 operator/(float a, const float4 &b){
+	return _mm_div_ps(_mm_set1_ps(a),b.v);
+}
 
 inline dfloat3::dfloat3(const float4 &s){
 	float4::store(this,s);
@@ -636,7 +892,7 @@ public:
 		//
 	}
 
-	sfloat4(const sfloat1 &n){
+	sfloat4(const float4 &n){
 		//replicate
 		v[0].v = FL_PERMUTE(n.v,_MM_SHUFFLE(0,0,0,0));
 		v[1].v = FL_PERMUTE(n.v,_MM_SHUFFLE(1,1,1,1));
@@ -644,7 +900,7 @@ public:
 		v[3].v = FL_PERMUTE(n.v,_MM_SHUFFLE(3,3,3,3));
 	}
 
-	sfloat4(const sfloat1 &a, const sfloat1 &b, const sfloat1 &c, const sfloat1 &d){
+	sfloat4(const float4 &a, const float4 &b, const float4 &c, const float4 &d){
 		set(0,a);
 		set(1,b);
 		set(2,c);
@@ -719,6 +975,38 @@ public:
 		v[3] /= s.v[3];
 	}
 
+	inline sfloat4 operator+(const sfloat1 &s) const{
+		sfloat4 r;
+		r.v[0] = v[0]+s;
+		r.v[1] = v[1]+s;
+		r.v[2] = v[2]+s;
+		r.v[3] = v[3]+s;
+		return r;
+	}
+
+	inline void operator+=(const sfloat1 &s){
+		v[0] += s;
+		v[1] += s;
+		v[2] += s;
+		v[3] += s;
+	}
+
+	inline sfloat4 operator-(const sfloat1 &s) const{
+		sfloat4 r;
+		r.v[0] = v[0]-s;
+		r.v[1] = v[1]-s;
+		r.v[2] = v[2]-s;
+		r.v[3] = v[3]-s;
+		return r;
+	}
+
+	inline void operator-=(const sfloat1 &s){
+		v[0] -= s;
+		v[1] -= s;
+		v[2] -= s;
+		v[3] -= s;
+	}
+
 	inline sfloat4 operator*(const sfloat1 &s) const{
 		sfloat4 r;
 		r.v[0] = v[0]*s;
@@ -777,10 +1065,10 @@ public:
 	inline void set(uint x, const float4 &s){
 		__m128 c1 = _mm_castsi128_ps(_mm_cmpeq_epi32(_mm_set1_epi32(x),_mm_set_epi32(3,2,1,0)));
 		sfloat1 c = sfloat1(c1);
-		v[0] = sfloat1::select(v[0],s.splat<0>(),c);
-		v[1] = sfloat1::select(v[1],s.splat<1>(),c);
-		v[2] = sfloat1::select(v[2],s.splat<2>(),c);
-		v[3] = sfloat1::select(v[3],s.splat<3>(),c);
+		v[0] = sfloat1::select(v[0],s.splat<0>().v,c);
+		v[1] = sfloat1::select(v[1],s.splat<1>().v,c);
+		v[2] = sfloat1::select(v[2],s.splat<2>().v,c);
+		v[3] = sfloat1::select(v[3],s.splat<3>().v,c);
 	}
 
 	inline sfloat4 xyz0() const{
