@@ -1,5 +1,6 @@
 #include "main.h"
 #include "scene.h"
+#include "SceneOcclusion.h"
 #include "kernel.h"
 #include "KernelSampler.h"
 #include "ArHosekSkyModel.h"
@@ -661,12 +662,13 @@ RenderKernel::~RenderKernel(){
 	//
 }
 
-bool RenderKernel::Initialize(const Scene *pscene, const dmatrix44 *pviewi, const dmatrix44 *pproji, KernelSampler::PhaseFunction *ppf, uint scattevs,
+bool RenderKernel::Initialize(const Scene *pscene, const SceneOcclusion *psceneocc, const dmatrix44 *pviewi, const dmatrix44 *pproji, KernelSampler::PhaseFunction *ppf, uint scattevs,
 	float msigmas, float msigmaa, uint tilex, uint tiley, uint w, uint h, uint flags){
 	if(!(phb = (dfloat4*)_mm_malloc(tilex*tiley*16,16)))
 		return false;
 
 	this->pscene = pscene;
+	this->psceneocc = psceneocc;
 	this->scattevs = scattevs;
 	this->msigmas = msigmas;
 	this->msigmaa = msigmaa;

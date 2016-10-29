@@ -1,6 +1,7 @@
 #include "main.h"
 #include "node.h"
 #include "scene.h"
+#include "SceneOcclusion.h"
 #include "kernel.h"
 #include "KernelSampler.h"
 #include <python3.5m/Python.h>
@@ -13,6 +14,7 @@
 
 static RenderKernel *gpkernel = 0;
 static Scene *gpscene = 0;
+static SceneOcclusion *gpsceneocc = 0;
 
 #ifndef __unix__
 #define strcasecmp stricmp
@@ -510,11 +512,25 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 
 	//TODO: cache postfix from bpy.path.basename(bpy.data.filepath)
 
+	PyObject *pyworld = PyObject_GetAttrString(pscene,"world");
+	PyObject *pywsettings = PyObject_GetAttrString(pyworld,"droplet");
+	PyObject *pyocclusion = PyObject_GetAttrString(pywsettings,"occlusion");
+	bool occlusion = PyObject_IsTrue(pyocclusion);
+
+	Py_DECREF(pyocclusion);
+	Py_DECREF(pywsettings);
+	Py_DECREF(pyworld);
+
+	if(occlusion){
+		gpsceneocc = new SceneOcclusion();
+		gpsceneocc->Initialize();
+	}
+
 	gpscene = new Scene(); //TODO: interface for blender status reporting
 	gpscene->Initialize(dsize,maxd,qband,cm);
 
 	gpkernel = new RenderKernel();
-	gpkernel->Initialize(gpscene,&sviewi,&sproji,ppf,scattevs,msigmas,msigmaa,tilex,tiley,w,h,flags);
+	gpkernel->Initialize(gpscene,gpsceneocc,&sviewi,&sproji,ppf,scattevs,msigmas,msigmaa,tilex,tiley,w,h,flags);
 
 	SceneData::SmokeCache::DeleteAll();
 	SceneData::ParticleSystem::DeleteAll();
@@ -553,6 +569,12 @@ static PyObject * DRE_EndRender(PyObject *pself, PyObject *pargs){
 	gpscene->Destroy();
 	delete gpscene;
 	gpscene = 0;
+
+	if(gpsceneocc){
+		gpsceneocc->Destroy();
+		delete gpsceneocc;
+		gpsceneocc = 0;
+	}
 
 	DebugPrintf("Shutdown\n");
 

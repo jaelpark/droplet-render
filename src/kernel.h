@@ -28,12 +28,13 @@ class RenderKernel{
 public:
 	RenderKernel();
 	~RenderKernel();
-	bool Initialize(const Scene *, const dmatrix44 *, const dmatrix44 *, KernelSampler::PhaseFunction *, uint, float, float, uint, uint, uint, uint, uint);
+	bool Initialize(const Scene *, const SceneOcclusion *, const dmatrix44 *, const dmatrix44 *, KernelSampler::PhaseFunction *, uint, float, float, uint, uint, uint, uint, uint);
 	void Render(uint, uint, uint, uint, uint);
 	void Destroy();
 	//
 	dfloat4 *phb; //host buffer
 	const Scene *pscene;
+	const SceneOcclusion *psceneocc;
 	struct ArHosekSkyModelState *pskyms;
 	KernelSampler::PhaseFunction *ppf;
 	dmatrix44 viewi;

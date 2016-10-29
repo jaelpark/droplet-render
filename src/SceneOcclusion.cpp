@@ -1,9 +1,16 @@
 #include "main.h"
 
-#ifdef USE_EMBREE
+//#ifdef USE_EMBREE
 #include <embree2/rtcore.h>
 #include <embree2/rtcore_ray.h>
-#endif
+
+/*#if BLCLOUD_VSIZE == 4
+#define RTC_INTERSECT_N RTC_INTERSECT4
+#elif BLCLOUD_VSIZE == 8
+#define RTC_INTERSECT_N RTC_INTERSECT8
+#endif*/
+
+//#endif
 
 #include "scene.h"
 #include "SceneOcclusion.h"
@@ -19,7 +26,7 @@ SceneOcclusion::~SceneOcclusion(){
 void SceneOcclusion::Initialize(){
 #ifdef USE_EMBREE
 	pdev = rtcNewDevice(0);
-	pscene = rtcDeviceNewScene(pdev,RTC_SCENE_STATIC|RTC_SCENE_INCOHERENT|RTC_SCENE_HIGH_QUALITY,RTC_INTERSECT1);
+	pscene = rtcDeviceNewScene(pdev,RTC_SCENE_STATIC|RTC_SCENE_INCOHERENT|RTC_SCENE_HIGH_QUALITY,RTC_INTERSECT4);
 	//rtcIntersect4?
 
 	for(uint i = 0; i < SceneData::Surface::objs.size(); ++i){
@@ -46,9 +53,42 @@ void SceneOcclusion::Initialize(){
 #endif
 }
 
+void SceneOcclusion::Intersect(const sfloat4 &ro, const sfloat4 &rd, const sfloat1 &gm, dintN *pmask, dfloatN *pdist) const{
+	//RTCRayNt<BLCLOUD_VSIZE> ray;
+#ifdef USE_EMBREE
+	RTCRay4 ray;
+	for(uint i = 0; i < BLCLOUD_VSIZE; ++i){
+		dfloat4 RO = dfloat4(ro.get(i));
+		ray.orgx[i] = RO.x;
+		ray.orgy[i] = RO.y;
+		ray.orgz[i] = RO.z;
+		dfloat4 RD = dfloat4(rd.get(i));
+		ray.dirx[i] = RD.x;
+		ray.diry[i] = RD.y;
+		ray.dirz[i] = RD.z;
+		ray.tnear[i] = 0.0f;
+		ray.tfar[i] = 1e6f;
+		ray.mask[i] = -1;
+		ray.time[i] = 0;
+		ray.instID[i] = RTC_INVALID_GEOMETRY_ID;
+		ray.geomID[i] = RTC_INVALID_GEOMETRY_ID;
+		ray.primID[i] = RTC_INVALID_GEOMETRY_ID;
+	}
+
+	rtcIntersect4(&gm.v,pscene,ray);
+
+	for(uint i = 0; i < BLCLOUD_VSIZE; ++i){
+		pmask->v[i] = ray.geomID[i] != RTC_INVALID_GEOMETRY_ID?-1:0;
+		pdist->v[i] = ray.tfar[i];
+	}
+#else
+	*pmask = dintN(0);
+#endif
+}
+
 void SceneOcclusion::Destroy(){
 #ifdef USE_EMBREE
-	//TODO: delete the geometry
+	//TODO: delete the geometry?
 	rtcDeleteScene(pscene);
 	rtcDeleteDevice(pdev);
 #endif

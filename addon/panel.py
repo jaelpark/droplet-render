@@ -159,9 +159,10 @@ class ClCompositeProperties(bpy.types.PropertyGroup):
 	# shadowpass = BoolProperty(name="Composite shadow pass",default=False,description="Create an additional shadow mask texture which may then be used to naturally cloud shadow scenes rendered with other render engines. During the shadow pass all the light sources are sampled from the positions reconstructed from the external depth. Same number of samples is used as for the primary cloud render. However, this phase tends to be much faster due to transparency-only rendering, ie. no scattering events are simulated.");
 	# depthtex = EnumProperty(name="Depth texture",items=TextureSelection,description="Depth texture to be used for render time compositing. This could be the depth output from the Cycles render engine. Note that render resolution and camera properties (clipping planes, fov) should be unaltered between render engines for correct results.");
 	# #still need the deep shadow map
+	occlusion = BoolProperty(name="Occlusion Geometry",default=False,description="Enable holdout geometry occlusion testing. Every object marked as \"holdout\" will occlude rays creating shadows and lightshafts. Having occlusion geometry also enables compositing with other render engines. Holdout object itself is not visible. This feature may have a significant performance impact, and requires Droplet to be built with Intel Embree.");
 
 	def draw(self, context, layout):
-		pass
+		layout.row().prop(self,"occlusion");
 		# layout.row().prop(self,"depthcomp");
 		# layout.row().prop(self,"shadowpass");
 		# layout.row().prop(self,"depthtex");
@@ -186,7 +187,7 @@ def NodeGroupSelection(self, context):
 	return [(m.name,m.name,m.name,"NODETREE",x) for x, m in enumerate(bpy.data.node_groups)];
 
 class ClObjectProperties(bpy.types.PropertyGroup):
-	holdout = BoolProperty(name="Holdout Mesh",default=False,description="Tell Droplet that this is a holdout mesh. Holdouts will occlude rays and create shadowing among clouds. This is required when compositing with results from other render engines. Available only if Droplet was built with Intel Embree support.");
+	holdout = BoolProperty(name="Holdout Mesh",default=False,description="Tell Droplet that this is a holdout mesh. Holdouts will occlude rays and create shadowing among clouds. This is also required when compositing with results from other render engines. Available only if \"occlusion geometry\" option is enabled and Droplet was built with Intel Embree support.");
 	nodetree = EnumProperty(name="Node group",items=NodeGroupSelection,description="Node group to be used for this object");
 
 class ClMaterialPanel(bpy.types.Panel):
