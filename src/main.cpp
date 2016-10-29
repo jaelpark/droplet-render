@@ -470,11 +470,11 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	Py_DECREF(pbmops);
 	Py_DECREF(pbmesh);
 
-	PyObject *pyrender = PyObject_GetAttrString(pscene,"blcloudrender");
+	/*PyObject *pyrender = PyObject_GetAttrString(pscene,"blcloudrender");
 	PyObject *pytransparent = PyObject_GetAttrString(pyrender,"transparent");
 	uint flags = PyObject_IsTrue(pytransparent) & RENDER_TRANSPARENT;
 	Py_DECREF(pytransparent);
-	Py_DECREF(pyrender);
+	Py_DECREF(pyrender);*/
 
 	PyObject *pysampling = PyObject_GetAttrString(pscene,"blcloudsampling");
 	uint scattevs = PyGetUint(pysampling,"scatterevs");
@@ -530,7 +530,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	gpscene->Initialize(dsize,maxd,qband,cm);
 
 	gpkernel = new RenderKernel();
-	gpkernel->Initialize(gpscene,gpsceneocc,&sviewi,&sproji,ppf,scattevs,msigmas,msigmaa,tilex,tiley,w,h,flags);
+	gpkernel->Initialize(gpscene,gpsceneocc,&sviewi,&sproji,ppf,scattevs,msigmas,msigmaa,tilex,tiley,w,h,0);
 
 	SceneData::SmokeCache::DeleteAll();
 	SceneData::ParticleSystem::DeleteAll();

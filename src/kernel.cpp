@@ -474,7 +474,9 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 		//T should be the value at rc; T(rc)
 
 		sfloat4 ll; //total lighting (directional+sky)
-		if(rm.AnyTrue() && !(pkernel->flags & RENDER_TRANSPARENT && r == 0)){ //skip (sky)lighting calculations if all the incident rays scatter (don't reach sun or sky) (at least one of rm != 0)
+		//skip (sky)lighting calculations if all the incident rays scatter (don't reach sun or sky) (at least one of rm != 0)
+		//if(rm.AnyTrue() && !(pkernel->flags & RENDER_TRANSPARENT && r == 0)){
+		if(rm.AnyTrue() && r > 0){
 			sfloat4 lc = sfloat4::zero(); //total directional lighting
 			for(uint i = 0, n = KernelSampler::BaseLight::lights.size(); i < n; ++i)
 				lc += KernelSampler::BaseLight::lights[i]->Evaluate(rd);

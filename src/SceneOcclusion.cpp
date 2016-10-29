@@ -50,6 +50,8 @@ void SceneOcclusion::Initialize(){
 	}
 
 	rtcCommit(pscene);
+
+	DebugPrintf("Prepared occlusion geometry.\n");
 #endif
 }
 

@@ -16,7 +16,7 @@ class ClRenderProperties(bpy.types.PropertyGroup):
 	res_x = IntProperty(name="Res.X",default=1920,min=1,description="Image width in pixels",update=SetResolution);
 	res_y = IntProperty(name="Res.Y",default=1080,min=1,description="Image height in pixels",update=SetResolution);
 	res_p = FloatProperty(name="Res.%",default=0.5,min=0.01,max=1,description="Resolution percentage",update=SetResolution);
-	transparent = BoolProperty(name="Transparent",default=False,description="Enable alpha channel and ignore background for 0th order scattering.");
+	#transparent = BoolProperty(name="Transparent",default=False,description="Enable alpha channel and ignore background for 0th order scattering.");
 
 	def draw(self, context, layout):
 		layout.row().label("Dimensions:");
@@ -28,7 +28,7 @@ class ClRenderProperties(bpy.types.PropertyGroup):
 
 		c = s.column();
 		c.row().prop(self,"res_p");
-		c.row().prop(self,"transparent");
+		#c.row().prop(self,"transparent");
 
 class ClRenderPanel(bpy.types.Panel):
 	bl_idname = "ClRenderPanel";
@@ -46,8 +46,8 @@ class ClRenderPanel(bpy.types.Panel):
 
 class ClSamplingProperties(bpy.types.PropertyGroup):
 	samples = IntProperty(name="Render",default=500,min=1,description="Number of samples to be taken");
-	scatterevs = IntProperty(name="Scattering",default=12,min=0,max=32,description="Maximum volume scattering events.");
-	msigmas = FloatProperty(name="Sigma.S",default=7.11,min=0.0,description="Macroscopic scattering cross section for maximum density.");
+	scatterevs = IntProperty(name="Scattering",default=20,min=0,max=32,description="Maximum volume scattering events.");
+	msigmas = FloatProperty(name="Sigma.S",default=10.0,min=0.0,description="Macroscopic scattering cross section for maximum density.");
 	msigmaa = FloatProperty(name="Sigma.A",default=0.03,min=0.0,description="Macroscopic absorption cross section for maximum density.");
 	phasef = EnumProperty(name="Phase function",default="M",items=(
 		("H","Henyey-Greenstein","Henyey-Greenstein phase function with anisotropy g=0.35. A fast approximation with plausible results."),
@@ -227,8 +227,8 @@ class ClParticleSystemPanel(bpy.types.Panel):
 	def draw(self, context):
 		context.particle_system.settings.droplet.draw(context,self.layout);
 
-def TextureSelection(self, context):
-	return [(m.name,m.name,m.name,"TEXTURE",x) for x, m in enumerate(bpy.data.images)];
+#def TextureSelection(self, context):
+	#return [(m.name,m.name,m.name,"TEXTURE",x) for x, m in enumerate(bpy.data.images)];
 
 class ClLampProperties(bpy.types.PropertyGroup):
 	intensity = FloatProperty(name="Intensity",default=50.0,min=0.0);
