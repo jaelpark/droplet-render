@@ -1,6 +1,8 @@
 #ifndef SCENE_OCCLUSION_H
 #define SCENE_OCCLUSION_H
 
+#define MAX_OCCLUSION_DIST 1e6f
+
 class SceneOcclusion{
 public:
 	SceneOcclusion();

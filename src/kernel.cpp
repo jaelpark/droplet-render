@@ -255,6 +255,11 @@ inline void SamplingBasis(const sfloat4 &iv, sfloat4 *pb1, sfloat4 *pb2){
 }
 
 static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pkernel, sint4 *prs, ParallelLeafList &ls, uint r, uint samples, sfloat1 *prq){
+	dfloatN maxd = dfloatN(MAX_OCCLUSION_DIST); //max path
+	dintN ogm = dintN(0);
+	if(pkernel->psceneocc)
+		pkernel->psceneocc->Intersect(ro,rd,gm,&ogm,&maxd);
+
 	dintN sgm = dintN(gm);
 	for(uint i = 0; i < BLCLOUD_VSIZE; ++i){
 		if(sgm.v[i] == 0)

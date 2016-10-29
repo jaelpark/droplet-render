@@ -4,12 +4,6 @@
 #include <embree2/rtcore.h>
 #include <embree2/rtcore_ray.h>
 
-/*#if BLCLOUD_VSIZE == 4
-#define RTC_INTERSECT_N RTC_INTERSECT4
-#elif BLCLOUD_VSIZE == 8
-#define RTC_INTERSECT_N RTC_INTERSECT8
-#endif*/
-
 //#endif
 
 #include "scene.h"
@@ -69,7 +63,7 @@ void SceneOcclusion::Intersect(const sfloat4 &ro, const sfloat4 &rd, const sfloa
 		ray.diry[i] = RD.y;
 		ray.dirz[i] = RD.z;
 		ray.tnear[i] = 0.0f;
-		ray.tfar[i] = 1e6f;
+		ray.tfar[i] = MAX_OCCLUSION_DIST;
 		ray.mask[i] = -1;
 		ray.time[i] = 0;
 		ray.instID[i] = RTC_INVALID_GEOMETRY_ID;
