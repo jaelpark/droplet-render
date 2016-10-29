@@ -83,11 +83,12 @@ public:
 
 class Surface : public BaseObject{
 public:
-	Surface(Node::NodeTree *);
+	Surface(Node::NodeTree *, bool);
 	~Surface();
 	static void DeleteAll();
 	std::vector<dfloat3> vl;
 	std::vector<uint> tl;
+	bool holdout;
 	static std::vector<Surface *> objs;
 };
 

@@ -362,6 +362,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 	openvdb::math::Transform::Ptr pgridtr = openvdb::math::Transform::createLinearTransform(s);
 
 	//Find if SceneInfo distance output was used anywhere in the node trees and automatically determine if a query field should be constructed.
+	//TODO: skip holdouts
 	bool qfield =
 		std::find_if(SceneData::Surface::objs.begin(),SceneData::Surface::objs.end(),S_FindSceneInfo) != SceneData::Surface::objs.end() ||
 		std::find_if(SceneData::ParticleSystem::prss.begin(),SceneData::ParticleSystem::prss.end(),S_FindSceneInfo) != SceneData::ParticleSystem::prss.end() ||
@@ -390,6 +391,8 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 	std::vector<PostFogParams,tbb::cache_aligned_allocator<PostFogParams>> fogppl; //input grids to be post-processed
 
 	for(uint i = 0; i < SceneData::Surface::objs.size(); ++i){
+		if(SceneData::Surface::objs[i]->holdout)
+			continue;
 		Node::InputNodeParams snp(SceneData::Surface::objs[i],pgridtr,0,0,0,0);
 		SceneData::Surface::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_SURFACE);
 
@@ -618,7 +621,7 @@ void SmokeCache::DeleteAll(){
 
 std::vector<SmokeCache *> SmokeCache::objs;
 
-Surface::Surface(Node::NodeTree *_pnt) : BaseObject(_pnt){
+Surface::Surface(Node::NodeTree *_pnt, bool _holdout) : BaseObject(_pnt), holdout(_holdout){
 	Surface::objs.push_back(this);
 }
 

@@ -186,6 +186,7 @@ def NodeGroupSelection(self, context):
 	return [(m.name,m.name,m.name,"NODETREE",x) for x, m in enumerate(bpy.data.node_groups)];
 
 class ClObjectProperties(bpy.types.PropertyGroup):
+	holdout = BoolProperty(name="Holdout Mesh",default=False,description="Tell Droplet that this is a holdout mesh. Holdouts will occlude rays and create shadowing among clouds. This is required when compositing with results from other render engines. Available only if Droplet was built with Intel Embree support.");
 	nodetree = EnumProperty(name="Node group",items=NodeGroupSelection,description="Node group to be used for this object");
 
 class ClMaterialPanel(bpy.types.Panel):
@@ -201,7 +202,9 @@ class ClMaterialPanel(bpy.types.Panel):
 		return context.scene.render.engine == config.dre_engineid and context.active_object.type == 'MESH';
 
 	def draw(self, context):
-		self.layout.row().prop(context.object.droplet,"nodetree");
+		self.layout.row().prop(context.object.droplet,"holdout");
+		if not context.object.droplet.holdout:
+			self.layout.row().prop(context.object.droplet,"nodetree");
 
 class ClParticleSystemProperties(bpy.types.PropertyGroup):
 	nodetree = EnumProperty(name="Node group",items=NodeGroupSelection,description="Node group to be used for this particle system");

@@ -374,7 +374,9 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 		else if(strcasecmp(ptype1,"MESH") == 0){
 			PyObject *psd = PyObject_GetAttrString(pobj,"droplet");
 			PyObject *ppn = PyObject_GetAttrString(psd,"nodetree");
+			PyObject *pyholdout = PyObject_GetAttrString(psd,"holdout");
 			const char *pname = PyUnicode_AsUTF8(ppn);
+			bool holdout = PyObject_IsTrue(pyholdout);
 
 			std::unordered_map<Py_hash_t, Node::NodeTree *>::const_iterator m = std::find_if(ntm.begin(),ntm.end(),[=](const std::unordered_map<Py_hash_t, Node::NodeTree *>::value_type &t)->bool{
 				return strcmp(t.second->name,pname) == 0;
@@ -383,8 +385,9 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 				DebugPrintf("Warning: invalid node tree %s. Skipping surface (index=%u).\n",pname,i);
 				continue;
 			}
-			SceneData::Surface *psobj = new SceneData::Surface(m->second);
+			SceneData::Surface *psobj = new SceneData::Surface(m->second,holdout);
 
+			Py_DECREF(pyholdout);
 			Py_DECREF(ppn);
 			Py_DECREF(psd);
 

@@ -22,10 +22,16 @@ else()
 	MESSAGE(STATUS "Enabling SSE3 support (default)")
 endif()
 
+if(USE_EMBREE)
+	set(OPT_LIBS ${OPT_LIBS} embree)
+	add_definitions(-DUSE_EMBREE)
+	MESSAGE(STATUS "Enabling embree occlusion testing")
+endif()
+
 add_definitions(-DBLCLOUD_CPU)
 add_definitions(-DDROPLET_CPU)
 
 file(GLOB SOURCES src/*.cpp)
 
 add_library(droplet SHARED ${SOURCES})
-TARGET_LINK_LIBRARIES(droplet tbb tbbmalloc openvdb)
+TARGET_LINK_LIBRARIES(droplet tbb tbbmalloc openvdb ${OPT_LIBS})
