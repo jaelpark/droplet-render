@@ -88,36 +88,6 @@ inline sfloat4 mul(const sfloat4 &v, const matrix44 &m){
 	return r;
 }
 
-inline sfloat1 IntersectSphere(const sfloat4 &pp, const sfloat4 &r, const sfloat1 &sp, float sr){
-	//sfloat4 p = pp-sfloat4(sp);
-	sfloat4 p;
-	for(uint i = 0; i < 4; ++i)
-		p.v[i] = pp.v[i]-sp;
-	sfloat1 b = sfloat4::dot3(r,p);
-	sfloat1 c = sfloat4::dot3(p,p)-sfloat1(sr*sr);
-	sfloat1 d2 = b*b-c;
-	sfloat1 rm = sfloat1::GreaterOrEqual(d2,sfloat1::zero());
-	sfloat1 sm = sfloat1::And(rm,sfloat1::one());
-	//if(d2 < 0.0f)
-		//return false;
-	sfloat1 d = sfloat1::sqrt(sm*d2);
-	/*tr0 = -b-d;
-	tr1 = -b+d;
-	return tr1 > 0.0f;*/
-	//return (-b+d) > 0.0f;
-	return sm*sfloat1::And(sfloat1::Greater(-b+d,sfloat1::zero()),sfloat1::one());
-}
-
-inline sfloat1 IntersectCube(const sfloat4 &p, const sfloat4 &r, const sfloat4 &bmin, const sfloat4 &bmax, sfloat1 &tr0, sfloat1 &tr1){
-	sfloat4 t1 = (bmin-p)/r;
-	sfloat4 t2 = (bmax-p)/r;
-	sfloat4 tmin = sfloat4::min(t1,t2);
-	sfloat4 tmax = sfloat4::max(t1,t2);
-	tr0 = sfloat1::max(sfloat1::max(tmin.v[0],tmin.v[1]),tmin.v[2]);
-	tr1 = sfloat1::min(sfloat1::min(tmax.v[0],tmax.v[1]),tmax.v[2]);
-	return sfloat1::And(sfloat1::And(sfloat1::LessOrEqual(tr0,tr1),sfloat1::Greater(tr1,sfloat1::zero())),sfloat1::one());
-}
-
 inline float SampleVoxelSpace(const float4 &p, float *pvol, const float4 &ce, uint lvoxc){
 	float4 nv = float4((float)lvoxc);
 	float4 ni = -0.5f*(ce-ce.splat<3>()-p)*(nv-float4::one())/ce.splat<3>();
@@ -188,14 +158,16 @@ static uint OctreeNextNode(const dfloat3 &tm, const duint3 &xyz){
 	return xyz.z;
 }
 
-static void OctreeProcessSubtree(const dfloat3 &t0, const dfloat3 &t1, uint a, const tbb::concurrent_vector<OctreeStructure> *pob, uint n, uint l, std::vector<uint> *pls){
+static void OctreeProcessSubtree(const dfloat3 &t0, const dfloat3 &t1, uint a, const tbb::concurrent_vector<OctreeStructure> *pob, uint n, uint l, std::vector<ParallelLeafList::Node> *pls){
 	//n: node index, l: octree level
 	if(t1.x < 0.0f || t1.y < 0.0f || t1.z < 0.0f || (n == 0 && l > 0))
 		return;
 	//if(level == mlevel){... return;} //leaf, volume index != ~0
 	if((*pob)[n].volx[VOLUME_BUFFER_SDF] != ~0u || (*pob)[n].volx[VOLUME_BUFFER_FOG] != ~0u){
-		pls->push_back(n);
-		return; //true: stop
+		float tr0 = std::max(std::max(t0.x,t0.y),t0.z);
+		float tr1 = std::min(std::min(t1.x,t1.y),t1.z);
+		pls->push_back(ParallelLeafList::Node(n,tr0,tr1));
+		return;
 	}
 	//dfloat3 tm = 0.5f*(t0+t1);
 	dfloat3 tm = dfloat3(
@@ -259,6 +231,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 	dintN ogm = dintN(0);
 	if(pkernel->psceneocc)
 		pkernel->psceneocc->Intersect(ro,rd,gm,&ogm,&maxd);
+	//TODO: if occluded, traverse the octree until dist > maxd
 
 	dintN sgm = dintN(gm);
 	for(uint i = 0; i < BLCLOUD_VSIZE; ++i){
@@ -293,8 +266,6 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 		ro1 = float4::load(&ros);
 		rd1 = float4::load(&rds);
 
-		//float3 t0 = (make_float3(*(float4*)&ob[0].ce)-make_float3(ob[0].ce.w)-ro)*invrd;
-		//float3 t1 = (make_float3(*(float4*)&ob[0].ce)+make_float3(ob[0].ce.w)-ro)*invrd;
 		float4 t0 = (scaabbmin-ro1)/rd1;
 		float4 t1 = (scaabbmax-ro1)/rd1;
 
@@ -345,13 +316,8 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 	//finally, sample with given density and position
 	sample();*/
 
-#if 1
 	sfloat1 msigmaa = sfloat1(pkernel->msigmaa);
 	sfloat1 msigmas = sfloat1(pkernel->msigmas);
-#else
-	sfloat1 msigmaa = sfloat1(pkernel->msigmaa)*expf(-2.0f*(float)r)+sfloat1(0.02f);
-	sfloat1 msigmas = sfloat1(pkernel->msigmas)*expf(-2.0f*(float)r)+sfloat1(2.9f);
-#endif
 	sfloat1 msigmae = msigmaa+msigmas;
 
 	for(uint s = 0; s < samples; ++s){
@@ -370,7 +336,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 			if(qm.AllFalse())
 				break;
 
-			sfloat4 ce = sfloat4::zero();
+			/*sfloat4 ce = sfloat4::zero();
 			for(uint j = 0; j < BLCLOUD_VSIZE; ++j)
 				if(i < ls.GetLeafCount(r,j))
 					ce.set(j,float4::load(&pkernel->pscene->ob[ls.GetLeaf(r,j,i)].ce));
@@ -379,7 +345,19 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
 			sfloat1 tr0, tr1;
 			sfloat4 ee = ce.swizzle<3,3,3,3>(); //splat w (extent)
-			IntersectCube(lo,rd,ce-ee,ce+ee,tr0,tr1);
+			IntersectCube(lo,rd,ce-ee,ce+ee,tr0,tr1);*/
+
+			sfloat4 lo = rc, ce = sfloat4::zero();
+			sfloat1 rr = sfloat4::length3(lo-ro);
+
+			dfloatN tra, trb;
+			for(uint j = 0; j < BLCLOUD_VSIZE; ++j)
+				if(i < ls.GetLeafCount(r,j)){
+					ls.GetHit(r,j,i,&tra.v[j],&trb.v[j]);
+					ce.set(j,float4::load(&pkernel->pscene->ob[ls.GetLeaf(r,j,i)].ce));
+				}
+			sfloat1 tr0 = sfloat1::load(&tra)-rr;
+			sfloat1 tr1 = sfloat1::load(&trb)-rr;
 
 			sfloat4 r0 = lo+rd*tr0;
 			sfloat4 r1 = lo+rd*tr1;

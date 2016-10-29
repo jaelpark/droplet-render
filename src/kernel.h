@@ -18,10 +18,16 @@ public:
 	}
 
 	inline uint GetLeaf(uint r, uint v, uint x) const{
-		return ls[r][v][x];
+		return std::get<0>(ls[r][v][x]);
 	}
 
-	std::vector<uint> ls[BLCLOUD_MAX_RECURSION][BLCLOUD_VSIZE];
+	inline void GetHit(uint r, uint v, uint x, float *ptr0, float *ptr1) const{
+		*ptr0 = std::get<1>(ls[r][v][x]);
+		*ptr1 = std::get<2>(ls[r][v][x]);
+	};
+
+	typedef std::tuple<uint, float, float> Node;
+	std::vector<Node> ls[BLCLOUD_MAX_RECURSION][BLCLOUD_VSIZE];
 };
 
 class RenderKernel{
