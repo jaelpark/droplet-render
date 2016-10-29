@@ -12,7 +12,7 @@ from bl_ui import properties_render
 import nodeitems_utils
 from bpy.props import PointerProperty
 
-from bl_ui import properties_data_mesh,properties_particle,properties_physics_common,properties_physics_field,properties_physics_smoke
+from bl_ui import properties_data_mesh,properties_data_camera,properties_particle,properties_physics_common,properties_physics_field,properties_physics_smoke
 
 import libdroplet #libblcloud #pyd/so filename
 import numpy as np
@@ -65,7 +65,7 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 		self.h = scene.render.resolution_y;
 		tilew = scene.blcloudperf.tilex;
 		tileh = scene.blcloudperf.tiley; #self.tile_x, tile_y
-		
+
 		samples_ext = scene.blcloudsampling.samples;
 		samples_int = scene.blcloudperf.samples;
 		sc = int(ceil(samples_ext/samples_int)); #external sample count
@@ -145,6 +145,9 @@ def register():
 	properties_data_mesh.DATA_PT_vertex_colors.COMPAT_ENGINES.add(config.dre_engineid);
 	properties_data_mesh.DATA_PT_customdata.COMPAT_ENGINES.add(config.dre_engineid);
 
+	properties_data_camera.DATA_PT_lens.COMPAT_ENGINES.add(config.dre_engineid);
+	properties_data_camera.DATA_PT_camera_display.COMPAT_ENGINES.add(config.dre_engineid);
+
 	properties_particle.PARTICLE_PT_context_particles.COMPAT_ENGINES.add(config.dre_engineid);
 	properties_particle.PARTICLE_PT_emission.COMPAT_ENGINES.add(config.dre_engineid);
 	properties_particle.PARTICLE_PT_draw.COMPAT_ENGINES.add(config.dre_engineid);
@@ -168,6 +171,7 @@ def register():
 	bpy.types.Scene.blcloudsampling = PointerProperty(type=panel.ClSamplingProperties);
 	bpy.types.Scene.blcloudgrid = PointerProperty(type=panel.ClGridProperties);
 	bpy.types.Scene.blcloudperf = PointerProperty(type=panel.ClPerformanceProperties);
+	bpy.types.World.droplet = PointerProperty(type=panel.ClCompositeProperties);
 
 	bpy.types.Object.droplet = PointerProperty(type=panel.ClObjectProperties);
 	bpy.types.ParticleSettings.droplet = PointerProperty(type=panel.ClParticleSystemProperties);

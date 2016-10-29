@@ -151,6 +151,35 @@ class ClPerformancePanel(bpy.types.Panel):
 	def draw(self, context):
 		context.scene.blcloudperf.draw(context,self.layout);
 
+def TextureSelection(self, context):
+	return [(m.name,m.name,m.name,"TEXTURE",x) for x, m in enumerate(bpy.data.images)];
+
+class ClCompositeProperties(bpy.types.PropertyGroup):
+	# depthcomp = BoolProperty(name="Depth compositing",default=False,description="Use external depth texture for compositing.");
+	# shadowpass = BoolProperty(name="Composite shadow pass",default=False,description="Create an additional shadow mask texture which may then be used to naturally cloud shadow scenes rendered with other render engines. During the shadow pass all the light sources are sampled from the positions reconstructed from the external depth. Same number of samples is used as for the primary cloud render. However, this phase tends to be much faster due to transparency-only rendering, ie. no scattering events are simulated.");
+	# depthtex = EnumProperty(name="Depth texture",items=TextureSelection,description="Depth texture to be used for render time compositing. This could be the depth output from the Cycles render engine. Note that render resolution and camera properties (clipping planes, fov) should be unaltered between render engines for correct results.");
+	# #still need the deep shadow map
+
+	def draw(self, context, layout):
+		pass
+		# layout.row().prop(self,"depthcomp");
+		# layout.row().prop(self,"shadowpass");
+		# layout.row().prop(self,"depthtex");
+
+class ClCompositePanel(bpy.types.Panel):
+	bl_idname = "ClCompositePanel";
+	bl_label = "Environment Compositor"
+	bl_space_type = "PROPERTIES";
+	bl_region_type = "WINDOW";
+	bl_context = "world";
+
+	@classmethod
+	def poll(cls, context):
+		return context.scene.render.engine == config.dre_engineid;
+
+	def draw(self, context):
+		context.scene.world.droplet.draw(context,self.layout);
+
 def NodeGroupSelection(self, context):
 	#ml = sorted(context.scene.timeline_markers,key = lambda m: m.frame,reverse=True);
 	#return [(m.name, m.name, m.name, x) for x, m in enumerate(ml)];
