@@ -325,7 +325,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 		sfloat1 rm = sint1::trueI();
 		sfloat1 zr = sint1::falseI();
 
-		sfloat4 rc = ro;
+		sfloat1 td = sfloat1::zero();
 		for(uint i = 0;; ++i){
 			dintN leafcount;
 			for(uint j = 0; j < BLCLOUD_VSIZE; ++j)
@@ -336,33 +336,23 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 			if(qm.AllFalse())
 				break;
 
-			/*sfloat4 ce = sfloat4::zero();
-			for(uint j = 0; j < BLCLOUD_VSIZE; ++j)
-				if(i < ls.GetLeafCount(r,j))
-					ce.set(j,float4::load(&pkernel->pscene->ob[ls.GetLeaf(r,j,i)].ce));
+			sfloat4 ce = sfloat4::zero();
+			sfloat1 lo = td;
 
-			sfloat4 lo = rc; //local origin
-
-			sfloat1 tr0, tr1;
-			sfloat4 ee = ce.swizzle<3,3,3,3>(); //splat w (extent)
-			IntersectCube(lo,rd,ce-ee,ce+ee,tr0,tr1);*/
-
-			sfloat4 lo = rc, ce = sfloat4::zero();
-			sfloat1 rr = sfloat4::length3(lo-ro);
-
-			dfloatN tra, trb;
+			dfloatN TRA, TRB;
 			for(uint j = 0; j < BLCLOUD_VSIZE; ++j)
 				if(i < ls.GetLeafCount(r,j)){
-					ls.GetHit(r,j,i,&tra.v[j],&trb.v[j]);
+					ls.GetHit(r,j,i,&TRA.v[j],&TRB.v[j]);
 					ce.set(j,float4::load(&pkernel->pscene->ob[ls.GetLeaf(r,j,i)].ce));
 				}
-			sfloat1 tr0 = sfloat1::load(&tra)-rr;
-			sfloat1 tr1 = sfloat1::load(&trb)-rr;
+			sfloat1 tra = sfloat1::load(&TRA); //leaf distance from the ray origin
+			sfloat1 trb = sfloat1::load(&TRB);
+			sfloat1 tr0 = tra-td; //leaf distance from the current pointer
+			sfloat1 tr1 = trb-td;
 
-			sfloat4 r0 = lo+rd*tr0;
-			sfloat4 r1 = lo+rd*tr1;
+			sfloat4 r0 = ro+rd*tra;
 
-			sint1 sm = sfloat1::Greater(tr0,zr);
+			sint1 sm = sfloat1::Greater(tra,td);
 			dintN SM = dintN(sm);
 
 			dfloatN smax1, dist1, rho1;
@@ -391,10 +381,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 			sm = sfloat1::Or(sm,vm); //skip if the next leaf is a sole fog
 
 			sm = sfloat1::And(sm,qm); //can't allow any further changes in 'rc' if qm == 0
-
-			rc.v[0] = sfloat1::Or(sfloat1::And(sm,r0.v[0]),sfloat1::AndNot(sm,rc.v[0]));
-			rc.v[1] = sfloat1::Or(sfloat1::And(sm,r0.v[1]),sfloat1::AndNot(sm,rc.v[1]));
-			rc.v[2] = sfloat1::Or(sfloat1::And(sm,r0.v[2]),sfloat1::AndNot(sm,rc.v[2]));
+			td = sfloat1::Or(sfloat1::And(sm,tra),sfloat1::AndNot(sm,td));
 
 			sfloat1 s0 = sfloat1::Or(sfloat1::And(sm,tr0),sfloat1::AndNot(sm,zr)); //positive distance skipped (moving to next leaf)
 
@@ -406,24 +393,17 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 				if(sfloat1(sm).AllFalse())
 					break;
 				sc = s0+sr;
-
-				/*rc.v[0] = sfloat1::Or(sfloat1::And(sm,lo.v[0]+rd.v[0]*sc),sfloat1::AndNot(sm,rc.v[0]));
-				rc.v[1] = sfloat1::Or(sfloat1::And(sm,lo.v[1]+rd.v[1]*sc),sfloat1::AndNot(sm,rc.v[1]));
-				rc.v[2] = sfloat1::Or(sfloat1::And(sm,lo.v[2]+rd.v[2]*sc),sfloat1::AndNot(sm,rc.v[2]));*/
-				rc.v[0] = sfloat1::Or(sfloat1::And(sm,rd.v[0].madd(sc,lo.v[0])),sfloat1::AndNot(sm,rc.v[0]));
-				rc.v[1] = sfloat1::Or(sfloat1::And(sm,rd.v[1].madd(sc,lo.v[1])),sfloat1::AndNot(sm,rc.v[1]));
-				rc.v[2] = sfloat1::Or(sfloat1::And(sm,rd.v[2].madd(sc,lo.v[2])),sfloat1::AndNot(sm,rc.v[2]));
+				td = sfloat1::Or(sfloat1::And(sm,lo+sc),sfloat1::AndNot(sm,td));
 
 				sm = sfloat1::And(sm,sfloat1::Less(sc,tr1)); //check if out of extents
 				sh = sfloat1::Or(sm,sfloat1::AndNot(rm,sint1::trueI())); //prevent modifications if rm == false
-
-				rc.v[0] = sfloat1::Or(sfloat1::AndNot(sh,r1.v[0]),sfloat1::And(sh,rc.v[0])); //rc = tr1[i]
-				rc.v[1] = sfloat1::Or(sfloat1::AndNot(sh,r1.v[1]),sfloat1::And(sh,rc.v[1]));
-				rc.v[2] = sfloat1::Or(sfloat1::AndNot(sh,r1.v[2]),sfloat1::And(sh,rc.v[2]));
+				td = sfloat1::Or(sfloat1::AndNot(sh,trb),sfloat1::And(sh,td));
 
 				//if sm == false, this is always true (so rm won't be changed)
 				//-> unless the ray has run out of leafs
 				rm = sfloat1::Or(sfloat1::And(sm,sfloat1::Greater(sc,tr0)),sfloat1::AndNot(sm,rm));
+
+				sfloat4 rc = ro+rd*td;
 
 				sh = sfloat1::And(sm,rm);
 				dintN SH = dintN(sh);
@@ -499,11 +479,6 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 				ca.v[i] = 0.00035f*sfloat1::pow(ca.v[i],2.2f); //convert to linear and adjust exposure
 			}
 
-			/*sfloat1 rg = sfloat1::Greater(rdz,sfloat1::zero());
-			ca.v[0] = sfloat1::Or(sfloat1::And(rg,ca.v[0]),sfloat1::AndNot(rg,0.3f*ca.v[0]));
-			ca.v[1] = sfloat1::Or(sfloat1::And(rg,ca.v[1]),sfloat1::AndNot(rg,0.3f*ca.v[1]));
-			ca.v[2] = sfloat1::Or(sfloat1::And(rg,ca.v[2]),sfloat1::AndNot(rg,0.3f*ca.v[2]));*/
-
 			ll = lc+ca;
 			ll.v[3] = sfloat1::one(); //alpha doesn't matter when r > 0
 		}else{
@@ -529,6 +504,8 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 			//need two samples - with the phase sampling keep on the recursion while for the light do only single scattering
 			sfloat1 gm1 = sfloat1::AndNot(rm,sint1::trueI());
 			sfloat1 rq;
+
+			sfloat4 rc = ro+rd*td;
 
 			//estimator S(1)*f1*w1/p1+S(2)*f2*w2/p2 /= woodcock pdf
 			sfloat4 s1 = SampleVolume(rc,srd,gm1,pkernel,prs,ls,r+1,1,&rq);
@@ -657,8 +634,6 @@ bool RenderKernel::Initialize(const Scene *pscene, const SceneOcclusion *psceneo
 	this->scattevs = scattevs;
 	this->msigmas = msigmas;
 	this->msigmaa = msigmaa;
-	//this->tilex = tilex;
-	//this->tiley = tiley;
 	this->w = w;
 	this->h = h;
 	this->flags = flags;
@@ -683,13 +658,7 @@ bool RenderKernel::Initialize(const Scene *pscene, const SceneOcclusion *psceneo
 }
 
 void RenderKernel::Render(uint x0, uint y0, uint tilex, uint tiley, uint samples){
-	/*dim3 db = dim3(8,8,1); //[numthreads(...)]
-	dim3 dg = dim3(rx/8,ry/8,1); //Dispatch
-	K_Render<<<db,dg>>>(*(matrix*)&viewi,*(matrix*)&proji,ob,x0,y0,w,h,prt);
-
-	if(cudaMemcpy(phb,prt,rx*ry*16,cudaMemcpyDeviceToHost) != cudaSuccess)
-		printf("cudaMemcpy() failure\n");*/
-
+	//
 	K_Render(&viewi,&proji,this,x0,y0,tilex,tiley,w,h,samples,phb);
 }
 
