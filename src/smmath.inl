@@ -335,11 +335,11 @@ public:
 		return _mm_set1_ps(1.0f);
 	}
 
-	static inline sfloat1 selectctrl(uint a, uint b, uint c, uint d){
+	/*static inline sfloat1 selectctrl(uint a, uint b, uint c, uint d){
 		__m128i t = _mm_set_epi32(d,c,b,a);
 		t = _mm_cmpgt_epi32(t,_mm_setzero_si128());
 		return _mm_castsi128_ps(t);
-	}
+	}*/
 
 	static inline sfloat1 select(const sfloat1 &a, const sfloat1 &b, const sfloat1 &c){
 		__m128 t1 = _mm_andnot_ps(c.v,a.v);
@@ -1063,12 +1063,11 @@ public:
 	}
 
 	inline void set(uint x, const float4 &s){
-		__m128 c1 = _mm_castsi128_ps(_mm_cmpeq_epi32(_mm_set1_epi32(x),_mm_set_epi32(3,2,1,0)));
-		sfloat1 c = sfloat1(c1);
-		v[0] = sfloat1::select(v[0],s.splat<0>().v,c);
-		v[1] = sfloat1::select(v[1],s.splat<1>().v,c);
-		v[2] = sfloat1::select(v[2],s.splat<2>().v,c);
-		v[3] = sfloat1::select(v[3],s.splat<3>().v,c);
+		sfloat1 c = _mm_castsi128_ps(_mm_cmpeq_epi32(_mm_set1_epi32(x),_mm_set_epi32(3,2,1,0)));
+		v[0] = sfloat1::select(v[0],s.splatN<0>().v,c);
+		v[1] = sfloat1::select(v[1],s.splatN<1>().v,c);
+		v[2] = sfloat1::select(v[2],s.splatN<2>().v,c);
+		v[3] = sfloat1::select(v[3],s.splatN<3>().v,c);
 	}
 
 	inline sfloat4 xyz0() const{
