@@ -19,6 +19,8 @@ SceneOcclusion::~SceneOcclusion(){
 
 void SceneOcclusion::Initialize(){
 #ifdef USE_EMBREE
+	DebugPrintf("> Preparing occlusion geometry...\n");
+
 	pdev = rtcNewDevice(0);
 	pscene = rtcDeviceNewScene(pdev,RTC_SCENE_STATIC|RTC_SCENE_INCOHERENT|RTC_SCENE_HIGH_QUALITY,RTC_INTERSECT4);
 	//rtcIntersect4?
@@ -44,8 +46,6 @@ void SceneOcclusion::Initialize(){
 	}
 
 	rtcCommit(pscene);
-
-	DebugPrintf("Prepared occlusion geometry.\n");
 #endif
 }
 
