@@ -50,6 +50,7 @@ void SceneOcclusion::Initialize(){
 }
 
 void SceneOcclusion::Intersect(const sfloat4 &ro, const sfloat4 &rd, const sfloat1 &gm, dintN *pmask, dfloatN *pdist) const{
+	//TODO: check if number of occluders > 0 to skip the initialization when not needed
 	//RTCRayNt<BLCLOUD_VSIZE> ray;
 #ifdef USE_EMBREE
 	RTCRay4 ray;
