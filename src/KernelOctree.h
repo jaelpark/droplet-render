@@ -38,6 +38,7 @@ private:
 		uint n[MAX_DEPTH], tn[MAX_DEPTH], a, l;
 		bool p[MAX_DEPTH]; //stack pointer
 	} Stack;
+#undef MAX_DEPTH
 	Stack stack[BLCLOUD_VSIZE];
 	dintN mask;
 	dfloatN maxd;

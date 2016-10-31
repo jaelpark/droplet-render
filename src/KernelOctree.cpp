@@ -44,102 +44,39 @@ static uint OctreeNextNode(const dfloat3 &tm, const duint3 &xyz){
 	return xyz.z;
 }
 
-/*static void OctreeProcessSubtreeIterative(const dfloat3 &_t0, const dfloat3 &_t1, uint a, const tbb::concurrent_vector<OctreeStructure> *pob, float maxd, std::vector<ParallelLeafList::Node> *pls){
-#define MAX_DEPTH 16
-	//n: node index, l: octree level
-	dfloat3 t0[MAX_DEPTH], t1[MAX_DEPTH], tm[MAX_DEPTH];
-	uint n[MAX_DEPTH], tn[MAX_DEPTH];
+static void OctreeInitialize(const float4 &ro, const float4 &rd, const tbb::concurrent_vector<OctreeStructure> *pob, dfloat3 &t0s, dfloat3 &t1s, uint &a){
+	float4 ce = float4::load(&(*pob)[0].ce);
+	float4 ro1 = ro-ce+ce.splat<3>();
+	float4 rd1 = rd;
+	float4 scaabbmin = float4::zero();
+	float4 scaabbmax = 2.0f*ce.splat<3>();
 
-	bool p[MAX_DEPTH]; //stack pointer
+	dfloat3 ros = dfloat3(ro1);
+	dfloat3 rds = dfloat3(rd1);
 
-	t0[0] = _t0;
-	t1[0] = _t1;
-
-	n[0] = 0;
-	p[0] = false;
-
-	for(uint l = 0;;){
-		if(p[l]){
-			static const uint nla[] = {0,4,2,6,1,5,3,7};
-			switch(tn[l]){
-#define SUBNODE(t0n,t1n,q,x)\
-	t0[l+1] = t0n;\
-	t1[l+1] = t1n;\
-	tn[l] = OctreeNextNode(t1[l+1],q);\
-	n[l+1] = (*pob)[n[l]].chn[nla[x^a]];\
-	p[++l] = false;
-			case 0:
-				t0[l+1] = t0[l];
-				t1[l+1] = tm[l];
-				tn[l] = OctreeNextNode(tm[l],duint3(4,2,1));
-				n[l+1] = (*pob)[n[l]].chn[nla[a]];
-				p[++l] = false;
-				break;
-			case 1:
-				SUBNODE(dfloat3(t0[l].x,t0[l].y,tm[l].z),
-				dfloat3(tm[l].x,tm[l].y,t1[l].z),duint3(5,3,8),1);
-				break;
-			case 2:
-				SUBNODE(dfloat3(t0[l].x,tm[l].y,t0[l].z),
-				dfloat3(tm[l].x,t1[l].y,tm[l].z),duint3(6,8,3),2);
-				break;
-			case 3:
-				SUBNODE(dfloat3(t0[l].x,tm[l].y,tm[l].z),
-				dfloat3(tm[l].x,t1[l].y,t1[l].z),duint3(7,8,8),3);
-				break;
-			case 4:
-				SUBNODE(dfloat3(tm[l].x,t0[l].y,t0[l].z),
-				dfloat3(t1[l].x,tm[l].y,tm[l].z),duint3(8,6,5),4);
-				break;
-			case 5:
-				SUBNODE(dfloat3(tm[l].x,t0[l].y,tm[l].z),
-				dfloat3(t1[l].x,tm[l].y,t1[l].z),duint3(8,7,8),5);
-				break;
-			case 6:
-				SUBNODE(dfloat3(tm[l].x,tm[l].y,t0[l].z),
-				dfloat3(t1[l].x,t1[l].y,tm[l].z),duint3(8,8,7),6);
-				break;
-			case 7:
-				t0[l+1] = dfloat3(tm[l].x,tm[l].y,tm[l].z);
-				t1[l+1] = dfloat3(t1[l].x,t1[l].y,t1[l].z);
-				tn[l] = 8;
-				n[l+1] = (*pob)[n[l]].chn[nla[7^a]];
-				p[++l] = false;
-				break;
-			default:
-				if(l == 0)
-					return;
-				--l;
-				break;
-			}
-		}else{
-			if(t1[l].x < 0.0f || t1[l].y < 0.0f || t1[l].z < 0.0f || (n[l] == 0 && l > 0)){
-				if(l == 0)
-					return;
-				--l;
-				continue;
-			}
-
-			if((*pob)[n[l]].volx[VOLUME_BUFFER_SDF] != ~0u || (*pob)[n[l]].volx[VOLUME_BUFFER_FOG] != ~0u){
-				float tr0 = std::max(std::max(t0[l].x,t0[l].y),t0[l].z);
-				if(tr0 > maxd)
-					return;
-				float tr1 = std::min(std::min(t1[l].x,t1[l].y),t1[l].z);
-				pls->push_back(ParallelLeafList::Node(n[l],tr0,tr1));
-				--l;
-				continue;
-			}
-
-			tm[l] = dfloat3(
-				0.5f*(t0[l].x+t1[l].x),
-				0.5f*(t0[l].y+t1[l].y),
-				0.5f*(t0[l].z+t1[l].z));
-			tn[l] = OctreeFirstNode(t0[l],tm[l]); //current node
-
-			p[l] = true;
-		}
+	a = 0;
+	if(rds.x < 0.0f){
+		ros.x = 2.0f*(*pob)[0].ce.w-ros.x;
+		rds.x = -rds.x;
+		a |= 4;
 	}
-}*/
+	if(rds.y < 0.0f){
+		ros.y = 2.0f*(*pob)[0].ce.w-ros.y;
+		rds.y = -rds.y;
+		a |= 2;
+	}
+	if(rds.z < 0.0f){
+		ros.z = 2.0f*(*pob)[0].ce.w-ros.z;
+		rds.z = -rds.z;
+		a |= 1;
+	}
+
+	ro1 = float4::load(&ros);
+	rd1 = float4::load(&rds);
+
+	t0s = dfloat3((scaabbmin-ro1)/rd1);
+	t1s = dfloat3((scaabbmax-ro1)/rd1);
+}
 
 BaseOctreeTraverser::BaseOctreeTraverser(){
 	//
@@ -163,46 +100,16 @@ void OctreeFullTraverser::Initialize(const sfloat4 &ro, const sfloat4 &rd, const
 		ls[i].clear();
 		if(gm.v[i] == 0)
 			continue;
-		float4 ce = float4::load(&(*pob)[0].ce);
-		float4 ro1 = ro.get(i)-ce+ce.splat<3>();
-		float4 rd1 = rd.get(i);
-		float4 scaabbmin = float4::zero();
-		float4 scaabbmax = 2.0f*ce.splat<3>();
 
-		dfloat3 ros = dfloat3(ro1);
-		dfloat3 rds = dfloat3(rd1);
-
-		uint a = 0;
-		if(rds.x < 0.0f){
-			ros.x = 2.0f*(*pob)[0].ce.w-ros.x;
-			rds.x = -rds.x;
-			a |= 4;
-		}
-		if(rds.y < 0.0f){
-			ros.y = 2.0f*(*pob)[0].ce.w-ros.y;
-			rds.y = -rds.y;
-			a |= 2;
-		}
-		if(rds.z < 0.0f){
-			ros.z = 2.0f*(*pob)[0].ce.w-ros.z;
-			rds.z = -rds.z;
-			a |= 1;
-		}
-
-		ro1 = float4::load(&ros);
-		rd1 = float4::load(&rds);
-
-		float4 t0 = (scaabbmin-ro1)/rd1;
-		float4 t1 = (scaabbmax-ro1)/rd1;
-
-		dfloat3 t0s = dfloat3(t0);
-		dfloat3 t1s = dfloat3(t1);
-
+		dfloat3 t0s, t1s;
+		uint a;
+		OctreeInitialize(ro.get(i),rd.get(i),pob,t0s,t1s,a);
 		if(std::max(std::max(t0s.x,t0s.y),t0s.z) < std::min(std::min(t1s.x,t1s.y),t1s.z))
 			OctreeProcessSubtree(t0s,t1s,a,0,0,maxd.v[i],&ls[i]);
 	}
 }
 
+//Use recursive algorithm for full traversals, which seems to be a bit faster
 bool OctreeFullTraverser::OctreeProcessSubtree(const dfloat3 &t0, const dfloat3 &t1, uint a, uint n, uint l, float maxd, std::vector<Node> *pls){
 	//n: node index, l: octree level
 	if(t1.x < 0.0f || t1.y < 0.0f || t1.z < 0.0f || (n == 0 && l > 0))
@@ -280,7 +187,6 @@ dintN OctreeFullTraverser::GetLeaf(uint i, duintN *pnodes, sfloat1 &tr0, sfloat1
 	for(uint j = 0; j < BLCLOUD_VSIZE; ++j){
 		if(i >= ls[j].size()){
 			mask.v[j] = 0;
-			//pnodes->v[i] = ~0;
 			continue;
 		}
 		pnodes->v[j] = std::get<0>(ls[j][i]);
@@ -311,44 +217,7 @@ void OctreeStepTraverser::Initialize(const sfloat4 &ro, const sfloat4 &rd, const
 		if(gm.v[i] == 0)
 			continue;
 
-		float4 ce = float4::load(&(*pob)[0].ce);
-		float4 ro1 = ro.get(i)-ce+ce.splat<3>();
-		float4 rd1 = rd.get(i);
-		float4 scaabbmin = float4::zero();
-		float4 scaabbmax = 2.0f*ce.splat<3>();
-
-		dfloat3 ros = dfloat3(ro1);
-		dfloat3 rds = dfloat3(rd1);
-
-		stack[i].a = 0;
-		if(rds.x < 0.0f){
-			ros.x = 2.0f*(*pob)[0].ce.w-ros.x;
-			rds.x = -rds.x;
-			stack[i].a |= 4;
-		}
-		if(rds.y < 0.0f){
-			ros.y = 2.0f*(*pob)[0].ce.w-ros.y;
-			rds.y = -rds.y;
-			stack[i].a |= 2;
-		}
-		if(rds.z < 0.0f){
-			ros.z = 2.0f*(*pob)[0].ce.w-ros.z;
-			rds.z = -rds.z;
-			stack[i].a |= 1;
-		}
-
-		ro1 = float4::load(&ros);
-		rd1 = float4::load(&rds);
-
-		float4 t0 = (scaabbmin-ro1)/rd1;
-		float4 t1 = (scaabbmax-ro1)/rd1;
-
-		dfloat3 t0s = dfloat3(t0);
-		dfloat3 t1s = dfloat3(t1);
-
-		stack[i].t0[0] = dfloat3(t0);
-		stack[i].t1[0] = dfloat3(t1);
-
+		OctreeInitialize(ro.get(i),rd.get(i),pob,stack[i].t0[0],stack[i].t1[0],stack[i].a);
 		if(std::max(std::max(stack[i].t0[0].x,stack[i].t0[0].y),stack[i].t0[0].z) < std::min(std::min(stack[i].t1[0].x,stack[i].t1[0].y),stack[i].t1[0].z)){
 			mask.v[i] = -1;
 			stack[i].l = 0;
@@ -379,6 +248,7 @@ dintN OctreeStepTraverser::GetLeaf(uint i, duintN *pnodes, sfloat1 &tr0, sfloat1
 	return mask;
 }
 
+//Use a stack-saving iterative algorithm when only partial traversal is required
 bool OctreeStepTraverser::OctreeProcessSubtree(dfloat3 *pt0, dfloat3 *pt1, dfloat3 *ptm, uint *ptn, uint *pn, bool *pp, uint &l, uint a, float maxd, Node *pnode){
 	for(;;){
 		if(pp[l]){
@@ -448,9 +318,8 @@ bool OctreeStepTraverser::OctreeProcessSubtree(dfloat3 *pt0, dfloat3 *pt1, dfloa
 					return false;
 				float tr1 = std::min(std::min(pt1[l].x,pt1[l].y),pt1[l].z);
 				*pnode = Node(pn[l],tr0,tr1);
-				//pls->push_back(ParallelLeafList::Node(n[l],tr0,tr1));
 				--l;
-				return true;//continue;
+				return true; //continue;
 			}
 
 			ptm[l] = dfloat3(
