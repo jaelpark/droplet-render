@@ -1,10 +1,9 @@
 #include "main.h"
 
-//#ifdef USE_EMBREE
+#ifdef USE_EMBREE
 #include <embree2/rtcore.h>
 #include <embree2/rtcore_ray.h>
-
-//#endif
+#endif
 
 #include "scene.h"
 #include "SceneOcclusion.h"
@@ -23,24 +22,30 @@ void SceneOcclusion::Initialize(){
 
 	pdev = rtcNewDevice(0);
 	pscene = rtcDeviceNewScene(pdev,RTC_SCENE_STATIC|RTC_SCENE_INCOHERENT|RTC_SCENE_HIGH_QUALITY,RTC_INTERSECT4);
-	//rtcIntersect4?
 
 	for(uint i = 0; i < SceneData::Surface::objs.size(); ++i){
 		if(!SceneData::Surface::objs[i]->holdout)
 			continue;
 		uint m = rtcNewTriangleMesh(pscene,RTC_GEOMETRY_STATIC,SceneData::Surface::objs[i]->tl.size()/3,SceneData::Surface::objs[i]->vl.size());
 
-		dfloat4 *pvs = (dfloat4*)rtcMapBuffer(pscene,m,RTC_VERTEX_BUFFER);
-		for(uint i = 0, n = SceneData::Surface::objs[i]->vl.size(); i < n; ++i){
-			dfloat3 &v = SceneData::Surface::objs[i]->vl[i];
-			pvs[i] = dfloat4(v.x,v.y,v.z,1.0f);
+		struct Vertex{
+			float x, y, z, w;
+		} *pvs = (Vertex*)rtcMapBuffer(pscene,m,RTC_VERTEX_BUFFER);
+		for(uint j = 0, n = SceneData::Surface::objs[i]->vl.size(); j < n; ++j){
+			dfloat3 &v = SceneData::Surface::objs[i]->vl[j];
+			pvs[j].x = v.x;
+			pvs[j].y = v.y;
+			pvs[j].z = v.z;
 		}
 		rtcUnmapBuffer(pscene,m,RTC_VERTEX_BUFFER);
 
-		dint3 *pts = (dint3*)rtcMapBuffer(pscene,m,RTC_INDEX_BUFFER);
-		for(uint i = 0, n = SceneData::Surface::objs[i]->tl.size()/3; i < n; ++i){
-			for(uint j = 0; j < 3; ++j)
-				((int*)&pts[i])[j] = SceneData::Surface::objs[i]->tl[3*i+j];
+		struct Triangle{
+			int v0, v1, v2;
+		} *pts = (Triangle*)rtcMapBuffer(pscene,m,RTC_INDEX_BUFFER);
+		for(uint j = 0, n = SceneData::Surface::objs[i]->tl.size()/3; j < n; ++j){
+			pts[j].v0 = SceneData::Surface::objs[i]->tl[3*j+0];
+			pts[j].v1 = SceneData::Surface::objs[i]->tl[3*j+1];
+			pts[j].v2 = SceneData::Surface::objs[i]->tl[3*j+2];
 		}
 		rtcUnmapBuffer(pscene,m,RTC_INDEX_BUFFER);
 	}

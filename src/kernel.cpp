@@ -121,12 +121,12 @@ inline float SampleVoxelSpace(const float4 &p, float *pvol, const float4 &ce, ui
 	return w.get<0>();
 }
 
-static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pkernel, KernelOctree::BaseOctreeTraverser *ptrv, sint4 *prs, uint r, uint samples, sfloat1 *prq){
+static sfloat4 SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, RenderKernel *pkernel, KernelOctree::BaseOctreeTraverser *ptrv, sint4 *prs, uint r, uint samples, sfloat1 *prq){
 	dfloatN Maxd = dfloatN(MAX_OCCLUSION_DIST); //max path
 	dintN ogm = dintN(0);
 	if(pkernel->psceneocc)
 		pkernel->psceneocc->Intersect(ro,rd,gm,&ogm,&Maxd);
-	//sfloat1 maxd = sfloat1::load(&Maxd);
+	sfloat1 maxd = sfloat1::load(&Maxd);
 
 	dintN sgm = dintN(gm);
 
@@ -138,6 +138,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 	}else ptrv1 = &steptrv;
 
 	sfloat4 c = sfloat4::zero();
+
 
 	//rc-tr1[0],tr1[0]-tr1[1],...
 	/*rc = ro;
