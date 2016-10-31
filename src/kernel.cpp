@@ -121,15 +121,21 @@ inline float SampleVoxelSpace(const float4 &p, float *pvol, const float4 &ce, ui
 	return w.get<0>();
 }
 
-static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pkernel, sint4 *prs, ParallelLeafList &ls1, uint r, uint samples, sfloat1 *prq){
+static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pkernel, sint4 *prs, uint r, uint samples, sfloat1 *prq){
 	dfloatN maxd = dfloatN(MAX_OCCLUSION_DIST); //max path
 	dintN ogm = dintN(0);
 	if(pkernel->psceneocc)
 		pkernel->psceneocc->Intersect(ro,rd,gm,&ogm,&maxd);
 
 	dintN sgm = dintN(gm);
-	KernelOctree::OctreeFullTraverser traverser;
-	traverser.Initialize(ro,rd,sgm,maxd,&pkernel->pscene->ob);
+
+	KernelOctree::OctreeFullTraverser fulltrv;
+	KernelOctree::OctreeStepTraverser steptrv;
+	KernelOctree::BaseOctreeTraverser *ptrv;
+	if(r == 0){
+		ptrv = &fulltrv;
+		ptrv->Initialize(ro,rd,sgm,maxd,&pkernel->pscene->ob);
+	}
 
 	sfloat4 c = sfloat4::zero();
 
@@ -180,6 +186,11 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 		sfloat1 rm = sint1::trueI();
 		sfloat1 zr = sint1::falseI();
 
+		if(r > 0){
+			ptrv = &steptrv;
+			ptrv->Initialize(ro,rd,sgm,maxd,&pkernel->pscene->ob);
+		}
+
 		sfloat1 td = sfloat1::zero(); //distance travelled
 		for(uint i = 0;; ++i){
 			/*dintN leafcount;
@@ -194,7 +205,7 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 			duintN nodes;
 			sfloat1 tra, trb;
 
-			dintN mask = traverser.GetLeaf(i,&nodes,tra,trb);
+			dintN mask = ptrv->GetLeaf(i,&nodes,tra,trb);
 			sint1 lm = sint1::load(&mask);
 			qm = sfloat1::And(qm,rm);
 			qm = sfloat1::And(qm,lm);
@@ -380,8 +391,8 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 			sfloat4 rc = ro+rd*td;
 
 			//estimator S(1)*f1*w1/p1+S(2)*f2*w2/p2 /= woodcock pdf
-			sfloat4 s1 = SampleVolume(rc,srd,gm1,pkernel,prs,ls1,r+1,1,&rq);
-			sfloat4 s2 = SampleVolume(rc,lrd,gm1,pkernel,prs,ls1,BLCLOUD_MAX_RECURSION-1,1,&rq);
+			sfloat4 s1 = SampleVolume(rc,srd,gm1,pkernel,prs,r+1,1,&rq);
+			sfloat4 s2 = SampleVolume(rc,lrd,gm1,pkernel,prs,BLCLOUD_MAX_RECURSION-1,1,&rq);
 
 			//(HG_Phase(X)*SampleVolume(X)*p1/(p1+L_Pdf(X)))/p1 => (HG_Phase(X)=p1)*SampleVolume(X)/(p1+L_Pdf(X)) = p1*SampleVolume(X)/(p1+L_Pdf(X))
 			//(HG_Phase(Y)*SampleVolume(Y)*p2/(HG_Phase(Y)+p2))/p2 => HG_phase(Y)*SampleVolume(Y)/(HG_Phase(Y)+p2)
@@ -424,15 +435,16 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 		}
 	}
 
-	for(uint i = 0; i < BLCLOUD_VSIZE; ++i)
-		ls1.ls[r][i].clear();
+	//for(uint i = 0; i < BLCLOUD_VSIZE; ++i)
+		//ls1.ls[r][i].clear();
 
 	return c;
 }
 
 static void K_Render(dmatrix44 *pviewi, dmatrix44 *pproji, RenderKernel *pkernel, uint x0, uint y0, uint rx, uint ry, uint w, uint h, uint samples, dfloat4 *pout){
 	//feenableexcept(FE_ALL_EXCEPT&~FE_INEXACT);
-	tbb::enumerable_thread_specific<ParallelLeafList> leafs; //list here to avoid memory allocations
+	//tbb::enumerable_thread_specific<ParallelLeafList> leafs; //list here to avoid memory allocations
+	//tbb::enumerable_thread_specific<KernelOctree::OctreeFullTraverser> traversers;
 #define BLCLOUD_MT
 #ifdef BLCLOUD_MT
 	tbb::parallel_for(tbb::blocked_range2d<size_t>(y0,y0+ry/BLCLOUD_VY,x0,x0+rx/BLCLOUD_VX),[&](const tbb::blocked_range2d<size_t> &nr){
@@ -460,14 +472,14 @@ static void K_Render(dmatrix44 *pviewi, dmatrix44 *pproji, RenderKernel *pkernel
 				sint4 rngs;
 				RNG_Init(&rngs);
 
-				ParallelLeafList &ls = leafs.local();
-
 				sfloat1 gm = sfloat1::And(
 					sfloat1::And(sfloat1::Greater(posh.v[0],-sfloat1::one()),sfloat1::Less(posh.v[0],sfloat1::one())),
 					sfloat1::And(sfloat1::Greater(posh.v[1],-sfloat1::one()),sfloat1::Less(posh.v[1],sfloat1::one())));
 
+				//KernelOctree::OctreeFullTraverser &traverser = traversers.local();
+
 				sfloat1 rq;
-				sfloat4 c = SampleVolume(ro,rd,gm,pkernel,&rngs,ls,0,samples,&rq);
+				sfloat4 c = SampleVolume(ro,rd,gm,pkernel,&rngs,0,samples,&rq);
 
 				dintN wmask = dintN(gm);
 				if(wmask.v[0] != 0)

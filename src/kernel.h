@@ -8,7 +8,8 @@ class PhaseFunction;
 }
 
 #define BLCLOUD_MAX_RECURSION 32 //BLCLOUD_MAX_RECURSION
-class ParallelLeafList{
+
+/*class ParallelLeafList{
 public:
 	ParallelLeafList(){}
 	~ParallelLeafList(){}
@@ -28,7 +29,7 @@ public:
 
 	typedef std::tuple<uint, float, float> Node;
 	std::vector<Node> ls[BLCLOUD_MAX_RECURSION][BLCLOUD_VSIZE];
-};
+};*/
 
 class RenderKernel{
 public:
