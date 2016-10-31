@@ -122,17 +122,18 @@ inline float SampleVoxelSpace(const float4 &p, float *pvol, const float4 &ce, ui
 }
 
 static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pkernel, KernelOctree::BaseOctreeTraverser *ptrv, sint4 *prs, uint r, uint samples, sfloat1 *prq){
-	dfloatN maxd = dfloatN(MAX_OCCLUSION_DIST); //max path
+	dfloatN Maxd = dfloatN(MAX_OCCLUSION_DIST); //max path
 	dintN ogm = dintN(0);
 	if(pkernel->psceneocc)
-		pkernel->psceneocc->Intersect(ro,rd,gm,&ogm,&maxd);
+		pkernel->psceneocc->Intersect(ro,rd,gm,&ogm,&Maxd);
+	//sfloat1 maxd = sfloat1::load(&Maxd);
 
 	dintN sgm = dintN(gm);
 
 	KernelOctree::BaseOctreeTraverser *ptrv1;
 	KernelOctree::OctreeStepTraverser steptrv;
-	if(ptrv){ //using preallocated caching full traverser
-		ptrv->Initialize(ro,rd,sgm,maxd,&pkernel->pscene->ob);
+	if(ptrv){ //using preallocated caching full traverser (first primary ray for which the path is always identical)
+		ptrv->Initialize(ro,rd,sgm,Maxd,&pkernel->pscene->ob);
 		ptrv1 = ptrv;
 	}else ptrv1 = &steptrv;
 
@@ -186,24 +187,16 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 		sfloat1 zr = sint1::falseI();
 
 		if(!ptrv) //using local step traverser - initialize here
-			ptrv1->Initialize(ro,rd,sgm,maxd,&pkernel->pscene->ob);
+			ptrv1->Initialize(ro,rd,sgm,Maxd,&pkernel->pscene->ob);
 
 		sfloat1 td = sfloat1::zero(); //distance travelled
 		for(uint i = 0;; ++i){
-			/*dintN leafcount;
-			for(uint j = 0; j < BLCLOUD_VSIZE; ++j)
-				leafcount.v[j] = ls.GetLeafCount(r,j);
-
-			qm = sfloat1::And(qm,rm);
-			qm = sfloat1::And(qm,sint1::Less(sint1(i),sint1::load(&leafcount)));
-			if(qm.AllFalse())
-				break;*/
-
 			duintN nodes;
 			sfloat1 tra, trb;
 
 			dintN mask = ptrv1->GetLeaf(i,&nodes,tra,trb);
 			sint1 lm = sint1::load(&mask);
+
 			qm = sfloat1::And(qm,rm);
 			qm = sfloat1::And(qm,lm);
 			if(qm.AllFalse())
@@ -218,17 +211,6 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 
 			sfloat1 tr0 = tra-td;
 			sfloat1 tr1 = trb-td;
-
-			/*dfloatN TRA, TRB;
-			for(uint j = 0; j < BLCLOUD_VSIZE; ++j)
-				if(i < ls.GetLeafCount(r,j)){
-					ls.GetHit(r,j,i,&TRA.v[j],&TRB.v[j]);
-					ce.set(j,float4::load(&pkernel->pscene->ob[ls.GetLeaf(r,j,i)].ce));
-				}
-			sfloat1 tra = sfloat1::load(&TRA); //leaf distance from the ray origin
-			sfloat1 trb = sfloat1::load(&TRB);
-			sfloat1 tr0 = tra-td; //leaf distance from the current pointer
-			sfloat1 tr1 = trb-td;*/
 
 			sfloat4 r0 = ro+rd*tra;
 
@@ -431,9 +413,6 @@ static sfloat4 SampleVolume(sfloat4 ro, sfloat4 rd, sfloat1 gm, RenderKernel *pk
 			c.v[3] += ll.v[3];
 		}
 	}
-
-	//for(uint i = 0; i < BLCLOUD_VSIZE; ++i)
-		//ls1.ls[r][i].clear();
 
 	return c;
 }

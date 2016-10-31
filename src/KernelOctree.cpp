@@ -96,13 +96,12 @@ OctreeFullTraverser::~OctreeFullTraverser(){
 
 void OctreeFullTraverser::Initialize(const sfloat4 &ro, const sfloat4 &rd, const dintN &gm, const dfloatN &maxd, const tbb::concurrent_vector<OctreeStructure> *_pob){
 	pob = _pob;
-	for(uint i = 0; i < BLCLOUD_VSIZE; ++i){
+	for(uint i = 0, a; i < BLCLOUD_VSIZE; ++i){
 		ls[i].clear();
 		if(gm.v[i] == 0)
 			continue;
 
 		dfloat3 t0s, t1s;
-		uint a;
 		OctreeInitialize(ro.get(i),rd.get(i),pob,t0s,t1s,a);
 		if(std::max(std::max(t0s.x,t0s.y),t0s.z) < std::min(std::min(t1s.x,t1s.y),t1s.z))
 			OctreeProcessSubtree(t0s,t1s,a,0,0,maxd.v[i],&ls[i]);
