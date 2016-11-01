@@ -121,25 +121,21 @@ inline float SampleVoxelSpace(const float4 &p, float *pvol, const float4 &ce, ui
 	return w.get<0>();
 }
 
-static sfloat4 SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, RenderKernel *pkernel, KernelOctree::BaseOctreeTraverser *ptrv, sint4 *prs, uint r, uint samples, sfloat1 *prq){
-	dfloatN Maxd = dfloatN(MAX_OCCLUSION_DIST); //max path
-	dintN ogm = dintN(0);
-	if(pkernel->psceneocc)
-		pkernel->psceneocc->Intersect(ro,rd,gm,&ogm,&Maxd);
-	sfloat1 maxd = sfloat1::load(&Maxd);
-
-	dintN sgm = dintN(gm);
-
+static sfloat4 SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, RenderKernel *pkernel, KernelOctree::BaseOctreeTraverser *ptrv, sint4 *prs, uint r, uint samples){
 	KernelOctree::BaseOctreeTraverser *ptrv1;
 	KernelOctree::OctreeStepTraverser steptrv;
 	if(ptrv){ //using preallocated caching full traverser (first primary ray for which the path is always identical)
-		ptrv->Initialize(ro,rd,sgm,Maxd,&pkernel->pscene->ob);
+		ptrv->Initialize(ro,rd,gm,&pkernel->pscene->ob);
 		ptrv1 = ptrv;
 	}else ptrv1 = &steptrv;
 
 	sfloat4 c = sfloat4::zero();
 
-
+#ifdef USE_EMBREE
+	dfloatN MAXD = dfloatN(MAX_OCCLUSION_DIST); //max path
+	sint1 mo = pkernel->psceneocc?pkernel->psceneocc->Intersect(ro,rd,gm,&MAXD):sint1(-1);
+	sfloat1 maxd = sfloat1::load(&MAXD);
+#endif
 	//rc-tr1[0],tr1[0]-tr1[1],...
 	/*rc = ro;
 	for(ll){
@@ -184,11 +180,12 @@ static sfloat4 SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, Re
 
 	for(uint s = 0; s < samples; ++s){
 		sfloat1 qm = gm;
-		sfloat1 rm = sint1::trueI();
-		sfloat1 zr = sint1::falseI();
+		sfloat1 mm = sint1::trueI(); //not occluded
+		sfloat1 rm = sint1::trueI(); //not scattering
+		sfloat1 zr = sfloat1::zero();
 
 		if(!ptrv) //using local step traverser - initialize here
-			ptrv1->Initialize(ro,rd,sgm,Maxd,&pkernel->pscene->ob);
+			ptrv1->Initialize(ro,rd,gm,&pkernel->pscene->ob);
 
 		sfloat1 td = sfloat1::zero(); //distance travelled
 		for(uint i = 0;; ++i){
@@ -198,6 +195,10 @@ static sfloat4 SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, Re
 			dintN mask = ptrv1->GetLeaf(i,&nodes,tra,trb);
 			sint1 lm = sint1::load(&mask);
 
+#ifdef USE_EMBREE
+			mm = sfloat1::Less(td,maxd);
+			qm = sfloat1::And(qm,mm);
+#endif
 			qm = sfloat1::And(qm,rm);
 			qm = sfloat1::And(qm,lm);
 			if(qm.AllFalse())
@@ -210,6 +211,7 @@ static sfloat4 SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, Re
 				if(mask.v[j] != 0)
 					ce.set(j,float4::load(&pkernel->pscene->ob[nodes.v[j]].ce));
 
+			//trb = sfloat1::min(trb,maxd);
 			sfloat1 tr0 = tra-td;
 			sfloat1 tr1 = trb-td;
 
@@ -349,6 +351,15 @@ static sfloat4 SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, Re
 			ll.v[3] = sfloat1::AndNot(rm,sfloat1::one()); //alpha = 1 when scattering
 		}
 
+#ifdef USE_EMBREE
+		sfloat1 mr = sfloat1::And(rm,mo);
+		for(uint i = 0; i < 4; ++i){
+			ll.v[i] = sfloat1::AndNot(mr,ll.v[i]); //if occluded, rm = 1. ll will be selected for the output color
+			ll.v[i] = sfloat1::And(ll.v[i],mm);
+		}
+		rm = sfloat1::Or(rm,sfloat1::AndNot(mm,sint1::trueI()));
+#endif
+
 		if(r < pkernel->scattevs && rm.AnyFalse()){
 #define BLCLOUD_MULTIPLE_IMPORTANCE
 #ifdef BLCLOUD_MULTIPLE_IMPORTANCE
@@ -366,13 +377,12 @@ static sfloat4 SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, Re
 
 			//need two samples - with the phase sampling keep on the recursion while for the light do only single scattering
 			sfloat1 gm1 = sfloat1::AndNot(rm,sint1::trueI());
-			sfloat1 rq;
 
 			sfloat4 rc = ro+rd*td;
 
 			//estimator S(1)*f1*w1/p1+S(2)*f2*w2/p2 /= woodcock pdf
-			sfloat4 s1 = SampleVolume(rc,srd,gm1,pkernel,0,prs,r+1,1,&rq);
-			sfloat4 s2 = SampleVolume(rc,lrd,gm1,pkernel,0,prs,BLCLOUD_MAX_RECURSION-1,1,&rq);
+			sfloat4 s1 = SampleVolume(rc,srd,gm1,pkernel,0,prs,r+1,1);
+			sfloat4 s2 = SampleVolume(rc,lrd,gm1,pkernel,0,prs,BLCLOUD_MAX_RECURSION-1,1);
 
 			//(HG_Phase(X)*SampleVolume(X)*p1/(p1+L_Pdf(X)))/p1 => (HG_Phase(X)=p1)*SampleVolume(X)/(p1+L_Pdf(X)) = p1*SampleVolume(X)/(p1+L_Pdf(X))
 			//(HG_Phase(Y)*SampleVolume(Y)*p2/(HG_Phase(Y)+p2))/p2 => HG_phase(Y)*SampleVolume(Y)/(HG_Phase(Y)+p2)
@@ -383,11 +393,10 @@ static sfloat4 SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, Re
 			//s1=HG_Phase(X)*SampleVolume(X)
 			//s1*p1/(p1+L_Pdf(X))
 #else
-			sfloat1 rq;
 			//phase function sampling
 			sfloat1 u1 = RNG_Sample(prs), u2 = RNG_Sample(prs);
 			sfloat4 srd = pkernel->ppf->Sample(rd,u1,u2);
-			sfloat4 cm = SampleVolume(rc,srd,sfloat1::AndNot(rm,sint1::trueI()),pkernel,prs,ls,r+1,1,&rq)*msigmas/msigmae;
+			sfloat4 cm = SampleVolume(rc,srd,sfloat1::AndNot(rm,sint1::trueI()),pkernel,prs,ls,r+1,1)*msigmas/msigmae;
 			//phase/pdf(=phase)=1
 
 			//light sampling, obviously won't alone result in any sky lighting or proper multiple scattering
@@ -401,13 +410,11 @@ static sfloat4 SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, Re
 			cm.v[1] = sfloat1::Or(sfloat1::And(hm,c.v[1]/(float)(s+1)),sfloat1::AndNot(hm,cm.v[1]));
 			cm.v[2] = sfloat1::Or(sfloat1::And(hm,c.v[2]/(float)(s+1)),sfloat1::AndNot(hm,cm.v[2]));
 
-			*prq = sint1::trueI();
 			c.v[0] += sfloat1::Or(sfloat1::And(rm,ll.v[0]),sfloat1::AndNot(rm,cm.v[0]));
 			c.v[1] += sfloat1::Or(sfloat1::And(rm,ll.v[1]),sfloat1::AndNot(rm,cm.v[1]));
 			c.v[2] += sfloat1::Or(sfloat1::And(rm,ll.v[2]),sfloat1::AndNot(rm,cm.v[2]));
 			c.v[3] += ll.v[3];
 		}else{
-			*prq = sint1::falseI();
 			c.v[0] += sfloat1::Or(sfloat1::And(rm,ll.v[0]),sfloat1::AndNot(rm,zr));
 			c.v[1] += sfloat1::Or(sfloat1::And(rm,ll.v[1]),sfloat1::AndNot(rm,zr));
 			c.v[2] += sfloat1::Or(sfloat1::And(rm,ll.v[2]),sfloat1::AndNot(rm,zr));
@@ -454,8 +461,7 @@ static void K_Render(dmatrix44 *pviewi, dmatrix44 *pproji, RenderKernel *pkernel
 
 				KernelOctree::OctreeFullTraverser &traverser = traversers.local();
 
-				sfloat1 rq;
-				sfloat4 c = SampleVolume(ro,rd,gm,pkernel,&traverser,&rngs,0,samples,&rq);
+				sfloat4 c = SampleVolume(ro,rd,gm,pkernel,&traverser,&rngs,0,samples);
 
 				dintN wmask = dintN(gm);
 				if(wmask.v[0] != 0)

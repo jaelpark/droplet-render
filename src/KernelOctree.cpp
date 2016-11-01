@@ -94,33 +94,31 @@ OctreeFullTraverser::~OctreeFullTraverser(){
 	//
 }
 
-void OctreeFullTraverser::Initialize(const sfloat4 &ro, const sfloat4 &rd, const dintN &gm, const dfloatN &maxd, const tbb::concurrent_vector<OctreeStructure> *_pob){
+void OctreeFullTraverser::Initialize(const sfloat4 &ro, const sfloat4 &rd, const sint1 &gm, const tbb::concurrent_vector<OctreeStructure> *_pob){
 	pob = _pob;
 	for(uint i = 0, a; i < BLCLOUD_VSIZE; ++i){
 		ls[i].clear();
-		if(gm.v[i] == 0)
+		if(((int*)&gm.v)[i] == 0)
 			continue;
 
 		dfloat3 t0s, t1s;
 		OctreeInitialize(ro.get(i),rd.get(i),pob,t0s,t1s,a);
 		if(std::max(std::max(t0s.x,t0s.y),t0s.z) < std::min(std::min(t1s.x,t1s.y),t1s.z))
-			OctreeProcessSubtree(t0s,t1s,a,0,0,maxd.v[i],&ls[i]);
+			OctreeProcessSubtree(t0s,t1s,a,0,0,&ls[i]);
 	}
 }
 
 //Use recursive algorithm for full traversals, which seems to be a bit faster
-bool OctreeFullTraverser::OctreeProcessSubtree(const dfloat3 &t0, const dfloat3 &t1, uint a, uint n, uint l, float maxd, std::vector<Node> *pls){
+void OctreeFullTraverser::OctreeProcessSubtree(const dfloat3 &t0, const dfloat3 &t1, uint a, uint n, uint l, std::vector<Node> *pls){
 	//n: node index, l: octree level
 	if(t1.x < 0.0f || t1.y < 0.0f || t1.z < 0.0f || (n == 0 && l > 0))
-		return false;
+		return;
 
 	if((*pob)[n].volx[VOLUME_BUFFER_SDF] != ~0u || (*pob)[n].volx[VOLUME_BUFFER_FOG] != ~0u){
 		float tr0 = std::max(std::max(t0.x,t0.y),t0.z);
-		if(tr0 > maxd)
-			return true;
 		float tr1 = std::min(std::min(t1.x,t1.y),t1.z);
 		pls->push_back(Node(n,tr0,tr1));
-		return false;
+		return;
 	}
 
 	dfloat3 tm = dfloat3(
@@ -135,49 +133,39 @@ bool OctreeFullTraverser::OctreeProcessSubtree(const dfloat3 &t0, const dfloat3 
 		static const uint nla[] = {0,4,2,6,1,5,3,7};
 		switch(tn){
 		case 0:
-			if(OctreeProcessSubtree(t0,tm,a,(*pob)[n].chn[nla[a]],l+1,maxd,pls))
-				return true;
+			OctreeProcessSubtree(t0,tm,a,(*pob)[n].chn[nla[a]],l+1,pls);
 			tn = OctreeNextNode(tm,duint3(4,2,1));
 			break;
 		case 1:
-			if(OctreeProcessSubtree(dfloat3(t0.x,t0.y,tm.z),dfloat3(tm.x,tm.y,t1.z),a,(*pob)[n].chn[nla[1^a]],l+1,maxd,pls))
-				return true;
+			OctreeProcessSubtree(dfloat3(t0.x,t0.y,tm.z),dfloat3(tm.x,tm.y,t1.z),a,(*pob)[n].chn[nla[1^a]],l+1,pls);
 			tn = OctreeNextNode(dfloat3(tm.x,tm.y,t1.z),duint3(5,3,8));
 			break;
 		case 2:
-			if(OctreeProcessSubtree(dfloat3(t0.x,tm.y,t0.z),dfloat3(tm.x,t1.y,tm.z),a,(*pob)[n].chn[nla[2^a]],l+1,maxd,pls))
-				return true;
+			OctreeProcessSubtree(dfloat3(t0.x,tm.y,t0.z),dfloat3(tm.x,t1.y,tm.z),a,(*pob)[n].chn[nla[2^a]],l+1,pls);
 			tn = OctreeNextNode(dfloat3(tm.x,t1.y,tm.z),duint3(6,8,3));
 			break;
 		case 3:
-			if(OctreeProcessSubtree(dfloat3(t0.x,tm.y,tm.z),dfloat3(tm.x,t1.y,t1.z),a,(*pob)[n].chn[nla[3^a]],l+1,maxd,pls))
-				return true;
+			OctreeProcessSubtree(dfloat3(t0.x,tm.y,tm.z),dfloat3(tm.x,t1.y,t1.z),a,(*pob)[n].chn[nla[3^a]],l+1,pls);
 			tn = OctreeNextNode(dfloat3(tm.x,t1.y,t1.z),duint3(7,8,8));
 			break;
 		case 4:
-			if(OctreeProcessSubtree(dfloat3(tm.x,t0.y,t0.z),dfloat3(t1.x,tm.y,tm.z),a,(*pob)[n].chn[nla[4^a]],l+1,maxd,pls))
-				return true;
+			OctreeProcessSubtree(dfloat3(tm.x,t0.y,t0.z),dfloat3(t1.x,tm.y,tm.z),a,(*pob)[n].chn[nla[4^a]],l+1,pls);
 			tn = OctreeNextNode(dfloat3(t1.x,tm.y,tm.z),duint3(8,6,5));
 			break;
 		case 5:
-			if(OctreeProcessSubtree(dfloat3(tm.x,t0.y,tm.z),dfloat3(t1.x,tm.y,t1.z),a,(*pob)[n].chn[nla[5^a]],l+1,maxd,pls))
-				return true;
+			OctreeProcessSubtree(dfloat3(tm.x,t0.y,tm.z),dfloat3(t1.x,tm.y,t1.z),a,(*pob)[n].chn[nla[5^a]],l+1,pls);
 			tn = OctreeNextNode(dfloat3(t1.x,tm.y,t1.z),duint3(8,7,8));
 			break;
 		case 6:
-			if(OctreeProcessSubtree(dfloat3(tm.x,tm.y,t0.z),dfloat3(t1.x,t1.y,tm.z),a,(*pob)[n].chn[nla[6^a]],l+1,maxd,pls))
-				return true;
+			OctreeProcessSubtree(dfloat3(tm.x,tm.y,t0.z),dfloat3(t1.x,t1.y,tm.z),a,(*pob)[n].chn[nla[6^a]],l+1,pls);
 			tn = OctreeNextNode(dfloat3(t1.x,t1.y,tm.z),duint3(8,8,7));
 			break;
 		case 7:
-			if(OctreeProcessSubtree(dfloat3(tm.x,tm.y,tm.z),dfloat3(t1.x,t1.y,t1.z),a,(*pob)[n].chn[nla[7^a]],l+1,maxd,pls))
-				return true;
+			OctreeProcessSubtree(dfloat3(tm.x,tm.y,tm.z),dfloat3(t1.x,t1.y,t1.z),a,(*pob)[n].chn[nla[7^a]],l+1,pls);
 			tn = 8;
 			break;
 		}
 	}while(tn < 8);
-
-	return false;
 }
 
 dintN OctreeFullTraverser::GetLeaf(uint i, duintN *pnodes, sfloat1 &tr0, sfloat1 &tr1){
@@ -208,12 +196,11 @@ OctreeStepTraverser::~OctreeStepTraverser(){
 	//
 }
 
-void OctreeStepTraverser::Initialize(const sfloat4 &ro, const sfloat4 &rd, const dintN &gm, const dfloatN &_maxd, const tbb::concurrent_vector<OctreeStructure> *_pob){
-	maxd = _maxd;
+void OctreeStepTraverser::Initialize(const sfloat4 &ro, const sfloat4 &rd, const sint1 &gm, const tbb::concurrent_vector<OctreeStructure> *_pob){
 	pob = _pob;
 	for(uint i = 0; i < BLCLOUD_VSIZE; ++i){
 		mask.v[i] = 0;
-		if(gm.v[i] == 0)
+		if(((int*)&gm.v)[i] == 0)
 			continue;
 
 		OctreeInitialize(ro.get(i),rd.get(i),pob,stack[i].t0[0],stack[i].t1[0],stack[i].a);
@@ -233,7 +220,7 @@ dintN OctreeStepTraverser::GetLeaf(uint i, duintN *pnodes, sfloat1 &tr0, sfloat1
 		if(mask.v[j] == 0)
 			continue;
 		Node node;
-		if(!OctreeProcessSubtree(stack[j].t0,stack[j].t1,stack[j].tm,stack[j].tn,stack[j].n,stack[j].p,stack[j].l,stack[j].a,maxd.v[j],&node)){
+		if(!OctreeProcessSubtree(stack[j].t0,stack[j].t1,stack[j].tm,stack[j].tn,stack[j].n,stack[j].p,stack[j].l,stack[j].a,&node)){
 			mask.v[j] = 0;
 			continue;
 		}
@@ -248,7 +235,7 @@ dintN OctreeStepTraverser::GetLeaf(uint i, duintN *pnodes, sfloat1 &tr0, sfloat1
 }
 
 //Use a stack-saving iterative algorithm when only partial traversal is required
-bool OctreeStepTraverser::OctreeProcessSubtree(dfloat3 *pt0, dfloat3 *pt1, dfloat3 *ptm, uint *ptn, uint *pn, bool *pp, uint &l, uint a, float maxd, Node *pnode){
+bool OctreeStepTraverser::OctreeProcessSubtree(dfloat3 *pt0, dfloat3 *pt1, dfloat3 *ptm, uint *ptn, uint *pn, bool *pp, uint &l, uint a, Node *pnode){
 	for(;;){
 		if(pp[l]){
 			static const uint nla[] = {0,4,2,6,1,5,3,7};
@@ -313,8 +300,6 @@ bool OctreeStepTraverser::OctreeProcessSubtree(dfloat3 *pt0, dfloat3 *pt1, dfloa
 
 			if((*pob)[pn[l]].volx[VOLUME_BUFFER_SDF] != ~0u || (*pob)[pn[l]].volx[VOLUME_BUFFER_FOG] != ~0u){
 				float tr0 = std::max(std::max(pt0[l].x,pt0[l].y),pt0[l].z);
-				if(tr0 > maxd)
-					return false;
 				float tr1 = std::min(std::min(pt1[l].x,pt1[l].y),pt1[l].z);
 				*pnode = Node(pn[l],tr0,tr1);
 				--l;

@@ -7,7 +7,7 @@ class BaseOctreeTraverser{
 public:
 	BaseOctreeTraverser();
 	~BaseOctreeTraverser();
-	virtual void Initialize(const sfloat4 &, const sfloat4 &, const dintN &, const dfloatN &, const tbb::concurrent_vector<OctreeStructure> *) = 0;
+	virtual void Initialize(const sfloat4 &, const sfloat4 &, const sint1 &, const tbb::concurrent_vector<OctreeStructure> *) = 0;
 	virtual dintN GetLeaf(uint, duintN *, sfloat1 &, sfloat1 &) = 0;
 protected:
 	typedef std::tuple<uint, float, float> Node;
@@ -18,18 +18,18 @@ class OctreeFullTraverser : public BaseOctreeTraverser{
 public:
 	OctreeFullTraverser();
 	~OctreeFullTraverser();
-	void Initialize(const sfloat4 &, const sfloat4 &, const dintN &, const dfloatN &, const tbb::concurrent_vector<OctreeStructure> *);
+	void Initialize(const sfloat4 &, const sfloat4 &, const sint1 &, const tbb::concurrent_vector<OctreeStructure> *);
 	dintN GetLeaf(uint, duintN *, sfloat1 &, sfloat1 &);
 private:
 	std::vector<Node> ls[BLCLOUD_VSIZE];
-	bool OctreeProcessSubtree(const dfloat3 &, const dfloat3 &, uint, uint, uint, float, std::vector<Node> *);
+	void OctreeProcessSubtree(const dfloat3 &, const dfloat3 &, uint, uint, uint, std::vector<Node> *);
 };
 
 class OctreeStepTraverser : public BaseOctreeTraverser{
 public:
 	OctreeStepTraverser();
 	~OctreeStepTraverser();
-	void Initialize(const sfloat4 &, const sfloat4 &, const dintN &, const dfloatN &, const tbb::concurrent_vector<OctreeStructure> *);
+	void Initialize(const sfloat4 &, const sfloat4 &, const sint1 &, const tbb::concurrent_vector<OctreeStructure> *);
 	dintN GetLeaf(uint, duintN *, sfloat1 &, sfloat1 &);
 private:
 #define MAX_DEPTH 16
@@ -41,8 +41,7 @@ private:
 #undef MAX_DEPTH
 	Stack stack[BLCLOUD_VSIZE];
 	dintN mask;
-	dfloatN maxd;
-	bool OctreeProcessSubtree(dfloat3 *, dfloat3 *, dfloat3 *, uint *, uint *, bool *, uint &, uint, float, Node *);
+	bool OctreeProcessSubtree(dfloat3 *, dfloat3 *, dfloat3 *, uint *, uint *, bool *, uint &, uint, Node *);
 };
 
 }
