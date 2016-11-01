@@ -132,9 +132,9 @@ static sfloat4 SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, Re
 	sfloat4 c = sfloat4::zero();
 
 #ifdef USE_EMBREE
-	dfloatN MAXD = dfloatN(MAX_OCCLUSION_DIST); //max path
-	sint1 mo = pkernel->psceneocc?pkernel->psceneocc->Intersect(ro,rd,gm,&MAXD):sint1(-1);
-	sfloat1 maxd = sfloat1::load(&MAXD);
+	sfloat1 maxd = sfloat1(MAX_OCCLUSION_DIST);
+	sint1 mo = pkernel->psceneocc?
+		pkernel->psceneocc->Intersect(ro,rd,gm,maxd):sint1(0);
 #endif
 	//rc-tr1[0],tr1[0]-tr1[1],...
 	/*rc = ro;

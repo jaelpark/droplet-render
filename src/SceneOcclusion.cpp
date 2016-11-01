@@ -54,7 +54,7 @@ void SceneOcclusion::Initialize(){
 #endif
 }
 
-sint1 SceneOcclusion::Intersect(const sfloat4 &ro, const sfloat4 &rd, const sfloat1 &gm, dfloatN *pdist) const{
+sint1 SceneOcclusion::Intersect(const sfloat4 &ro, const sfloat4 &rd, const sfloat1 &gm, sfloat1 &dist) const{
 	//TODO: check if number of occluders > 0 to skip the initialization when not needed
 	//RTCRayNt<BLCLOUD_VSIZE> ray;
 #ifdef USE_EMBREE
@@ -82,7 +82,7 @@ sint1 SceneOcclusion::Intersect(const sfloat4 &ro, const sfloat4 &rd, const sflo
 	dintN mask;
 	for(uint i = 0; i < BLCLOUD_VSIZE; ++i){
 		mask.v[i] = ray.geomID[i] != RTC_INVALID_GEOMETRY_ID?-1:0;
-		pdist->v[i] = ray.tfar[i];
+		((float*)&dist.v)[i] = ray.tfar[i];
 	}
 	return sint1::load(&mask);
 #else
