@@ -136,6 +136,7 @@ static sfloat4 SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, Re
 	sint1 mo = pkernel->psceneocc?
 		pkernel->psceneocc->Intersect(ro,rd,gm,maxd):sint1(0);
 #endif
+
 	//rc-tr1[0],tr1[0]-tr1[1],...
 	/*rc = ro;
 	for(ll){
@@ -302,7 +303,7 @@ static sfloat4 SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, Re
 		//T should be the value at rc; T(rc)
 
 		sfloat4 ll; //total lighting (directional+sky)
-		//skip (sky)lighting calculations if all the incident rays scatter (don't reach sun or sky) (at least one of rm != 0)
+		//skip (sky)lighting calculations if all the incident rays scatter (don't reach sun or sky)
 		//if(rm.AnyTrue() && !(pkernel->flags & RENDER_TRANSPARENT && r == 0)){
 		if(rm.AnyTrue() && r > 0){
 			sfloat4 lc = sfloat4::zero(); //total directional lighting
@@ -354,10 +355,10 @@ static sfloat4 SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, Re
 #ifdef USE_EMBREE
 		sfloat1 mr = sfloat1::And(rm,mo);
 		for(uint i = 0; i < 4; ++i){
-			ll.v[i] = sfloat1::AndNot(mr,ll.v[i]); //if occluded, rm = 1. ll will be selected for the output color
+			ll.v[i] = sfloat1::AndNot(mr,ll.v[i]);
 			ll.v[i] = sfloat1::And(ll.v[i],mm);
 		}
-		rm = sfloat1::Or(rm,sfloat1::AndNot(mm,sint1::trueI()));
+		rm = sfloat1::Or(rm,sfloat1::AndNot(mm,sint1::trueI())); //ensure that no scattering occurs if occluded
 #endif
 
 		if(r < pkernel->scattevs && rm.AnyFalse()){
@@ -513,7 +514,6 @@ bool RenderKernel::Initialize(const Scene *pscene, const SceneOcclusion *psceneo
 	float se = XM_PIDIV2-th; //solar elevation
 
 	pskyms = arhosek_rgb_skymodelstate_alloc_init(2.2,0.6,se);
-	//pskyms = arhosek_rgb_skymodelstate_alloc_init(7.4,0.2,se);
 
 	if(KernelSampler::BaseLight::lights.size() != 1)
 		DebugPrintf("Warning: only one directional light is currently properly supported.\n");
