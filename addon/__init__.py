@@ -47,9 +47,18 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 	bl_label = "Droplet Render";
 	bl_use_preview = False;
 
-	#def update(self, data, scene):
-		#TODO: should construct the scene here, not in render()
-		#pass
+	def update(self, data, scene):
+		self.samples_ext = scene.blcloudsampling.samples;
+		self.samples_int = scene.blcloudperf.samples;
+		self.width = scene.render.resolution_x;
+		self.height = scene.render.resolution_y;
+		self.tilew = scene.blcloudperf.tilex;
+		self.tileh = scene.blcloudperf.tiley;
+
+		self.update_stats("Droplet","Initializing");
+		libdroplet.BeginRender(scene,data,self.tilew,self.tileh,self.width,self.height);
+		while libdroplet.QueryStatus() != 0:
+			pass; #TODO: query progress/memory usage etc
 
 	# def DrawBorder(self, result, tilew, tileh, tilew1, tileh1):
 	# 	bcolor = [0.9,0.5,0.0,1.0];
@@ -61,41 +70,28 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 	# 		result.layers[0].passes[0].rect[tileh*y+(tilew1-1)] = bcolor;
 
 	def render(self, scene):
-		self.w = scene.render.resolution_x;
-		self.h = scene.render.resolution_y;
-		tilew = scene.blcloudperf.tilex;
-		tileh = scene.blcloudperf.tiley; #self.tile_x, tile_y
+		sc = int(ceil(self.samples_ext/self.samples_int)); #external sample count
+		nx = int(ceil(self.width/self.tilew));
+		ny = int(ceil(self.height/self.tileh));
 
-		samples_ext = scene.blcloudsampling.samples;
-		samples_int = scene.blcloudperf.samples;
-		sc = int(ceil(samples_ext/samples_int)); #external sample count
-
-		nx = int(ceil(self.w/tilew));
-		ny = int(ceil(self.h/tileh));
-
-		self.update_stats("Droplet","Initializing");
 		tiles = [];
 		for y in range(0,ny):
 			for x in range(0,nx):
-				xadj = x*tilew-0.5*(nx*tilew-self.w);
-				yadj = y*tileh-0.5*(ny*tileh-self.h);
+				xadj = x*self.tilew-0.5*(nx*self.tilew-self.width);
+				yadj = y*self.tileh-0.5*(ny*self.tileh-self.height);
 				tiles.append((xadj,yadj));
 
-		libdroplet.BeginRender(scene,bpy.data,tilew,tileh,self.w,self.h);
-		while libdroplet.QueryStatus() != 0:
-			pass;
-
 		while len(tiles) > 0:
-			tile1 = min(tiles,key=lambda tileq: Vector((tileq[0]+0.5*tilew-0.5*self.w,tileq[1]+0.5*tileh-0.5*self.h)).length);
+			tile1 = min(tiles,key=lambda tileq: Vector((tileq[0]+0.5*self.tilew-0.5*self.width,tileq[1]+0.5*self.tileh-0.5*self.height)).length);
 			tiles.remove(tile1);
 
 			#crop the tile frame on edges
-			tilew1 = tilew;
-			if tile1[0]+tilew > self.w:
-				tilew1 += int(self.w-(tile1[0]+tilew));
-			tileh1 = tileh;
-			if tile1[1]+tileh > self.h:
-				tileh1 += int(self.h-(tile1[1]+tileh));
+			tilew1 = self.tilew;
+			if tile1[0]+self.tilew > self.width:
+				tilew1 += int(self.width-(tile1[0]+self.tilew));
+			tileh1 = self.tileh;
+			if tile1[1]+self.tileh > self.height:
+				tileh1 += int(self.height-(tile1[1]+self.tileh));
 
 			tilew1 += int(min(tile1[0],0));
 			tileh1 += int(min(tile1[1],0));
@@ -105,16 +101,16 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 			result = self.begin_result(tile1[0],tile1[1],tilew1,tileh1);
 			rr = np.zeros((tilew1*tileh1,4));
 
-			#self.DrawBorder(result,tilew,tileh,tilew1,tileh1);
-			self.update_result(result);
+			#self.DrawBorder(result,self.tilew,self.tileh,tilew1,tileh1);
+			#self.update_result(result);
 
 			dd = 0;
 			for i in range(0,sc):
 				if self.test_break():
 					self.end_result(result);
 					break;
-				self.update_stats("Path tracing tile ("+str((nx*ny)-len(tiles))+"/"+str(nx*ny)+")",str(dd)+"/"+str(samples_ext)+" samples");
-				d1 = min(samples_ext-i*samples_int,samples_int);
+				self.update_stats("Path tracing tile ("+str((nx*ny)-len(tiles))+"/"+str(nx*ny)+")",str(dd)+"/"+str(self.samples_ext)+" samples");
+				d1 = min(self.samples_ext-i*self.samples_int,self.samples_int);
 
 				libdroplet.Render(tile1[0],tile1[1],tilew1,tileh1,d1);
 
@@ -127,7 +123,7 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 
 				result.layers[0].passes[0].rect = rr/float(dd);
 				#if i < sc-1:
-					#self.DrawBorder(result,tilew,tileh,tilew1,tileh1);
+					#self.DrawBorder(result,self.tilew,self.tileh,tilew1,tileh1);
 
 				self.update_result(result);
 				self.update_progress(1.0-len(tiles)/(nx*ny)+i/(sc*nx*ny));
