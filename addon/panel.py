@@ -122,7 +122,7 @@ class ClPerformanceProperties(bpy.types.PropertyGroup):
 		("0","Off","Caching disabled. Grid is always recreated."),
 		("R","RW","Read the grid from a cache. A new cache is created from the current scene if unavailable. Currently manual cache management is required since it's not possible to track all changes made to the scene (data, surface nodes, textures etc.)"),
 		("W","W","Write always and overwrite any previous caches. Manual overwriting is required when changes have been made.")));
-	samples = IntProperty(name="Int.Samples",default=100,min=1,description="Maximum number of samples taken internally by the render engine before returning to update the render result. Higher number of internal samples results in slightly faster render times, but also increases the interval between visual updates and may limit application responsiveness.");
+	samples = IntProperty(name="Int.Samples",default=100,min=1,description="Maximum number of samples taken internally by the render engine before returning to update the render result. Higher number of internal samples results in slightly faster render times, but also increases the interval between visual updates.");
 
 	def draw(self, context, layout):
 		s = layout.split();

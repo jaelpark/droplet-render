@@ -7,30 +7,6 @@ namespace KernelSampler{
 class PhaseFunction;
 }
 
-#define BLCLOUD_MAX_RECURSION 32 //BLCLOUD_MAX_RECURSION
-
-/*class ParallelLeafList{
-public:
-	ParallelLeafList(){}
-	~ParallelLeafList(){}
-
-	inline uint GetLeafCount(uint r, uint v) const{
-		return ls[r][v].size();
-	}
-
-	inline uint GetLeaf(uint r, uint v, uint x) const{
-		return std::get<0>(ls[r][v][x]);
-	}
-
-	inline void GetHit(uint r, uint v, uint x, float *ptr0, float *ptr1) const{
-		*ptr0 = std::get<1>(ls[r][v][x]);
-		*ptr1 = std::get<2>(ls[r][v][x]);
-	};
-
-	typedef std::tuple<uint, float, float> Node;
-	std::vector<Node> ls[BLCLOUD_MAX_RECURSION][BLCLOUD_VSIZE];
-};*/
-
 class RenderKernel{
 public:
 	RenderKernel();
@@ -50,10 +26,13 @@ public:
 	uint scattevs; //max number of scattering events
 	float msigmas; //macroscopic scattering cross section
 	float msigmaa; //-- absorption
-	//uint tilex; //max tile size
-	//uint tiley;
+	//
 	uint w;
 	uint h;
+	//tile size
+	uint tilew;
+	uint tileh;
+	//
 	uint flags;
 };
 

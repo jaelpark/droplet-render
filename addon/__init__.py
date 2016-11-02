@@ -82,6 +82,8 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 				tiles.append((xadj,yadj));
 
 		libdroplet.BeginRender(scene,bpy.data,tilew,tileh,self.w,self.h);
+		while libdroplet.QueryStatus() != 0:
+			pass;
 
 		while len(tiles) > 0:
 			tile1 = min(tiles,key=lambda tileq: Vector((tileq[0]+0.5*tilew-0.5*self.w,tileq[1]+0.5*tileh-0.5*self.h)).length);
@@ -114,8 +116,14 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 				self.update_stats("Path tracing tile ("+str((nx*ny)-len(tiles))+"/"+str(nx*ny)+")",str(dd)+"/"+str(samples_ext)+" samples");
 				d1 = min(samples_ext-i*samples_int,samples_int);
 
+				libdroplet.Render(tile1[0],tile1[1],tilew1,tileh1,d1);
+
+				while True:
+					qr = libdroplet.QueryResult();
+					if qr is not None:
+						break;
 				dd += d1;
-				rr += libdroplet.Render(tile1[0],tile1[1],tilew1,tileh1,d1);
+				rr += qr;
 
 				result.layers[0].passes[0].rect = rr/float(dd);
 				#if i < sc-1:

@@ -383,7 +383,7 @@ static sfloat4 SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, Re
 
 			//estimator S(1)*f1*w1/p1+S(2)*f2*w2/p2 /= woodcock pdf
 			sfloat4 s1 = SampleVolume(rc,srd,gm1,pkernel,0,prs,r+1,1);
-			sfloat4 s2 = SampleVolume(rc,lrd,gm1,pkernel,0,prs,BLCLOUD_MAX_RECURSION-1,1);
+			sfloat4 s2 = SampleVolume(rc,lrd,gm1,pkernel,0,prs,pkernel->scattevs,1);
 
 			//(HG_Phase(X)*SampleVolume(X)*p1/(p1+L_Pdf(X)))/p1 => (HG_Phase(X)=p1)*SampleVolume(X)/(p1+L_Pdf(X)) = p1*SampleVolume(X)/(p1+L_Pdf(X))
 			//(HG_Phase(Y)*SampleVolume(Y)*p2/(HG_Phase(Y)+p2))/p2 => HG_phase(Y)*SampleVolume(Y)/(HG_Phase(Y)+p2)
@@ -503,6 +503,8 @@ bool RenderKernel::Initialize(const Scene *pscene, const SceneOcclusion *psceneo
 	this->msigmaa = msigmaa;
 	this->w = w;
 	this->h = h;
+	this->tilew = 0;
+	this->tileh = 0;
 	this->flags = flags;
 	viewi = *pviewi;
 	proji = *pproji;
@@ -524,7 +526,8 @@ bool RenderKernel::Initialize(const Scene *pscene, const SceneOcclusion *psceneo
 }
 
 void RenderKernel::Render(uint x0, uint y0, uint tilex, uint tiley, uint samples){
-	//
+	tilew = tilex;
+	tileh = tiley;
 	K_Render(&viewi,&proji,this,x0,y0,tilex,tiley,w,h,samples,phb);
 }
 

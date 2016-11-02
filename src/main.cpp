@@ -8,6 +8,7 @@
 
 #include <unordered_map>
 #include <functional> //std::function
+#include <thread> //std::thread
 
 #include <time.h> //logging gimmick
 #include <stdarg.h>
@@ -15,6 +16,10 @@
 static RenderKernel *gpkernel = 0;
 static Scene *gpscene = 0;
 static SceneOcclusion *gpsceneocc = 0;
+static enum ENGINE_STATE{
+	ENGINE_STATE_READY,
+	ENGINE_STATE_PROCESSING
+} gstate = ENGINE_STATE_READY; //for asynchronous Python-scripting, to prevent locking up the Blender interface
 
 #ifndef __unix__
 #define strcasecmp stricmp
@@ -470,12 +475,6 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	Py_DECREF(pbmops);
 	Py_DECREF(pbmesh);
 
-	/*PyObject *pyrender = PyObject_GetAttrString(pscene,"blcloudrender");
-	PyObject *pytransparent = PyObject_GetAttrString(pyrender,"transparent");
-	uint flags = PyObject_IsTrue(pytransparent) & RENDER_TRANSPARENT;
-	Py_DECREF(pytransparent);
-	Py_DECREF(pyrender);*/
-
 	PyObject *pysampling = PyObject_GetAttrString(pscene,"blcloudsampling");
 	uint scattevs = PyGetUint(pysampling,"scatterevs");
 	float msigmas = PyGetFloat(pysampling,"msigmas");
@@ -521,42 +520,50 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	Py_DECREF(pywsettings);
 	Py_DECREF(pyworld);
 
-	if(occlusion){
-		gpsceneocc = new SceneOcclusion();
-		gpsceneocc->Initialize();
-	}
+	gstate = ENGINE_STATE_PROCESSING;
 
-	gpscene = new Scene(); //TODO: interface for blender status reporting
-	gpscene->Initialize(dsize,maxd,qband,cm);
+	std::thread async([=]()->void{
+		if(occlusion){
+			gpsceneocc = new SceneOcclusion();
+			gpsceneocc->Initialize();
+		}
 
-	gpkernel = new RenderKernel();
-	gpkernel->Initialize(gpscene,gpsceneocc,&sviewi,&sproji,ppf,scattevs,msigmas,msigmaa,tilex,tiley,w,h,0);
+		gpscene = new Scene(); //TODO: interface for blender status reporting
+		gpscene->Initialize(dsize,maxd,qband,cm);
 
-	SceneData::SmokeCache::DeleteAll();
-	SceneData::ParticleSystem::DeleteAll();
-	SceneData::Surface::DeleteAll();
-	Node::NodeTree::DeleteAll();
+		gpkernel = new RenderKernel();
+		gpkernel->Initialize(gpscene,gpsceneocc,&sviewi,&sproji,ppf,scattevs,msigmas,msigmaa,tilex,tiley,w,h,0);
 
+		SceneData::SmokeCache::DeleteAll();
+		SceneData::ParticleSystem::DeleteAll();
+		SceneData::Surface::DeleteAll();
+		Node::NodeTree::DeleteAll();
+
+		gstate = ENGINE_STATE_READY;
+	});
+	async.detach();
+
+	Py_INCREF(Py_None);
 	return Py_None;
 }
 
 static PyObject * DRE_Render(PyObject *pself, PyObject *pargs){
-	//
 	uint x0, y0, tilex, tiley, samples;
 	if(!gpkernel || !PyArg_ParseTuple(pargs,"IIIII",&x0,&y0,&tilex,&tiley,&samples))
 		return 0;
 
-	gpkernel->Render(x0,y0,tilex,tiley,samples);
+	Py_INCREF(Py_None);
+	if(gstate != ENGINE_STATE_READY)
+		return Py_None;
 
-	//TODO: write directly to the blender's render result?
-	uint l = tilex*tiley;
-	PyObject *prt = PyList_New(l);
-	for(uint i = 0; i < l; ++i){
-		PyObject *pc = Py_BuildValue("[f,f,f,f]",gpkernel->phb[i].x,gpkernel->phb[i].y,gpkernel->phb[i].z,gpkernel->phb[i].w);
-		PyList_SET_ITEM(prt,i,pc);
-	}
+	gstate = ENGINE_STATE_PROCESSING;
+	std::thread async([=]()->void{
+		gpkernel->Render(x0,y0,tilex,tiley,samples);
+		gstate = ENGINE_STATE_READY;
+	});
+	async.detach();
 
-	return prt;
+	return Py_None;
 }
 
 static PyObject * DRE_EndRender(PyObject *pself, PyObject *pargs){
@@ -578,13 +585,39 @@ static PyObject * DRE_EndRender(PyObject *pself, PyObject *pargs){
 
 	DebugPrintf("Shutdown\n");
 
+	Py_INCREF(Py_None);
 	return Py_None;
+}
+
+static PyObject * DRE_QueryStatus(PyObject *pself, PyObject *pargs){
+	//
+	return Py_BuildValue("i",gstate);
+}
+
+static PyObject * DRE_QueryResult(PyObject *pself, PyObject *pargs){
+	if(!gpkernel)
+		return 0;
+	if(gstate != ENGINE_STATE_READY){
+		Py_INCREF(Py_None);
+		return Py_None;
+	}
+
+	uint l = gpkernel->tilew*gpkernel->tileh;
+	PyObject *prt = PyList_New(l);
+	for(uint i = 0; i < l; ++i){
+		PyObject *pc = Py_BuildValue("[f,f,f,f]",gpkernel->phb[i].x,gpkernel->phb[i].y,gpkernel->phb[i].z,gpkernel->phb[i].w);
+		PyList_SET_ITEM(prt,i,pc);
+	}
+
+	return prt;
 }
 
 static PyMethodDef g_blmethods[] = {
 	{"BeginRender",DRE_BeginRender,METH_VARARGS,"BeginRender() doc string"}, //CreateDevice
 	{"Render",DRE_Render,METH_VARARGS,"Render() doc string"},
 	{"EndRender",DRE_EndRender,METH_NOARGS,"EndRender() doc string"},
+	{"QueryStatus",DRE_QueryStatus,METH_NOARGS,"QueryStatus() doc string"},
+	{"QueryResult",DRE_QueryResult,METH_NOARGS,"QueryResult() doc string"},
 	{0,0,0,0}
 };
 
