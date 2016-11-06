@@ -181,6 +181,7 @@ class ClNodeSmokeCache(bpy.types.Node):
 
 	def init(self, context):
 		self.outputs.new("ClNodeFogSocket","Fog");
+		self.outputs.new("ClNodeVectorFieldSocket","Velocity");
 
 class ClNodeFogPostInput(bpy.types.Node):
 	bl_idname = "ClNodeFogPostInput";

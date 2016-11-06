@@ -246,13 +246,19 @@ public:
 	};
 };
 
-class ISmokeCache : public virtual BaseFogNode{
+class ISmokeCache : public virtual BaseFogNode, public virtual BaseVectorFieldNode{
 protected:
 	ISmokeCache(uint, NodeTree *);
 	~ISmokeCache();
 public:
 	virtual void Evaluate(const void *) = 0;
 	static ISmokeCache * Create(uint, NodeTree *);
+	enum OUTPUT_FOG{
+		OUTPUT_FOG_DENSITY,
+	};
+	enum OUTPUT_VECTORFIELD{
+		OUTPUT_VECTORFIELD_VELOCITY
+	};
 };
 
 class IFogPostInput : public virtual BaseFogNode{

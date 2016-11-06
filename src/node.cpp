@@ -311,7 +311,7 @@ IFieldInput::~IFieldInput(){
 	//
 }
 
-ISmokeCache::ISmokeCache(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseNode(_level,pnt){
+ISmokeCache::ISmokeCache(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseVectorFieldNode(_level,pnt), BaseNode(_level,pnt){
 	//
 }
 

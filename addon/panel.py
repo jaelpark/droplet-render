@@ -191,8 +191,8 @@ class ClObjectProperties(bpy.types.PropertyGroup):
 	#zonly = BoolProperty(name="Depth Only",default=False,description="Block only primary camera rays.");
 	nodetree = EnumProperty(name="Node group",items=NodeGroupSelection,description="Node group to be used for this object");
 	vdbcache = StringProperty(name="File",subtype="FILE_PATH",description="Path to the OpenVDB .vdb cache. Required if the node tree makes use of the SmokeCache. Can be set to point to the Blender produced .vdb cache of desired frame (smoke simulations), for example. Loaded density and/or velocity grids will be upsampled to match current grid resolution.");
-	vdbrho = StringProperty(name="Density",default="density",description="Density grid name. For Blender smoke caches, default value can be used.");
-	vdbvel = StringProperty(name="Velocity",default="velocity",description="Velocity grid name. For Blender smoke caches, default value can be used.");
+	vdbrho = StringProperty(name="Density",default="density",description="Density grid name. For Blender smoke caches, default value can be used. Leave empty if unavailable.");
+	vdbvel = StringProperty(name="Velocity",default="velocity",description="Velocity grid name. For Blender smoke caches, default value can be used. Leave empty if unavailable.");
 
 class ClMaterialPanel(bpy.types.Panel):
 	bl_idname = "ClMaterialPanel";

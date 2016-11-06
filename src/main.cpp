@@ -253,36 +253,6 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	for(uint i = 0; i < objc; ++i){
 		PyObject *pobj = PyList_GetItem(pyobl,i);
 
-		//get smoke domain modifiers
-		/*PyObject *pmfs = PyObject_GetAttrString(pobj,"modifiers");
-		PyObject *pmfl = PyObject_CallMethod(pmfs,"values","");
-		uint mfc = PyList_Size(pmfl);
-		for(uint j = 0; j < mfc; ++j){
-			PyObject *pmf = PyList_GetItem(pmfl,j), *pmto;
-			const char *pmts;
-			//
-			pmto = PyObject_GetAttrString(pmf,"type");
-			pmts = PyUnicode_AsUTF8(pmto);
-			if(strcasecmp(pmts,"SMOKE") != 0){
-				Py_DECREF(pmto);
-				continue;
-			}
-			Py_DECREF(pmto);
-
-			pmto = PyObject_GetAttrString(pmf,"smoke_type");
-			pmts = PyUnicode_AsUTF8(pmto);
-			if(strcasecmp(pmts,"DOMAIN") != 0){
-				Py_DECREF(pmto);
-				continue;
-			}
-			Py_DECREF(pmto);
-
-			//TODO: node tree selection
-			std::unordered_map<Py_hash_t, Node::NodeTree *>::const_iterator m = ntm.begin();
-			SceneData::SmokeCache *pprs = new SceneData::SmokeCache(m->second);
-		}
-		Py_DECREF(pmfs);*/
-
 		//get particle systems
 		PyObject *ppro = PyObject_GetAttrString(pobj,"particle_systems");
 		PyObject *ppsl = PyObject_CallMethod(ppro,"values","");

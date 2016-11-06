@@ -43,7 +43,7 @@ public:
 	void Evaluate(const void *);
 };
 
-class SmokeCache : public BaseFogNode1, public ISmokeCache{
+class SmokeCache : public BaseFogNode1, public BaseVectorFieldNode1, public ISmokeCache{
 public:
 	SmokeCache(uint, NodeTree *);
 	~SmokeCache();

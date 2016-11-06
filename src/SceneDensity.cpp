@@ -250,7 +250,7 @@ IFieldInput * IFieldInput::Create(uint level, NodeTree *pnt){
 	return new FieldInput(level,pnt);
 }
 
-SmokeCache::SmokeCache(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), BaseNode(_level,pnt), ISmokeCache(_level,pnt){
+SmokeCache::SmokeCache(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseVectorFieldNode(_level,pnt), BaseFogNode1(_level,pnt), BaseVectorFieldNode1(_level,pnt), BaseNode(_level,pnt), ISmokeCache(_level,pnt){
 	//
 	//DebugPrintf(">> ParticleInput()\n");
 }
@@ -274,17 +274,31 @@ void SmokeCache::Evaluate(const void *pp){
 	openvdb::io::File vdbc(psmc->pvdb);
 	try{
 		vdbc.open(false);
-		openvdb::FloatGrid::Ptr ptgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(vdbc.readGrid(psmc->prho));
+		if(strlen(psmc->prho) > 0){
+			openvdb::FloatGrid::Ptr ptgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(vdbc.readGrid(psmc->prho));
+			DebugPrintf("Read OpenVDB smoke cache: %s\n",ptgrid->getName().c_str());
+
+			DebugPrintf("> Upsampling smoke cache...\n");
+			openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
+			pdgrid->setTransform(pgridtr);
+
+			openvdb::tools::resampleToMatch<openvdb::tools::BoxSampler>(*ptgrid,*pdgrid);
+			pdgrid->tree().prune();
+		}
+
+		if(strlen(psmc->pvel) > 0){
+			openvdb::Vec3SGrid::Ptr ptgrid = openvdb::gridPtrCast<openvdb::Vec3SGrid>(vdbc.readGrid(psmc->pvel));
+			DebugPrintf("Read OpenVDB smoke cache: %s\n",ptgrid->getName().c_str());
+
+			DebugPrintf("> Upsampling smoke cache...\n");
+			openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
+			pvgrid->setTransform(pgridtr);
+
+			openvdb::tools::resampleToMatch<openvdb::tools::BoxSampler>(*ptgrid,*pvgrid);
+			pvgrid->tree().prune();
+		}
+
 		vdbc.close();
-
-		DebugPrintf("Read OpenVDB smoke cache: %s\n",ptgrid->getName().c_str());
-
-		DebugPrintf("> Upsampling smoke cache...\n");
-		openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
-		pdgrid->setTransform(pgridtr);
-
-		openvdb::tools::resampleToMatch<openvdb::tools::BoxSampler>(*ptgrid,*pdgrid);
-		pdgrid->tree().prune();
 
 	}catch(const openvdb::IoError &e){
 		DebugPrintf("SmokeCache: %s\n",e.what());
