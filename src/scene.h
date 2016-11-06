@@ -75,9 +75,10 @@ public:
 
 class SmokeCache : public BaseObject{
 public:
-	SmokeCache(Node::NodeTree *);
+	SmokeCache(Node::NodeTree *, const char *, const char *, const char *);
 	~SmokeCache();
 	static void DeleteAll();
+	const char *pvdb, *prho, *pvel;
 	static std::vector<SmokeCache *> objs;
 };
 

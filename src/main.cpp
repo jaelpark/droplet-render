@@ -254,7 +254,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 		PyObject *pobj = PyList_GetItem(pyobl,i);
 
 		//get smoke domain modifiers
-		PyObject *pmfs = PyObject_GetAttrString(pobj,"modifiers");
+		/*PyObject *pmfs = PyObject_GetAttrString(pobj,"modifiers");
 		PyObject *pmfl = PyObject_CallMethod(pmfs,"values","");
 		uint mfc = PyList_Size(pmfl);
 		for(uint j = 0; j < mfc; ++j){
@@ -281,7 +281,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 			std::unordered_map<Py_hash_t, Node::NodeTree *>::const_iterator m = ntm.begin();
 			SceneData::SmokeCache *pprs = new SceneData::SmokeCache(m->second);
 		}
-		Py_DECREF(pmfs);
+		Py_DECREF(pmfs);*/
 
 		//get particle systems
 		PyObject *ppro = PyObject_GetAttrString(pobj,"particle_systems");
@@ -393,6 +393,22 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 				continue;
 			}
 			SceneData::Surface *psobj = new SceneData::Surface(m->second,holdout);
+
+			//check if SmokeCache node was used
+			for(uint j = 0; j < m->second->nodes1.size(); ++j){
+				Node::ISmokeCache *pscn = dynamic_cast<Node::ISmokeCache *>(m->second->nodes1[j]);
+				if(pscn){
+					PyObject *pyvdb = PyObject_GetAttrString(psd,"vdbcache");
+					PyObject *pyrho = PyObject_GetAttrString(psd,"vdbrho");
+					PyObject *pyvel = PyObject_GetAttrString(psd,"vdbvel");
+					SceneData::SmokeCache *pprs = new SceneData::SmokeCache(m->second,
+						PyUnicode_AsUTF8(pyvdb),PyUnicode_AsUTF8(pyrho), PyUnicode_AsUTF8(pyvel));
+					Py_DECREF(pyvdb);
+					Py_DECREF(pyrho);
+					Py_DECREF(pyvel);
+					break;
+				}
+			}
 
 			Py_DECREF(pyholdout);
 			Py_DECREF(ppn);

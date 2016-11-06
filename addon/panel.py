@@ -1,7 +1,7 @@
 
 import bpy
 
-from bpy.props import BoolProperty, IntProperty, FloatProperty, EnumProperty, PointerProperty, FloatVectorProperty
+from bpy.props import BoolProperty,IntProperty,FloatProperty,EnumProperty,PointerProperty,FloatVectorProperty,StringProperty
 
 from . import config
 
@@ -188,7 +188,11 @@ def NodeGroupSelection(self, context):
 
 class ClObjectProperties(bpy.types.PropertyGroup):
 	holdout = BoolProperty(name="Holdout Mesh",default=False,description="Tell Droplet that this is a holdout mesh. Holdouts will occlude rays and create shadowing among clouds. This is also required when compositing with results from other render engines. Available only if \"occlusion geometry\" option is enabled and Droplet was built with Intel Embree support.");
+	#zonly = BoolProperty(name="Depth Only",default=False,description="Block only primary camera rays.");
 	nodetree = EnumProperty(name="Node group",items=NodeGroupSelection,description="Node group to be used for this object");
+	vdbcache = StringProperty(name="File",subtype="FILE_PATH",description="Path to the OpenVDB .vdb cache. Required if the node tree makes use of the SmokeCache. Can be set to point to the Blender produced .vdb cache of desired frame (smoke simulations), for example. Loaded density and/or velocity grids will be upsampled to match current grid resolution.");
+	vdbrho = StringProperty(name="Density",default="density",description="Density grid name. For Blender smoke caches, default value can be used.");
+	vdbvel = StringProperty(name="Velocity",default="velocity",description="Velocity grid name. For Blender smoke caches, default value can be used.");
 
 class ClMaterialPanel(bpy.types.Panel):
 	bl_idname = "ClMaterialPanel";
@@ -206,6 +210,23 @@ class ClMaterialPanel(bpy.types.Panel):
 		self.layout.row().prop(context.object.droplet,"holdout");
 		if not context.object.droplet.holdout:
 			self.layout.row().prop(context.object.droplet,"nodetree");
+
+class ClSmokePanel(bpy.types.Panel):
+	bl_idname = "ClSmokePanel";
+	bl_label = "OpenVDB cache";
+	bl_space_type = "PROPERTIES";
+	bl_region_type = "WINDOW";
+	bl_context = "material";
+
+	@classmethod
+	def poll(cls, context):
+		return context.scene.render.engine == config.dre_engineid and context.active_object.type == 'MESH';
+
+	def draw(self, context):
+		self.layout.row().prop(context.object.droplet,"vdbcache");
+		self.layout.row().prop(context.object.droplet,"vdbrho");
+		self.layout.row().prop(context.object.droplet,"vdbvel");
+
 
 class ClParticleSystemProperties(bpy.types.PropertyGroup):
 	nodetree = EnumProperty(name="Node group",items=NodeGroupSelection,description="Node group to be used for this particle system");

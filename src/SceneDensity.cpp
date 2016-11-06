@@ -270,10 +270,11 @@ void SmokeCache::Evaluate(const void *pp){
 
 	//Experimental Blender VDB smoke cache support. As long as there's no decent way to get cache name references with Python, this won't work.
 	//TODO: might want to get the velocity grid as well
-	openvdb::io::File vdbc("/tmp/blendcache_droplet_random1/fog_000070_00.vdb");
+	//openvdb::io::File vdbc("/tmp/blendcache_droplet_random1/fog_000070_00.vdb");
+	openvdb::io::File vdbc(psmc->pvdb);
 	try{
 		vdbc.open(false);
-		openvdb::FloatGrid::Ptr ptgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(vdbc.readGrid("density"));
+		openvdb::FloatGrid::Ptr ptgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(vdbc.readGrid(psmc->prho));
 		vdbc.close();
 
 		DebugPrintf("Read OpenVDB smoke cache: %s\n",ptgrid->getName().c_str());

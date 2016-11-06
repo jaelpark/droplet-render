@@ -605,12 +605,19 @@ void ParticleSystem::DeleteAll(){
 
 std::vector<ParticleSystem *> ParticleSystem::prss;
 
-SmokeCache::SmokeCache(Node::NodeTree *_pnt) : BaseObject(_pnt){
+SmokeCache::SmokeCache(Node::NodeTree *_pnt, const char *_pvdb, const char *_prho, const char *_pvel) : BaseObject(_pnt){
 	SmokeCache::objs.push_back(this);
+#define STRDUP(s) strcpy(new char[strlen(s)+1],s)
+	pvdb = STRDUP(_pvdb);
+	prho = STRDUP(_prho);
+	pvel = STRDUP(_pvel);
+#undef STRDUP
 }
 
 SmokeCache::~SmokeCache(){
-	//
+	delete []pvdb;
+	delete []prho;
+	delete []pvel;
 }
 
 void SmokeCache::DeleteAll(){
