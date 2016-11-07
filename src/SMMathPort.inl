@@ -371,6 +371,47 @@ inline XMMATRIX XMMatrixInverse
 
 //------------------------------------------------------------------------------
 
+inline XMMATRIX XMMatrixPerspectiveRH
+(
+    float ViewWidth,
+    float ViewHeight,
+    float NearZ,
+    float FarZ
+)
+{
+    XMMATRIX M;
+    float TwoNearZ = NearZ + NearZ;
+    float fRange = FarZ / (NearZ-FarZ);
+    // Note: This is recorded on the stack
+    XMVECTOR rMem = {
+        TwoNearZ / ViewWidth,
+        TwoNearZ / ViewHeight,
+        fRange,
+        fRange * NearZ
+    };
+    // Copy from memory to SSE register
+    XMVECTOR vValues = rMem;
+    XMVECTOR vTemp = _mm_setzero_ps();
+    // Copy x only
+    vTemp = _mm_move_ss(vTemp,vValues);
+    // TwoNearZ / ViewWidth,0,0,0
+    M.r[0] = vTemp;
+    // 0,TwoNearZ / ViewHeight,0,0
+    vTemp = vValues;
+    vTemp = _mm_and_ps(vTemp,g_XMMaskY);
+    M.r[1] = vTemp;
+    // x=fRange,y=-fRange * NearZ,0,-1.0f
+    vValues = _mm_shuffle_ps(vValues,float4(0,0,0,-1.0f).v,_MM_SHUFFLE(3,2,3,2));
+    // 0,0,fRange,-1.0f
+    vTemp = _mm_setzero_ps();
+    vTemp = _mm_shuffle_ps(vTemp,vValues,_MM_SHUFFLE(3,0,0,0));
+    M.r[2] = vTemp;
+    // 0,0,-fRange * NearZ,0
+    vTemp = _mm_shuffle_ps(vTemp,vValues,_MM_SHUFFLE(2,1,0,0));
+    M.r[3] = vTemp;
+    return M;
+}
+
 inline XMMATRIX XMMatrixPerspectiveFovRH
 (
 	float FovAngleY,

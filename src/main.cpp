@@ -62,22 +62,14 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 		return 0;
 	}
 	PyObject *pycam = PyObject_GetAttrString(pscene,"camera");
+
 	PyObject *pyloc = PyObject_GetAttrString(pycam,"location");
-	PyObject *pyrot = PyObject_GetAttrString(pycam,"rotation_euler");
-	//PyObject *prot = PyObject_GetAttrString(pcam,"rotation_quaternion");
-	PyObject *pycdt = PyObject_GetAttrString(pycam,"data");
-
-	float4 u = float4(0,0,-1,0);
-
-	float fov = (float)h/(float)w*PyGetFloat(pycdt,"angle"); //blender seems to be using y-fov
-	float zmin = PyGetFloat(pycdt,"clip_start");
-	float zmax = PyGetFloat(pycdt,"clip_end");
-
+	const float4 u = float4(0,0,-1,0);
 	float4 p = float4(
 		PyGetFloat(pyloc,"x"),
 		PyGetFloat(pyloc,"y"),
 		PyGetFloat(pyloc,"z"),1.0f);
-
+	PyObject *pyrot = PyObject_GetAttrString(pycam,"rotation_euler"); //rotation_quaternion
 	PyObject *pyquat = PyObject_CallMethod(pyrot,"to_quaternion","");
 	float4 q = float4(
 		PyGetFloat(pyquat,"x"),
@@ -85,15 +77,32 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 		PyGetFloat(pyquat,"z"),
 		PyGetFloat(pyquat,"w"));
 	float4 d = XMVector3Rotate(u.v,q.v);
-
-	Py_DECREF(pycam);
 	Py_DECREF(pyloc);
 	Py_DECREF(pyrot);
 	Py_DECREF(pyquat);
+
+	PyObject *pycdt = PyObject_GetAttrString(pycam,"data");
+
+	PyObject *pyvfrm = PyObject_CallMethod(pycdt,"view_frame","O",pscene);
+	PyObject *pyvfrmv = PyObject_GetIter(pyvfrm);
+	PyObject *pyvfrma = PyIter_Next(pyvfrmv);
+	float frx = PyGetFloat(pyvfrma,"x");
+	float fry = PyGetFloat(pyvfrma,"y");
+	Py_DECREF(pyvfrma);
+	Py_DECREF(pyvfrmv);
+	Py_DECREF(pyvfrm);
+
+	//fov = 2*atanf((0.5*sensor_size)/bcam->lens/aspectratio) = camera.data.angle;
+	//float fov = 1.045399f*(float)h/(float)w*PyGetFloat(pycdt,"angle");
+	float zmin = PyGetFloat(pycdt,"clip_start");
+	float zmax = PyGetFloat(pycdt,"clip_end");
+
 	Py_DECREF(pycdt);
+	Py_DECREF(pycam);
 
 	XMMATRIX view = XMMatrixLookToRH(p.v,d.v,u.v);
-	XMMATRIX proj = XMMatrixPerspectiveFovRH(fov,(float)w/(float)h,zmin,zmax);
+	//XMMATRIX proj = XMMatrixPerspectiveFovRH(fov,(float)w/(float)h,zmin,zmax);
+	XMMATRIX proj = XMMatrixPerspectiveRH(frx,fry,zmin,zmax);
 
 	dmatrix44 sviewi, sproji;
 	matrix44::store(&sviewi,matrix44(XMMatrixInverse(0,view).r));

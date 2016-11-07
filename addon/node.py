@@ -145,7 +145,8 @@ class ClNodeSceneInfo(bpy.types.Node):
 		self.inputs.new("ClNodeVectorSocket","World");
 		self.outputs.new("ClNodeFloatSocket","Distance");
 		#TODO: CPT.world now that we have a query field
-		self.outputs.new("ClNodeFloatSocket","Density");
+		#self.outputs.new("ClNodeFloatSocket","Density.Surface");
+		self.outputs.new("ClNodeFloatSocket","Density.Fog");
 		self.outputs.new("ClNodeFloatSocket","Density.Final");
 		self.outputs.new("ClNodeVectorSocket","Vector");
 
