@@ -6,11 +6,14 @@ from bpy.props import BoolProperty,IntProperty,FloatProperty,EnumProperty,Pointe
 from . import config
 
 def SetResolution(self, context):
-	self.w = max(int(context.scene.blcloudrender.res_p*context.scene.blcloudrender.res_x),1);
-	self.h = max(int(context.scene.blcloudrender.res_p*context.scene.blcloudrender.res_y),1);
-	context.scene.render.resolution_x = self.w;
-	context.scene.render.resolution_y = self.h;
+	self.width = max(int(context.scene.blcloudrender.res_p*context.scene.blcloudrender.res_x),1);
+	self.height = max(int(context.scene.blcloudrender.res_p*context.scene.blcloudrender.res_y),1);
+	context.scene.render.resolution_x = self.width;
+	context.scene.render.resolution_y = self.height;
 	context.scene.render.resolution_percentage = 100;
+
+#def LayerSelection(self, context):
+	#return [(m.name,m.name,m.name,"RENDERLAYERS",x) for x, m in enumerate(context.scene.render.layers)];
 
 class ClRenderProperties(bpy.types.PropertyGroup):
 	res_x = IntProperty(name="Res.X",default=1920,min=1,description="Image width in pixels",update=SetResolution);
@@ -151,8 +154,26 @@ class ClPerformancePanel(bpy.types.Panel):
 	def draw(self, context):
 		context.scene.blcloudperf.draw(context,self.layout);
 
-def TextureSelection(self, context):
-	return [(m.name,m.name,m.name,"TEXTURE",x) for x, m in enumerate(bpy.data.images)];
+class ClLayerPanel(bpy.types.Panel):
+	bl_idname = "ClLayerPanel";
+	bl_label = "Layer";
+	bl_space_type = "PROPERTIES";
+	bl_region_type = "WINDOW";
+	bl_context = "render_layer";
+
+	@classmethod
+	def poll(cls, context):
+		return context.scene.render.engine == config.dre_engineid;
+
+	def draw(self, context):
+		#self.layout.row().prop(context.scene.blcloudrender,"layer");
+		#pass #context.scene.blcloudperf.draw(context,self.layout);
+		s = self.layout.split();
+		s.column().prop(context.scene,"layers",text="Scene");
+		s.column().prop(context.scene.render.layers.active,"layers",text="Layer");
+
+#def TextureSelection(self, context):
+	#return [(m.name,m.name,m.name,"TEXTURE",x) for x, m in enumerate(bpy.data.images)];
 
 class ClCompositeProperties(bpy.types.PropertyGroup):
 	# depthcomp = BoolProperty(name="Depth compositing",default=False,description="Use external depth texture for compositing.");

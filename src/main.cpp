@@ -56,8 +56,8 @@ inline uint PyGetUint(PyObject *pb, const char *pn){
 
 static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	PyObject *pscene, *pdata;
-	uint tilex, tiley, w, h;
-	if(gpscene || !PyArg_ParseTuple(pargs,"OOIIII",&pscene,&pdata,&tilex,&tiley,&w,&h)){
+	uint tilex, tiley, w, h, smask;
+	if(gpscene || !PyArg_ParseTuple(pargs,"OOIIIII",&pscene,&pdata,&tilex,&tiley,&w,&h,&smask)){
 		DebugPrintf("Invalid arguments\n");
 		return 0;
 	}
@@ -101,8 +101,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	Py_DECREF(pycam);
 
 	XMMATRIX view = XMMatrixLookToRH(p.v,d.v,u.v);
-	//XMMATRIX proj = XMMatrixPerspectiveFovRH(fov,(float)w/(float)h,zmin,zmax);
-	XMMATRIX proj = XMMatrixPerspectiveRH(frx,fry,zmin,zmax);
+	XMMATRIX proj = XMMatrixPerspectiveRH(frx,fry,zmin,zmax); //XMMatrixPerspectiveFovRH(fov,(float)w/(float)h,zmin,zmax);
 
 	dmatrix44 sviewi, sproji;
 	matrix44::store(&sviewi,matrix44(XMMatrixInverse(0,view).r));
@@ -261,6 +260,17 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	uint objc = PyList_Size(pyobl);
 	for(uint i = 0; i < objc; ++i){
 		PyObject *pobj = PyList_GetItem(pyobl,i);
+
+		//check whether the object is on an active render layer
+		PyObject *pyrls = PyObject_GetAttrString(pobj,"layers");
+		PyObject *pyrlm = PyObject_GetIter(pyrls);
+		uint rx = 0, omask = 0;
+		for(PyObject *pyrl1 = PyIter_Next(pyrlm); pyrl1; Py_DecRef(pyrl1), pyrl1 = PyIter_Next(pyrlm), ++rx)
+			omask |= PyObject_IsTrue(pyrl1)<<rx;
+		Py_DECREF(pyrlm);
+		Py_DECREF(pyrls);
+		if((smask&omask) == 0)
+			continue;
 
 		//get particle systems
 		PyObject *ppro = PyObject_GetAttrString(pobj,"particle_systems");

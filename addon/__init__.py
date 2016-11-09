@@ -12,7 +12,7 @@ from bl_ui import properties_render
 import nodeitems_utils
 from bpy.props import PointerProperty
 
-from bl_ui import properties_data_mesh,properties_data_camera,properties_particle,properties_physics_common,properties_physics_field,properties_physics_smoke
+from bl_ui import properties_render_layer,properties_data_mesh,properties_data_camera,properties_particle,properties_physics_common,properties_physics_field,properties_physics_smoke
 
 import libdroplet #libblcloud #pyd/so filename
 import numpy as np
@@ -54,9 +54,13 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 		self.height = scene.render.resolution_y;
 		self.tilew = scene.blcloudperf.tilex;
 		self.tileh = scene.blcloudperf.tiley;
+		self.layer = [x for x, m in enumerate(scene.render.layers) if scene.render.layers.active == m][0];
+		self.smask = 0;
+		for i,sclayer in enumerate(scene.layers):
+			self.smask |= int(sclayer and scene.render.layers.active.layers[i])<<i;
 
 		self.update_stats("Droplet","Initializing");
-		libdroplet.BeginRender(scene,data,self.tilew,self.tileh,self.width,self.height);
+		libdroplet.BeginRender(scene,data,self.tilew,self.tileh,self.width,self.height,self.smask);
 		while libdroplet.QueryStatus() != 0:
 			pass; #TODO: query progress/memory usage etc
 
@@ -121,7 +125,7 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 				dd += d1;
 				rr += qr;
 
-				result.layers[0].passes[0].rect = rr/float(dd);
+				result.layers[self.layer].passes[0].rect = rr/float(dd);
 				#if i < sc-1:
 					#self.DrawBorder(result,self.tilew,self.tileh,tilew1,tileh1);
 
@@ -141,6 +145,8 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 
 def register():
 	bpy.utils.register_module(__name__);
+	properties_render_layer.RENDERLAYER_PT_layers.COMPAT_ENGINES.add(config.dre_engineid);
+
 	properties_data_mesh.DATA_PT_context_mesh.COMPAT_ENGINES.add(config.dre_engineid);
 	properties_data_mesh.DATA_PT_texture_space.COMPAT_ENGINES.add(config.dre_engineid);
 	properties_data_mesh.DATA_PT_vertex_groups.COMPAT_ENGINES.add(config.dre_engineid);
