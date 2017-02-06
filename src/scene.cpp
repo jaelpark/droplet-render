@@ -654,7 +654,7 @@ Scene::~Scene(){
 	//
 }
 
-void Scene::Initialize(float s, uint maxd, float qb, SCENE_CACHE_MODE cm){
+void Scene::Initialize(float s, uint maxd, float qb, SCENE_CACHE_MODE cm, uint smask){
 	openvdb::initialize();
 
 	const float lvc = 8.0f; //minimum number of voxels in an octree leaf
@@ -663,7 +663,10 @@ void Scene::Initialize(float s, uint maxd, float qb, SCENE_CACHE_MODE cm){
 	openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT];// = {0};
 	FloatGridBoxSampler *psampler[VOLUME_BUFFER_COUNT];
 
-	openvdb::io::File vdbc("/tmp/droplet-fileid.vdb");
+	char vdbn[256], binn[256];
+	snprintf(vdbn,sizeof(vdbn),"/tmp/droplet-%x.vdb",smask);
+	snprintf(binn,sizeof(binn),"/tmp/droplet-%x.bin",smask);
+	openvdb::io::File vdbc(vdbn);
 	try{
 		if(cm != SCENE_CACHE_READ)
 			throw(0);
@@ -675,7 +678,7 @@ void Scene::Initialize(float s, uint maxd, float qb, SCENE_CACHE_MODE cm){
 		vdbc.close();
 
 		{
-			FILE *pf = fopen("/tmp/droplet-fileid.bin","rb");
+			FILE *pf = fopen(binn,"rb");
 			if(!pf)
 				throw(0);
 			fread(&lvoxc,1,4,pf);
@@ -706,7 +709,7 @@ void Scene::Initialize(float s, uint maxd, float qb, SCENE_CACHE_MODE cm){
 			vdbc.write(gvec);
 			vdbc.close();
 
-			FILE *pf = fopen("/tmp/droplet-fileid.bin","wb");
+			FILE *pf = fopen(binn,"wb");
 			fwrite(&lvoxc,1,4,pf);
 			fwrite(&index,1,4,pf);
 			fwrite(&leafx[VOLUME_BUFFER_SDF],1,4,pf);

@@ -176,6 +176,7 @@ def register():
 	properties_physics_smoke.PHYSICS_PT_smoke_highres.COMPAT_ENGINES.add(config.dre_engineid);
 	properties_physics_smoke.PHYSICS_PT_smoke_groups.COMPAT_ENGINES.add(config.dre_engineid);
 	properties_physics_smoke.PHYSICS_PT_smoke_cache.COMPAT_ENGINES.add(config.dre_engineid);
+	properties_physics_smoke.PHYSICS_PT_smoke_field_weights.COMPAT_ENGINES.add(config.dre_engineid);
 
 	bpy.types.Scene.blcloudrender = PointerProperty(type=panel.ClRenderProperties);
 	bpy.types.Scene.blcloudsampling = PointerProperty(type=panel.ClSamplingProperties);

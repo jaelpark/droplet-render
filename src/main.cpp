@@ -510,11 +510,13 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	PyObject *pycache = PyObject_GetAttrString(pyperf,"cache");
 	const char *pcms = PyUnicode_AsUTF8(pycache);
 	SCENE_CACHE_MODE cm = (pcms[0] == 'R'?SCENE_CACHE_READ:pcms[0] == 'W'?SCENE_CACHE_WRITE:SCENE_CACHE_DISABLED);
+	/*if(cm != SCENE_CACHE_DISABLED){
+		//TODO: get cachename
+		//pass it somehow to threaded Scene() construction
+	}*/
 
 	Py_DECREF(pycache);
 	Py_DECREF(pyperf);
-
-	//TODO: cache postfix from bpy.path.basename(bpy.data.filepath)
 
 	PyObject *pyworld = PyObject_GetAttrString(pscene,"world");
 	PyObject *pywsettings = PyObject_GetAttrString(pyworld,"droplet");
@@ -534,7 +536,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 		}
 
 		gpscene = new Scene(); //TODO: interface for blender status reporting
-		gpscene->Initialize(dsize,maxd,qband,cm);
+		gpscene->Initialize(dsize,maxd,qband,cm,smask);
 
 		gpkernel = new RenderKernel();
 		gpkernel->Initialize(gpscene,gpsceneocc,&sviewi,&sproji,ppf,scattevs,msigmas,msigmaa,tilex,tiley,w,h,0);
