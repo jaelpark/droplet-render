@@ -8,6 +8,12 @@ endif()
 set(CMAKE_CXX_FLAGS "-std=c++11 -mcmodel=medium -Wno-unused-parameter")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
+find_program(PYTHON_CONFIG NAMES python-config)
+execute_process(COMMAND "${PYTHON_CONFIG}" --includes
+	OUTPUT_VARIABLE PYTHON_INC)
+string(STRIP ${PYTHON_INC} PYTHON_INC)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${PYTHON_INC}")
+
 if(USE_AVX2)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2 -mfma")
 	add_definitions(-DUSE_AVX2)
@@ -28,7 +34,6 @@ if(USE_EMBREE)
 	MESSAGE(STATUS "Enabling embree occlusion testing")
 endif()
 
-add_definitions(-DBLCLOUD_CPU)
 add_definitions(-DDROPLET_CPU)
 
 file(GLOB SOURCES src/*.cpp)

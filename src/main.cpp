@@ -4,7 +4,7 @@
 #include "SceneOcclusion.h"
 #include "kernel.h"
 #include "KernelSampler.h"
-#include <python3.5m/Python.h>
+#include <Python.h>
 
 #include <unordered_map>
 #include <functional> //std::function

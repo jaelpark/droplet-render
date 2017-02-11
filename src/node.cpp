@@ -1,6 +1,6 @@
 #include "main.h"
 #include "node.h"
-#include <python3.5m/Python.h>
+#include <Python.h>
 
 #include <algorithm>
 #include <functional>
