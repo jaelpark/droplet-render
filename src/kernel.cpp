@@ -121,7 +121,7 @@ inline float SampleVoxelSpace(const float4 &p, float *pvol, const float4 &ce, ui
 	return w.get<0>();
 }
 
-static sfloat4 SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, RenderKernel *pkernel, KernelOctree::BaseOctreeTraverser *ptrv, sint4 *prs, uint r, uint samples){
+static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, RenderKernel *pkernel, KernelOctree::BaseOctreeTraverser *ptrv, sint4 *prs, uint r, uint samples){
 	KernelOctree::BaseOctreeTraverser *ptrv1;
 	KernelOctree::OctreeStepTraverser steptrv;
 	if(ptrv){ //using preallocated caching full traverser (first primary ray for which the path is always identical)
@@ -129,7 +129,12 @@ static sfloat4 SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, Re
 		ptrv1 = ptrv;
 	}else ptrv1 = &steptrv;
 
-	sfloat4 c = sfloat4::zero();
+	//sfloat4 c = sfloat4::zero();
+	std::tuple<sfloat4,sfloat4> ctt;
+	sfloat4 &cl = std::get<0>(ctt);
+	sfloat4 &cs = std::get<1>(ctt);
+	cl = sfloat4::zero();
+	cs = sfloat4::zero();
 
 #ifdef USE_EMBREE
 	sfloat1 maxd = sfloat1(MAX_OCCLUSION_DIST);
@@ -175,6 +180,7 @@ static sfloat4 SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, Re
 	//finally, sample with given density and position
 	sample();*/
 
+	//float st = 0.5f-0.5f/(1.0f-expf(-3.0f*(float)r+5.0f))+0.5f;
 	sfloat1 msigmaa = sfloat1(pkernel->msigmaa);
 	sfloat1 msigmas = sfloat1(pkernel->msigmas);
 	sfloat1 msigmae = msigmaa+msigmas;
@@ -302,17 +308,18 @@ static sfloat4 SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, Re
 		//sample E(rc)/T here
 		//T should be the value at rc; T(rc)
 
-		sfloat4 ll; //total lighting (directional+sky)
+		//sfloat4 ll; //total lighting (directional+sky)
+		sfloat4 lc = sfloat4::zero();
+		sfloat4 le = sfloat4::zero();
 		//skip (sky)lighting calculations if all the incident rays scatter (don't reach sun or sky)
 		//if(rm.AnyTrue() && !(pkernel->flags & RENDER_TRANSPARENT && r == 0)){
 		if(rm.AnyTrue() && r > 0){
-			sfloat4 lc = sfloat4::zero(); //total directional lighting
 			for(uint i = 0, n = KernelSampler::BaseLight::lights.size(); i < n; ++i)
 				lc += KernelSampler::BaseLight::lights[i]->Evaluate(rd);
-
+#if 1
 			//skylighting
-			sfloat1 rdz = sfloat1::abs(rd.v[2]); //add/remove abs to remove/get ground
-			//sfloat1 rdz = rd.v[2]; //add/remove abs to remove/get ground
+			//sfloat1 rdz = sfloat1::abs(rd.v[2]); //add/remove abs to remove/get ground
+			sfloat1 rdz = rd.v[2]; //add/remove abs to remove/get ground
 			sfloat1 sth = sfloat1::sqrt(1.0f-rd.v[2]*rd.v[2]);
 			sfloat1 cth = rdz;
 			sfloat1 lth = sfloat1::zero(); //sun theta
@@ -330,7 +337,7 @@ static sfloat4 SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, Re
 			sfloat1 gacs = sfloat1::saturate(cph);
 			sfloat1 thcs = sfloat1::max(rdz,sfloat1::zero());
 			sfloat1 raym = gacs*gacs;
-			sfloat4 ca;
+			sfloat4 &ca = le;
 			for(uint i = 0; i < 3; ++i){
 				sfloat1 caf[9];
 				for(uint j = 0; j < 9; ++j)
@@ -343,20 +350,26 @@ static sfloat4 SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, Re
 				//ca.v[i] *= 0.028f*pkernel->pskyms->radiances[i];
 				ca.v[i] *= pkernel->pskyms->radiances[i];
 				ca.v[i] = 0.00035f*sfloat1::pow(ca.v[i],2.2f); //convert to linear and adjust exposure
-			}
 
-			ll = lc+ca;
-			ll.v[3] = sfloat1::one(); //alpha doesn't matter when r > 0
+				sfloat1 ltt = sfloat1::Less(rdz,sfloat1(0.0f));
+				ca.v[i] = sfloat1::Or(sfloat1::And(ltt,sfloat1::zero()),sfloat1::AndNot(ltt,ca.v[i]));
+			}
+#endif
+			lc.v[3] = sfloat1::one(); //alpha doesn't matter when r > 0
+			le.v[3] = lc.v[3];
 		}else{
-			ll = sfloat4::zero();
-			ll.v[3] = sfloat1::AndNot(rm,sfloat1::one()); //alpha = 1 when scattering
+			lc.v[3] = sfloat1::AndNot(rm,sfloat1::one()); //alpha = 1 when scattering
+			le.v[3] = lc.v[3];
 		}
 
 #ifdef USE_EMBREE
 		sfloat1 mr = sfloat1::And(rm,mo);
 		for(uint i = 0; i < 4; ++i){
-			ll.v[i] = sfloat1::AndNot(mr,ll.v[i]);
-			ll.v[i] = sfloat1::And(ll.v[i],mm);
+			lc.v[i] = sfloat1::AndNot(mr,lc.v[i]);
+			lc.v[i] = sfloat1::And(lc.v[i],mm);
+
+			le.v[i] = sfloat1::AndNot(mr,le.v[i]);
+			le.v[i] = sfloat1::And(le.v[i],mm);
 		}
 		rm = sfloat1::Or(rm,sfloat1::AndNot(mm,sint1::trueI())); //ensure that no scattering occurs if occluded
 #endif
@@ -382,14 +395,23 @@ static sfloat4 SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, Re
 			sfloat4 rc = ro+rd*td;
 
 			//estimator S(1)*f1*w1/p1+S(2)*f2*w2/p2 /= woodcock pdf
-			sfloat4 s1 = SampleVolume(rc,srd,gm1,pkernel,0,prs,r+1,1);
-			sfloat4 s2 = SampleVolume(rc,lrd,gm1,pkernel,0,prs,pkernel->scattevs,1);
+			std::tuple<sfloat4,sfloat4> S1 = SampleVolume(rc,srd,gm1,pkernel,0,prs,r+1,1);
+			std::tuple<sfloat4,sfloat4> S2 = SampleVolume(rc,lrd,gm1,pkernel,0,prs,pkernel->scattevs,1);
+			sfloat4 &dif1 = std::get<0>(S1), &sky1 = std::get<1>(S1);
+			sfloat4 &dif2 = std::get<0>(S2), &sky2 = std::get<1>(S2);
 
 			//(HG_Phase(X)*SampleVolume(X)*p1/(p1+L_Pdf(X)))/p1 => (HG_Phase(X)=p1)*SampleVolume(X)/(p1+L_Pdf(X)) = p1*SampleVolume(X)/(p1+L_Pdf(X))
 			//(HG_Phase(Y)*SampleVolume(Y)*p2/(HG_Phase(Y)+p2))/p2 => HG_phase(Y)*SampleVolume(Y)/(HG_Phase(Y)+p2)
-			sfloat4 p3 = pkernel->ppf->EvaluateRGB(sfloat4::dot3(lrd,rd));
+			/*sfloat4 p3 = pkernel->ppf->EvaluateRGB(sfloat4::dot3(lrd,rd));
 			sfloat4 cm = s1*p1/(p1+KernelSampler::BaseLight::lights[0]->Pdf(srd))+s2*p3/(p3+p2);//s1*p1/(p1+L_Pdf(srd,la))+s2*p3/(p3+p2);
-			cm *= msigmas/msigmae;
+			cm *= msigmas/msigmae;*/
+
+			sfloat4 p3 = pkernel->ppf->EvaluateRGB(sfloat4::dot3(lrd,rd));
+			sfloat4 w1 = p1/(p1+KernelSampler::BaseLight::lights[0]->Pdf(srd));
+			sfloat4 w2 = p3/(p3+p2);
+
+			sfloat4 cl1 = (dif1*w1+dif2*w2)*msigmas/msigmae;//s1*p1/(p1+L_Pdf(srd,la))+s2*p3/(p3+p2);
+			sfloat4 cs1 = (sky1*w1+sky2*w2)*msigmas/msigmae;
 
 			//s1=HG_Phase(X)*SampleVolume(X)
 			//s1*p1/(p1+L_Pdf(X))
@@ -406,27 +428,37 @@ static sfloat4 SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, Re
 			sfloat4 cm = SampleVolume(rc,lrd,sfloat1::AndNot(rm,sint1::trueI()),pkernel,prs,ls,r+1,1)*HG_Phase(sfloat4::dot3(lrd,rd))*msigmas
 				/(msigmae*L_Pdf(lrd,la));*/
 #endif
-			sfloat1 hm = sfloat1::Greater(cm.v[0],sfloat1(1e5f)); //temp hack to deal with some bug, will be properly fixed later
+			/*sfloat1 hm = sfloat1::Greater(cm.v[0],sfloat1(1e5f)); //temp hack to deal with some bug, will be properly fixed later
 			cm.v[0] = sfloat1::Or(sfloat1::And(hm,c.v[0]/(float)(s+1)),sfloat1::AndNot(hm,cm.v[0]));
 			cm.v[1] = sfloat1::Or(sfloat1::And(hm,c.v[1]/(float)(s+1)),sfloat1::AndNot(hm,cm.v[1]));
-			cm.v[2] = sfloat1::Or(sfloat1::And(hm,c.v[2]/(float)(s+1)),sfloat1::AndNot(hm,cm.v[2]));
+			cm.v[2] = sfloat1::Or(sfloat1::And(hm,c.v[2]/(float)(s+1)),sfloat1::AndNot(hm,cm.v[2]));*/
 
-			c.v[0] += sfloat1::Or(sfloat1::And(rm,ll.v[0]),sfloat1::AndNot(rm,cm.v[0]));
-			c.v[1] += sfloat1::Or(sfloat1::And(rm,ll.v[1]),sfloat1::AndNot(rm,cm.v[1]));
-			c.v[2] += sfloat1::Or(sfloat1::And(rm,ll.v[2]),sfloat1::AndNot(rm,cm.v[2]));
-			c.v[3] += ll.v[3];
+			cl.v[0] += sfloat1::Or(sfloat1::And(rm,lc.v[0]),sfloat1::AndNot(rm,cl1.v[0]));
+			cl.v[1] += sfloat1::Or(sfloat1::And(rm,lc.v[1]),sfloat1::AndNot(rm,cl1.v[1]));
+			cl.v[2] += sfloat1::Or(sfloat1::And(rm,lc.v[2]),sfloat1::AndNot(rm,cl1.v[2]));
+			cl.v[3] += lc.v[3];
+
+			cs.v[0] += sfloat1::Or(sfloat1::And(rm,le.v[0]),sfloat1::AndNot(rm,cs1.v[0]));
+			cs.v[1] += sfloat1::Or(sfloat1::And(rm,le.v[1]),sfloat1::AndNot(rm,cs1.v[1]));
+			cs.v[2] += sfloat1::Or(sfloat1::And(rm,le.v[2]),sfloat1::AndNot(rm,cs1.v[2]));
+			cs.v[3] += le.v[3];
 		}else{
-			c.v[0] += sfloat1::Or(sfloat1::And(rm,ll.v[0]),sfloat1::AndNot(rm,zr));
-			c.v[1] += sfloat1::Or(sfloat1::And(rm,ll.v[1]),sfloat1::AndNot(rm,zr));
-			c.v[2] += sfloat1::Or(sfloat1::And(rm,ll.v[2]),sfloat1::AndNot(rm,zr));
-			c.v[3] += ll.v[3];
+			cl.v[0] += sfloat1::Or(sfloat1::And(rm,lc.v[0]),sfloat1::AndNot(rm,zr));
+			cl.v[1] += sfloat1::Or(sfloat1::And(rm,lc.v[1]),sfloat1::AndNot(rm,zr));
+			cl.v[2] += sfloat1::Or(sfloat1::And(rm,lc.v[2]),sfloat1::AndNot(rm,zr));
+			cl.v[3] += lc.v[3];
+
+			cs.v[0] += sfloat1::Or(sfloat1::And(rm,le.v[0]),sfloat1::AndNot(rm,zr));
+			cs.v[1] += sfloat1::Or(sfloat1::And(rm,le.v[1]),sfloat1::AndNot(rm,zr));
+			cs.v[2] += sfloat1::Or(sfloat1::And(rm,le.v[2]),sfloat1::AndNot(rm,zr));
+			cs.v[3] += le.v[3];
 		}
 	}
 
-	return c;
+	return ctt;
 }
 
-static void K_Render(dmatrix44 *pviewi, dmatrix44 *pproji, RenderKernel *pkernel, uint x0, uint y0, uint rx, uint ry, uint w, uint h, uint samples, dfloat4 *pout){
+static void K_Render(dmatrix44 *pviewi, dmatrix44 *pproji, RenderKernel *pkernel, uint x0, uint y0, uint rx, uint ry, uint w, uint h, uint samples, dfloat4 *pout[RenderKernel::BUFFER_COUNT]){
 	//feenableexcept(FE_ALL_EXCEPT&~FE_INEXACT);
 	tbb::enumerable_thread_specific<KernelOctree::OctreeFullTraverser> traversers; //share the full traverser object among pixels to save list allocations
 #define BLCLOUD_MT
@@ -462,17 +494,27 @@ static void K_Render(dmatrix44 *pviewi, dmatrix44 *pproji, RenderKernel *pkernel
 
 				KernelOctree::OctreeFullTraverser &traverser = traversers.local();
 
-				sfloat4 c = SampleVolume(ro,rd,gm,pkernel,&traverser,&rngs,0,samples);
+				std::tuple<sfloat4,sfloat4> ctt = SampleVolume(ro,rd,gm,pkernel,&traverser,&rngs,0,samples);
+				sfloat4 &cl = std::get<0>(ctt);
+				sfloat4 &cs = std::get<1>(ctt);
 
 				dintN wmask = dintN(gm);
-				if(wmask.v[0] != 0)
-					float4::store(&pout[(BLCLOUD_VY*(y-y0)+0)*rx+BLCLOUD_VX*(x-x0)+0],c.get(0));
-				if(wmask.v[1] != 0)
-					float4::store(&pout[(BLCLOUD_VY*(y-y0)+0)*rx+BLCLOUD_VX*(x-x0)+1],c.get(1));
-				if(wmask.v[2] != 0)
-					float4::store(&pout[(BLCLOUD_VY*(y-y0)+1)*rx+BLCLOUD_VX*(x-x0)+0],c.get(2));
-				if(wmask.v[3] != 0)
-					float4::store(&pout[(BLCLOUD_VY*(y-y0)+1)*rx+BLCLOUD_VX*(x-x0)+1],c.get(3));
+				if(wmask.v[0] != 0){
+					float4::store(&pout[0][(BLCLOUD_VY*(y-y0)+0)*rx+BLCLOUD_VX*(x-x0)+0],cl.get(0));
+					float4::store(&pout[1][(BLCLOUD_VY*(y-y0)+0)*rx+BLCLOUD_VX*(x-x0)+0],cs.get(0));
+				}
+				if(wmask.v[1] != 0){
+					float4::store(&pout[0][(BLCLOUD_VY*(y-y0)+0)*rx+BLCLOUD_VX*(x-x0)+1],cl.get(1));
+					float4::store(&pout[1][(BLCLOUD_VY*(y-y0)+0)*rx+BLCLOUD_VX*(x-x0)+1],cs.get(1));
+				}
+				if(wmask.v[2] != 0){
+					float4::store(&pout[0][(BLCLOUD_VY*(y-y0)+1)*rx+BLCLOUD_VX*(x-x0)+0],cl.get(2));
+					float4::store(&pout[1][(BLCLOUD_VY*(y-y0)+1)*rx+BLCLOUD_VX*(x-x0)+0],cs.get(2));
+				}
+				if(wmask.v[3] != 0){
+					float4::store(&pout[0][(BLCLOUD_VY*(y-y0)+1)*rx+BLCLOUD_VX*(x-x0)+1],cl.get(3));
+					float4::store(&pout[1][(BLCLOUD_VY*(y-y0)+1)*rx+BLCLOUD_VX*(x-x0)+1],cs.get(3));
+				}
 			}
 		}
 #ifdef BLCLOUD_MT
@@ -493,8 +535,9 @@ RenderKernel::~RenderKernel(){
 
 bool RenderKernel::Initialize(const Scene *pscene, const SceneOcclusion *psceneocc, const dmatrix44 *pviewi, const dmatrix44 *pproji, KernelSampler::PhaseFunction *ppf, uint scattevs,
 	float msigmas, float msigmaa, uint tilex, uint tiley, uint w, uint h, uint flags){
-	if(!(phb = (dfloat4*)_mm_malloc(tilex*tiley*16,16)))
-		return false;
+	for(uint i = 0; i < BUFFER_COUNT; ++i)
+		if(!(phb[i] = (dfloat4*)_mm_malloc(tilex*tiley*16,16)))
+			return false;
 
 	this->pscene = pscene;
 	this->psceneocc = psceneocc;
@@ -533,5 +576,6 @@ void RenderKernel::Render(uint x0, uint y0, uint tilex, uint tiley, uint samples
 
 void RenderKernel::Destroy(){
 	arhosekskymodelstate_free(pskyms);
-	_mm_free(phb);
+	for(uint i = 0; i < BUFFER_COUNT; ++i)
+		_mm_free(phb[i]);
 }

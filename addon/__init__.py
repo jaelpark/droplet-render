@@ -86,7 +86,9 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 				tiles.append((xadj,yadj));
 
 		while len(tiles) > 0:
-			tile1 = min(tiles,key=lambda tileq: Vector((tileq[0]+0.5*self.tilew-0.5*self.width,tileq[1]+0.5*self.tileh-0.5*self.height)).length);
+			tile1 = min(tiles,key=lambda tileq: Vector((
+				tileq[0]+0.5*self.tilew-0.5*self.width,
+				tileq[1]+0.5*self.tileh-0.5*self.height)).length);
 			tiles.remove(tile1);
 
 			#crop the tile frame on edges
@@ -103,12 +105,13 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 			tile1 = ((int(max(tile1[0],0)),int(max(tile1[1],0))));
 
 			result = self.begin_result(tile1[0],tile1[1],tilew1,tileh1);
-			rr = np.zeros((tilew1*tileh1,4));
+			cl = np.zeros((tilew1*tileh1,4)); #light sources
+			cs = cl.copy(); #environment
 
 			#self.DrawBorder(result,self.tilew,self.tileh,tilew1,tileh1);
 			#self.update_result(result);
 
-			dd = 0;
+			dd = 0; #total accumulated sample count
 			for i in range(0,sc):
 				if self.test_break():
 					self.end_result(result);
@@ -119,13 +122,23 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 				libdroplet.Render(tile1[0],tile1[1],tilew1,tileh1,d1);
 
 				while True:
-					qr = libdroplet.QueryResult();
+					qr = libdroplet.QueryResult(0);
 					if qr is not None:
 						break;
 				dd += d1;
-				rr += qr;
+				cl += qr;
+				cs += libdroplet.QueryResult(1);
 
-				result.layers[self.layer].passes[0].rect = rr/float(dd);
+				rpass = next((x for x in result.layers[self.layer].passes if x.type == 'COMBINED'),None);
+				if rpass is not None:
+					rpass.rect = (cl+cs)/float(dd);
+				rpass = next((x for x in result.layers[self.layer].passes if x.type == 'DIFFUSE'),None);
+				if rpass is not None:
+					rpass.rect = np.delete(cl/float(dd),3,1);
+				rpass = next((x for x in result.layers[self.layer].passes if x.type == 'ENVIRONMENT'),None);
+				if rpass is not None:
+					rpass.rect = np.delete(cs/float(dd),3,1);
+
 				#if i < sc-1:
 					#self.DrawBorder(result,self.tilew,self.tileh,tilew1,tileh1);
 

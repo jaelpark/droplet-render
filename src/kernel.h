@@ -15,7 +15,13 @@ public:
 	void Render(uint, uint, uint, uint, uint);
 	void Destroy();
 	//
-	dfloat4 *phb; //host buffer
+	enum BUFFER{
+		BUFFER_LIGHTS,
+		BUFFER_ENVIRONMENT,
+		BUFFER_COUNT
+	};
+
+	dfloat4 *phb[BUFFER_COUNT]; //host buffer
 	const class Scene *pscene;
 	const class SceneOcclusion *psceneocc;
 	struct ArHosekSkyModelState *pskyms;

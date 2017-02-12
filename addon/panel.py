@@ -175,6 +175,22 @@ class ClLayerPanel(bpy.types.Panel):
 		s.column().prop(context.scene,"layers",text="Scene");
 		s.column().prop(context.scene.render.layers.active,"layers",text="Layer");
 
+class ClPassPanel(bpy.types.Panel):
+	bl_idname = "ClPassPanel";
+	bl_label = "Passes";
+	bl_space_type = "PROPERTIES";
+	bl_region_type = "WINDOW";
+	bl_context = "render_layer";
+
+	@classmethod
+	def poll(cls, context):
+		return context.scene.render.engine == config.dre_engineid;
+
+	def draw(self, context):
+		self.layout.row().prop(context.scene.render.layers.active,"use_pass_combined");
+		self.layout.row().prop(context.scene.render.layers.active,"use_pass_diffuse");
+		self.layout.row().prop(context.scene.render.layers.active,"use_pass_environment");
+
 #def TextureSelection(self, context):
 	#return [(m.name,m.name,m.name,"TEXTURE",x) for x, m in enumerate(bpy.data.images)];
 
@@ -187,9 +203,6 @@ class ClCompositeProperties(bpy.types.PropertyGroup):
 
 	def draw(self, context, layout):
 		layout.row().prop(self,"occlusion");
-		# layout.row().prop(self,"depthcomp");
-		# layout.row().prop(self,"shadowpass");
-		# layout.row().prop(self,"depthtex");
 
 class ClCompositePanel(bpy.types.Panel):
 	bl_idname = "ClCompositePanel";

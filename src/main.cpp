@@ -609,10 +609,17 @@ static PyObject * DRE_QueryResult(PyObject *pself, PyObject *pargs){
 		return Py_None;
 	}
 
+	uint bindex;
+	if(!PyArg_ParseTuple(pargs,"I",&bindex)){
+		DebugPrintf("Invalid arguments\n");
+		return 0;
+	}
+	dfloat4 **ppbuf = &gpkernel->phb[bindex];
+
 	uint l = gpkernel->tilew*gpkernel->tileh;
 	PyObject *prt = PyList_New(l);
 	for(uint i = 0; i < l; ++i){
-		PyObject *pc = Py_BuildValue("[f,f,f,f]",gpkernel->phb[i].x,gpkernel->phb[i].y,gpkernel->phb[i].z,gpkernel->phb[i].w);
+		PyObject *pc = Py_BuildValue("[f,f,f,f]",(*ppbuf)[i].x,(*ppbuf)[i].y,(*ppbuf)[i].z,(*ppbuf)[i].w);
 		PyList_SET_ITEM(prt,i,pc);
 	}
 
@@ -624,7 +631,7 @@ static PyMethodDef g_blmethods[] = {
 	{"Render",DRE_Render,METH_VARARGS,"Render() doc string"},
 	{"EndRender",DRE_EndRender,METH_NOARGS,"EndRender() doc string"},
 	{"QueryStatus",DRE_QueryStatus,METH_NOARGS,"QueryStatus() doc string"},
-	{"QueryResult",DRE_QueryResult,METH_NOARGS,"QueryResult() doc string"},
+	{"QueryResult",DRE_QueryResult,METH_VARARGS,"QueryResult() doc string"},
 	{0,0,0,0}
 };
 
