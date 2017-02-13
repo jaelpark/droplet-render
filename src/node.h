@@ -17,6 +17,7 @@ public:
 	virtual float SampleGlobalDistance(const dfloat3 &, bool) const = 0;
 	virtual float SampleGlobalDensity(const dfloat3 &) const = 0;
 	virtual dfloat3 SampleGlobalVector(const dfloat3 &) const = 0;
+	virtual dfloat3 SampleGlobalGradient(const dfloat3 &) const = 0;
 };
 
 class NodeTree;
@@ -201,6 +202,7 @@ public:
 	};
 	enum OUTPUT_VECTOR{
 		OUTPUT_VECTOR_VECTOR,
+		OUTPUT_VECTOR_GRADIENT
 	};
 };
 

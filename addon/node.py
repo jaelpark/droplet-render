@@ -149,6 +149,7 @@ class ClNodeSceneInfo(bpy.types.Node):
 		self.outputs.new("ClNodeFloatSocket","Density.Fog");
 		self.outputs.new("ClNodeFloatSocket","Density.Final");
 		self.outputs.new("ClNodeVectorSocket","Vector");
+		self.outputs.new("ClNodeVectorSocket","Gradient");
 
 class ClNodeSurfaceInput(bpy.types.Node):
 	bl_idname = "ClNodeSurfaceInput";

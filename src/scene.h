@@ -101,7 +101,7 @@ typedef openvdb::tools::GridSampler<openvdb::Vec3SGrid, openvdb::tools::BoxSampl
 
 namespace Node{
 
-using InputNodeParams = std::tuple<SceneData::BaseObject *, openvdb::math::Transform::Ptr, const FloatGridBoxSampler *, const FloatGridBoxSampler *, const FloatGridBoxSampler *, const VectorGridBoxSampler *>;
+using InputNodeParams = std::tuple<SceneData::BaseObject *, openvdb::math::Transform::Ptr, const FloatGridBoxSampler *, const FloatGridBoxSampler *, const FloatGridBoxSampler *, const VectorGridBoxSampler *, const VectorGridBoxSampler *>;
 enum INP{
 	INP_OBJECT,
 	INP_TRANSFORM,
@@ -109,6 +109,7 @@ enum INP{
 	INP_QGRSAMPLER,
 	INP_FOGSAMPLER,
 	INP_VELSAMPLER,
+	INP_GRADSAMPLER,
 };
 
 class ValueNodeParams : public IValueNodeParams{
@@ -125,6 +126,7 @@ public:
 	float SampleGlobalDistance(const dfloat3 &, bool) const;
 	float SampleGlobalDensity(const dfloat3 &) const;
 	dfloat3 SampleGlobalVector(const dfloat3 &) const;
+	dfloat3 SampleGlobalGradient(const dfloat3 &) const;
 	//global
 	const InputNodeParams *pnodeparams;
 	//local

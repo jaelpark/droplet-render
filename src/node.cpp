@@ -285,6 +285,7 @@ void SceneInfo::Evaluate(const void *pp){
 
 	BaseValueResult<dfloat3> &rv = this->BaseValueNode<dfloat3>::result.local();
 	rv.value[OUTPUT_VECTOR_VECTOR] = pd->SampleGlobalVector(dposw);
+	rv.value[OUTPUT_VECTOR_GRADIENT] = pd->SampleGlobalGradient(dposw);
 }
 
 ISurfaceInput::ISurfaceInput(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt), BaseNode(_level,pnt){

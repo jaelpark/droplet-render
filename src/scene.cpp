@@ -5,6 +5,7 @@
 #include <openvdb/openvdb.h>
 #include <openvdb/tools/Interpolation.h> //samplers
 #include <openvdb/tools/Composite.h> //csg/comp
+#include <openvdb/tools/GridOperators.h> //gradient
 
 #include "scene.h"
 #include "SceneSurface.h"
@@ -65,6 +66,11 @@ float ValueNodeParams::SampleGlobalDensity(const dfloat3 &p) const{
 dfloat3 ValueNodeParams::SampleGlobalVector(const dfloat3 &p) const{
 	const VectorGridBoxSampler *pvsampler = std::get<INP_VELSAMPLER>(*pnodeparams);
 	return pvsampler?*((dfloat3*)pvsampler->wsSample(*(openvdb::Vec3f*)&p).asPointer()):dfloat3(0.0f);
+}
+
+dfloat3 ValueNodeParams::SampleGlobalGradient(const dfloat3 &p) const{
+	const VectorGridBoxSampler *pgsampler = std::get<INP_GRADSAMPLER>(*pnodeparams);
+	return pgsampler?*((dfloat3*)pgsampler->wsSample(*(openvdb::Vec3f*)&p).asPointer()):dfloat3(0.0f);
 }
 
 }
@@ -346,7 +352,8 @@ static bool S_FindSceneInfo(SceneData::BaseObject *pto){
 		Node::SceneInfo *psci = dynamic_cast<Node::SceneInfo *>(pto->pnt->nodes0[j]);
 		if(!psci)
 			continue;
-		if(psci->omask & 1<<Node::SceneInfo::OUTPUT_FLOAT_DISTANCE)
+		if(psci->omask & ((1<<Node::SceneInfo::OUTPUT_FLOAT_DISTANCE)
+			|(1<<(Node::SceneInfo::OUTPUT_FLOAT_COUNT+Node::SceneInfo::OUTPUT_VECTOR_GRADIENT))))
 			return true;
 	}
 	return false;
@@ -361,14 +368,14 @@ enum PFP{
 static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT], Scene *pscene){
 	openvdb::math::Transform::Ptr pgridtr = openvdb::math::Transform::createLinearTransform(s);
 
-	//Find if SceneInfo distance output was used anywhere in the node trees and automatically determine if a query field should be constructed.
+	//Find if SceneInfo's distance or gradient output was used anywhere in the node trees and automatically determine if a query field should be constructed.
 	//TODO: skip holdouts
 	bool qfield =
 		std::find_if(SceneData::Surface::objs.begin(),SceneData::Surface::objs.end(),S_FindSceneInfo) != SceneData::Surface::objs.end() ||
 		std::find_if(SceneData::ParticleSystem::prss.begin(),SceneData::ParticleSystem::prss.end(),S_FindSceneInfo) != SceneData::ParticleSystem::prss.end() ||
 		std::find_if(SceneData::SmokeCache::objs.begin(),SceneData::SmokeCache::objs.end(),S_FindSceneInfo) != SceneData::SmokeCache::objs.end();
 	if(qfield)
-		DebugPrintf("SceneInfo.distance in use, will construct a query field.\n");
+		DebugPrintf("SceneInfo.distance or gradient in use, will construct a query field.\n");
 
 	pgrid[VOLUME_BUFFER_SDF] = openvdb::FloatGrid::create(s*bvc);
 	pgrid[VOLUME_BUFFER_SDF]->setTransform(pgridtr);
@@ -393,7 +400,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 	for(uint i = 0; i < SceneData::Surface::objs.size(); ++i){
 		if(SceneData::Surface::objs[i]->holdout)
 			continue;
-		Node::InputNodeParams snp(SceneData::Surface::objs[i],pgridtr,0,0,0,0);
+		Node::InputNodeParams snp(SceneData::Surface::objs[i],pgridtr,0,0,0,0,0);
 		SceneData::Surface::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_SURFACE);
 
 		Node::BaseSurfaceNode1 *pdsn = dynamic_cast<Node::BaseSurfaceNode1*>(SceneData::Surface::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_SURFACE]);
@@ -418,7 +425,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 	ptvel->setGridClass(openvdb::GRID_FOG_VOLUME);
 
 	for(uint i = 0; i < SceneData::SmokeCache::objs.size(); ++i){
-		Node::InputNodeParams snp(SceneData::SmokeCache::objs[i],pgridtr,0,0,0,0);
+		Node::InputNodeParams snp(SceneData::SmokeCache::objs[i],pgridtr,0,0,0,0,0);
 		SceneData::SmokeCache::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOG);
 
 		Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(SceneData::SmokeCache::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOG]);
@@ -431,7 +438,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 	}
 
 	for(uint i = 0; i < SceneData::ParticleSystem::prss.size(); ++i){
-		Node::InputNodeParams snp(SceneData::ParticleSystem::prss[i],pgridtr,0,0,0,0);
+		Node::InputNodeParams snp(SceneData::ParticleSystem::prss[i],pgridtr,0,0,0,0,0);
 		SceneData::ParticleSystem::prss[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOG|1<<Node::OutputNode::INPUT_VECTOR);
 
 		Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOG]);
@@ -452,14 +459,17 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 		openvdb::FloatGrid::Ptr pqfog = pgrid[VOLUME_BUFFER_FOG]->deepCopy();
 		openvdb::tools::compMax(*pqfog,*ptfog);
 
+		openvdb::Vec3SGrid::Ptr pgrad = openvdb::tools::gradient(*pqsdf);
+
 		FloatGridBoxSampler *pqsampler = new FloatGridBoxSampler(*pqsdf);
 		FloatGridBoxSampler *ppsampler = new FloatGridBoxSampler(*pqfog);
 		VectorGridBoxSampler *pvsampler = new VectorGridBoxSampler(*ptvel);
+		VectorGridBoxSampler *pgsampler = new VectorGridBoxSampler(*pgrad);
 		FloatGridBoxSampler *pdsampler = new FloatGridBoxSampler(*pgrid[VOLUME_BUFFER_SDF]);
 
 		for(uint i = 0; i < fogppl.size(); ++i){
 			SceneData::PostFog fobj(std::get<PFP_OBJECT>(fogppl[i])->pnt,std::get<PFP_INPUTGRID>(fogppl[i]));
-			Node::InputNodeParams snp(&fobj,pgridtr,pdsampler,pqsampler,ppsampler,pvsampler);
+			Node::InputNodeParams snp(&fobj,pgridtr,pdsampler,pqsampler,ppsampler,pvsampler,pgsampler);
 			fobj.pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOGPOST);
 
 			Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(fobj.pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOGPOST]);
@@ -469,6 +479,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 		delete pqsampler;
 		delete ppsampler;
 		delete pvsampler;
+		delete pgsampler;
 		delete pdsampler;
 	}
 
