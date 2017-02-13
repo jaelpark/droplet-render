@@ -94,6 +94,19 @@ public:
 	VectorMix(uint, NodeTree *);
 	~VectorMix();
 	void Evaluate(const void *);
+	enum OUTPUT_FLOAT{
+		OUTPUT_FLOAT_X,
+		OUTPUT_FLOAT_Y,
+		OUTPUT_FLOAT_Z,
+		OUTPUT_FLOAT_COUNT
+	};
+};
+
+class VectorXYZ : public BaseValueNode<float>{
+public:
+	VectorXYZ(uint, NodeTree *);
+	~VectorXYZ();
+	void Evaluate(const void *);
 };
 
 class IFbmNoise : public virtual BaseValueNode<float>, public virtual BaseValueNode<dfloat3>{
@@ -202,7 +215,8 @@ public:
 	};
 	enum OUTPUT_VECTOR{
 		OUTPUT_VECTOR_VECTOR,
-		OUTPUT_VECTOR_GRADIENT
+		OUTPUT_VECTOR_GRADIENT,
+		OUTPUT_VECTOR_COUNT
 	};
 };
 

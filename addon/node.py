@@ -272,6 +272,16 @@ class ClNodeVectorMix(bpy.types.Node):
 		self.inputs.new("ClNodeFloatSocket","t");
 		self.outputs.new("ClNodeVectorSocket","Out");
 
+class ClNodeVectorXYZ(bpy.types.Node):
+	bl_idname = "ClNodeVectorXYZ";
+	bl_label = "Vector XYZ";
+
+	def init(self, context):
+		self.inputs.new("ClNodeVectorSocket","Vector");
+		self.outputs.new("ClNodeFloatSocket","x");
+		self.outputs.new("ClNodeFloatSocket","y");
+		self.outputs.new("ClNodeFloatSocket","z");
+
 class ClNodeFbmNoise(bpy.types.Node):
 	bl_idname = "ClNodeFbmNoise";
 	bl_label = "FbmNoise";
@@ -373,6 +383,7 @@ categories = [
 		NodeItem("ClNodeScalarMath"),
 		NodeItem("ClNodeVectorMath"),
 		NodeItem("ClNodeVectorMix"),
+		NodeItem("ClNodeVectorXYZ"),
 	]),
 	ClNodeCategory("NOISE_CATEGORY","Noise",items = [
 		NodeItem("ClNodeFbmNoise"),

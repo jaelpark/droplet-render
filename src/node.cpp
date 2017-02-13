@@ -170,6 +170,21 @@ void VectorMix::Evaluate(const void *pp){
 	this->result.local().value[0] = dfloat3((1.0f-t)*a+t*b);
 }
 
+VectorXYZ::VectorXYZ(uint level, NodeTree *pnt) : BaseValueNode<float>(level,pnt), BaseNode(level,pnt){
+	//
+}
+
+VectorXYZ::~VectorXYZ(){
+	//
+}
+
+void VectorXYZ::Evaluate(const void *pp){
+	dfloat3 a = dynamic_cast<BaseValueNode<dfloat3>*>(this->pnodes[0])->BaseValueNode<dfloat3>::result.local().value[this->indices[0]];
+	this->result.local().value[0] = a.x;
+	this->result.local().value[1] = a.y;
+	this->result.local().value[2] = a.z;
+}
+
 IFbmNoise::IFbmNoise(uint _level, NodeTree *pnt) : BaseValueNode<float>(_level,pnt), BaseValueNode<dfloat3>(_level,pnt), BaseNode(_level,pnt){
 	//
 }
@@ -443,6 +458,8 @@ BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, No
 
 	}else if(strcmp(pname,"ClNodeVectorMix") == 0){
 		return new VectorMix(level,pnt);
+	}else if(strcmp(pname,"ClNodeVectorXYZ") == 0){
+		return new VectorXYZ(level,pnt);
 	}else if(strcmp(pname,"ClNodeFbmNoise") == 0){
 		return IFbmNoise::Create(level,pnt);
 
