@@ -129,15 +129,17 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 				cl += qr;
 				cs += libdroplet.QueryResult(1);
 
+				fd = 1.0/float(dd);
+
 				rpass = next((x for x in result.layers[self.layer].passes if x.type == 'COMBINED'),None);
 				if rpass is not None:
-					rpass.rect = (cl+cs)/float(dd);
+					rpass.rect = (cl+cs)*np.array([fd,fd,fd,0.5*fd]);
 				rpass = next((x for x in result.layers[self.layer].passes if x.type == 'DIFFUSE'),None);
 				if rpass is not None:
-					rpass.rect = np.delete(cl/float(dd),3,1);
+					rpass.rect = np.delete(cl,3,1)*fd;
 				rpass = next((x for x in result.layers[self.layer].passes if x.type == 'ENVIRONMENT'),None);
 				if rpass is not None:
-					rpass.rect = np.delete(cs/float(dd),3,1);
+					rpass.rect = np.delete(cs,3,1)*fd;
 
 				#if i < sc-1:
 					#self.DrawBorder(result,self.tilew,self.tileh,tilew1,tileh1);
