@@ -442,6 +442,7 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 			cs.v[1] += sfloat1::Or(sfloat1::And(rm,le.v[1]),sfloat1::AndNot(rm,cs1.v[1]));
 			cs.v[2] += sfloat1::Or(sfloat1::And(rm,le.v[2]),sfloat1::AndNot(rm,cs1.v[2]));
 			cs.v[3] += le.v[3];
+			
 		}else{
 			cl.v[0] += sfloat1::Or(sfloat1::And(rm,lc.v[0]),sfloat1::AndNot(rm,zr));
 			cl.v[1] += sfloat1::Or(sfloat1::And(rm,lc.v[1]),sfloat1::AndNot(rm,zr));
@@ -468,8 +469,8 @@ static void K_Render(dmatrix44 *pviewi, dmatrix44 *pproji, RenderKernel *pkernel
 			for(uint x = nr.cols().begin(); x < nr.cols().end(); ++x){
 #else
 	{
-		for(uint y = y0; y < y0+ry; ++y){
-			for(uint x = x0; x < x0+rx/BLCLOUD_VSIZE; ++x){
+		for(uint y = y0; y < y0+ry/BLCLOUD_VY; ++y){
+			for(uint x = x0; x < x0+rx/BLCLOUD_VX; ++x){
 #endif
 				sfloat4 posh;
 				posh.v[0] = -(2.0f*(sfloat1((float)(BLCLOUD_VX*(x-x0)+x0)+0.5f)+sfloat1(0,1,0,1))/sfloat1((float)w)-sfloat1::one());
