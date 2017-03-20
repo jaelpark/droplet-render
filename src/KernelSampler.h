@@ -56,6 +56,7 @@ public:
 	dfloat3 direction;
 	dfloat3 color; //color*intensity
 	float angle; //cross-section angle
+	float cosAngle;
 };
 
 /*class EnvironmentMap : public BaseLight{

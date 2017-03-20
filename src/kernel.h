@@ -28,6 +28,8 @@ public:
 	KernelSampler::PhaseFunction *ppf;
 	dmatrix44 viewi;
 	dmatrix44 proji;
+	//
+	dfloat3 skydir;
 	//uint samples;
 	uint scattevs; //max number of scattering events
 	float msigmas; //macroscopic scattering cross section

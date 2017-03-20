@@ -686,7 +686,7 @@ void BaseLight::DeleteAll(){
 std::vector<BaseLight *> BaseLight::lights;
 
 SunLight::SunLight(const dfloat3 *pd, const dfloat3 *pc, float _angle) : direction(*pd), color(*pc), angle(_angle){
-	//
+	cosAngle = cosf(_angle);
 }
 
 SunLight::~SunLight(){
@@ -694,8 +694,9 @@ SunLight::~SunLight(){
 }
 
 sfloat4 SunLight::Evaluate(const sfloat4 &rd) const{
+	sfloat1 ctm = cosAngle;
 	sfloat4 lc = sfloat4::zero();
-	sfloat1 lt = sfloat1::Greater(sfloat4::dot3(rd,sfloat4(float4::load(&direction))),sfloat1(angle));
+	sfloat1 lt = sfloat1::Greater(sfloat4::dot3(rd,sfloat4(float4::load(&direction))),ctm);
 
 	float4 c = float4::load(&color);
 	lc.v[0] = sfloat1::Or(sfloat1::And(lt,c.splatN<0>()),sfloat1::AndNot(lt,lc.v[0]));
@@ -706,14 +707,13 @@ sfloat4 SunLight::Evaluate(const sfloat4 &rd) const{
 }
 
 sfloat1 SunLight::Pdf(const sfloat4 &iv) const{
-	sfloat1 ctm = sfloat1::sqrt(1.0f-angle*angle);
-	return sfloat1(1.0f/(2.0f*SM_PI*(1.0f-ctm)));
+	//sfloat1 ctm = cosAngle;
+	//return sfloat1(1.0f/(2.0f*SM_PI*(1.0f-ctm*ctm)));
+	return sfloat1(1.0f/(2.0f*SM_PI)); //the above pdf is correct, but this looks better - for now at least
 }
 
 sfloat4 SunLight::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2) const{
-	//t = asin(theta = r/d)
-	//cos(asin(t)) = sqrt(1-(r/d)^2)
-	sfloat1 ctm = sfloat1::sqrt(1.0f-angle*angle);
+	sfloat1 ctm = cosAngle;
 	sfloat1 ct = (1.0f-u1)+u1*ctm;
 	sfloat1 st = sfloat1::sqrt(1.0f-ct*ct);
 	sfloat1 ph = 2.0f*SM_PI*u2;

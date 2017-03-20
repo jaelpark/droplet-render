@@ -316,17 +316,16 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 		if(rm.AnyTrue() && r > 0){
 			for(uint i = 0, n = KernelSampler::BaseLight::lights.size(); i < n; ++i)
 				lc += KernelSampler::BaseLight::lights[i]->Evaluate(rd);
-#if 1
+
 			//skylighting
 			//sfloat1 rdz = sfloat1::abs(rd.v[2]); //add/remove abs to remove/get ground
 			sfloat1 rdz = rd.v[2]; //add/remove abs to remove/get ground
 			sfloat1 sth = sfloat1::sqrt(1.0f-rd.v[2]*rd.v[2]);
 			sfloat1 cth = rdz;
-			sfloat1 lth = sfloat1::zero(); //sun theta
-			sfloat1 lph = sfloat1::zero();
-			sfloat1 slth, clth, slph, clph;
-			sincos_ps(lth,&slth.v,&clth.v);
-			sincos_ps(lph,&slph.v,&clph.v);
+			sfloat1 slth = sfloat1::sqrt(1.0f-pkernel->skydir.z*pkernel->skydir.z);
+			sfloat1 clth = pkernel->skydir.z;
+			sfloat1 slph = pkernel->skydir.y;
+			sfloat1 clph = pkernel->skydir.x;
 
 			sfloat1 rdd = rd.v[0]/rd.v[1];
 			sfloat1 acr = 1.0f/sfloat1::sqrt(rdd*rdd+1.0f); //cos(ph = atan(rdd))
@@ -347,14 +346,11 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 				sfloat1 miem = (sfloat1::one()+raym)/sfloat1::pow(sfloat1::one()+caf[8]*caf[8]-2.0f*caf[8]*gacs,sfloat1(1.5f));
 				sfloat1 zenh = sfloat1::sqrt(thcs);
 				ca.v[i] = (sfloat1::one()+caf[0]*exp_ps(caf[1]/(thcs+0.01f)))*(caf[2]+caf[3]*expm+caf[5]*raym+caf[6]*miem+caf[7]*zenh);
-				//ca.v[i] *= 0.028f*pkernel->pskyms->radiances[i];
 				ca.v[i] *= pkernel->pskyms->radiances[i];
-				ca.v[i] = 0.00035f*sfloat1::pow(ca.v[i],2.2f); //convert to linear and adjust exposure
-
-				sfloat1 ltt = sfloat1::Less(rdz,sfloat1(0.0f));
-				ca.v[i] = sfloat1::Or(sfloat1::And(ltt,sfloat1::zero()),sfloat1::AndNot(ltt,ca.v[i]));
+				//ca.v[i] = 0.00035f*sfloat1::pow(ca.v[i],2.2f); //convert to linear and adjust exposure
+				ca.v[i] = 1e-3f*sfloat1::pow(ca.v[i],2.2f); //convert to linear and adjust exposure
 			}
-#endif
+
 			lc.v[3] = sfloat1::one(); //alpha doesn't matter when r > 0
 			le.v[3] = lc.v[3];
 		}else{
@@ -398,7 +394,7 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 			std::tuple<sfloat4,sfloat4> S1 = SampleVolume(rc,srd,gm1,pkernel,0,prs,r+1,1);
 			std::tuple<sfloat4,sfloat4> S2 = SampleVolume(rc,lrd,gm1,pkernel,0,prs,pkernel->scattevs,1);
 			sfloat4 &dif1 = std::get<0>(S1), &sky1 = std::get<1>(S1);
-			sfloat4 &dif2 = std::get<0>(S2), &sky2 = std::get<1>(S2);
+			sfloat4 &dif2 = std::get<0>(S2), sky2 = sfloat4(0.0f);//&sky2 = std::get<1>(S2);
 
 			//(HG_Phase(X)*SampleVolume(X)*p1/(p1+L_Pdf(X)))/p1 => (HG_Phase(X)=p1)*SampleVolume(X)/(p1+L_Pdf(X)) = p1*SampleVolume(X)/(p1+L_Pdf(X))
 			//(HG_Phase(Y)*SampleVolume(Y)*p2/(HG_Phase(Y)+p2))/p2 => HG_phase(Y)*SampleVolume(Y)/(HG_Phase(Y)+p2)
@@ -442,7 +438,7 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 			cs.v[1] += sfloat1::Or(sfloat1::And(rm,le.v[1]),sfloat1::AndNot(rm,cs1.v[1]));
 			cs.v[2] += sfloat1::Or(sfloat1::And(rm,le.v[2]),sfloat1::AndNot(rm,cs1.v[2]));
 			cs.v[3] += le.v[3];
-			
+
 		}else{
 			cl.v[0] += sfloat1::Or(sfloat1::And(rm,lc.v[0]),sfloat1::AndNot(rm,zr));
 			cl.v[1] += sfloat1::Or(sfloat1::And(rm,lc.v[1]),sfloat1::AndNot(rm,zr));
@@ -552,14 +548,16 @@ bool RenderKernel::Initialize(const Scene *pscene, const SceneOcclusion *psceneo
 	this->flags = flags;
 	viewi = *pviewi;
 	proji = *pproji;
+	skydir = dynamic_cast<KernelSampler::SunLight*>(KernelSampler::BaseLight::lights[0])->direction;
 
 	this->ppf = ppf;
 
 	//TODO: set direction according to primary light
-	float th = 0.0f;//acosf(sdir.z);
+	float th = acosf(skydir.z);
 	float se = XM_PIDIV2-th; //solar elevation
 
-	pskyms = arhosek_rgb_skymodelstate_alloc_init(2.2,0.6,se);
+	//pskyms = arhosek_rgb_skymodelstate_alloc_init(2.2,0.6,se);
+	pskyms = arhosek_rgb_skymodelstate_alloc_init(7.0,0.15,se);
 
 	if(KernelSampler::BaseLight::lights.size() != 1)
 		DebugPrintf("Warning: only one directional light is currently properly supported.\n");
