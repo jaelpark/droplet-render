@@ -48,10 +48,10 @@ class ClRenderPanel(bpy.types.Panel):
 		context.scene.blcloudrender.draw(context,self.layout);
 
 class ClSamplingProperties(bpy.types.PropertyGroup):
-	samples = IntProperty(name="Render",default=500,min=1,description="Number of samples to be taken");
+	samples = IntProperty(name="Render",default=1000,min=1,description="Number of samples to be taken");
 	scatterevs = IntProperty(name="Scattering",default=20,min=0,max=32,description="Maximum volume scattering events.");
-	msigmas = FloatProperty(name="Sigma.S",default=10.0,min=0.0,description="Macroscopic scattering cross section for maximum density.");
-	msigmaa = FloatProperty(name="Sigma.A",default=0.03,min=0.0,description="Macroscopic absorption cross section for maximum density.");
+	msigmas = FloatProperty(name="Sigma.S",default=18.0,min=0.001,description="Macroscopic scattering cross section for maximum density.");
+	msigmaa = FloatProperty(name="Sigma.A",default=0.001,min=0.001,description="Macroscopic absorption cross section for maximum density.");
 	phasef = EnumProperty(name="Phase function",default="M",items=(
 		("H","Henyey-Greenstein","Henyey-Greenstein phase function with anisotropy g=0.35. A fast approximation with plausible results."),
 		("M","Mie","Precomputed RGB Mie phase function for typical cloud droplets. Being the most accurate this is also the most inefficient due to partly unvectorized table lookups. Note that spectral rendering is required to correctly sample for different wavelengths, although in case of Mie the dispersion is small enough to be approximated without separating the RGB channels.")));
@@ -289,9 +289,9 @@ class ClParticleSystemPanel(bpy.types.Panel):
 	#return [(m.name,m.name,m.name,"TEXTURE",x) for x, m in enumerate(bpy.data.images)];
 
 class ClLampProperties(bpy.types.PropertyGroup):
-	intensity = FloatProperty(name="Intensity",default=500.0,min=0.0);
+	intensity = FloatProperty(name="Intensity",default=10.0,min=0.0);
 	color = FloatVectorProperty(name="Color",default=[1,1,1],subtype='COLOR',size=3);
-	angle = FloatProperty(name="Angle",default=0.99,min=0.0,max=1.0,precision=3);
+	angle = FloatProperty(name="Angle",default=0.010,min=0.0,max=1.0,precision=3);
 
 	def draw(self, context, layout):
 		s = layout.split();
