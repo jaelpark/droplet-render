@@ -8,11 +8,9 @@ endif()
 set(CMAKE_CXX_FLAGS "-std=c++11 -mcmodel=medium -Wno-unused-parameter")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
-find_program(PYTHON_CONFIG NAMES python-config)
-execute_process(COMMAND "${PYTHON_CONFIG}" --includes
-	OUTPUT_VARIABLE PYTHON_INC)
-string(STRIP ${PYTHON_INC} PYTHON_INC)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${PYTHON_INC}")
+set(Python_ADDITIONAL_VERSIONS 3.5 3.6)
+find_package(PythonLibs 3 REQUIRED)
+include_directories(${PYTHON_INCLUDE_DIRS})
 
 if(USE_AVX2)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2 -mfma")
