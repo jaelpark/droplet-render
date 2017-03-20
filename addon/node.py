@@ -297,6 +297,20 @@ class ClNodeFbmNoise(bpy.types.Node):
 		self.outputs.new("ClNodeVectorSocket","Out.Vector");
 		self.outputs.new("ClNodeFloatSocket","Max");
 
+class ClNodeVoronoiLayers(bpy.types.Node):
+	bl_idname = "ClNodeVoronoiLayers";
+	bl_label = "VoronoiLayers";
+
+	def init(self, context):
+		self.inputs.new("ClNodeIntSocket","octaves");
+		self.inputs.new("ClNodeFloatSocket","freq");
+		self.inputs.new("ClNodeFloatSocket","amp");
+		self.inputs.new("ClNodeFloatSocket","fjump");
+		self.inputs.new("ClNodeFloatSocket","gain");
+		self.inputs.new("ClNodeVectorSocket","World");
+		self.outputs.new("ClNodeFloatSocket","Out.Scalar");
+		self.outputs.new("ClNodeFloatSocket","Max");
+
 class ClNodeSurfaceOutput(bpy.types.Node):
 	bl_idname = "ClNodeSurfaceOutput";
 	bl_label = "Surface Output";
@@ -387,6 +401,7 @@ categories = [
 	]),
 	ClNodeCategory("NOISE_CATEGORY","Noise",items = [
 		NodeItem("ClNodeFbmNoise"),
+		NodeItem("ClNodeVoronoiLayers"),
 	]),
 	ClNodeCategory("DENSITY_CATEGORY","Fog",items = [
 		NodeItem("ClNodeComposite"),

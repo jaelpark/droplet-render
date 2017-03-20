@@ -136,6 +136,29 @@ public:
 	};
 };
 
+class IVoronoiLayers : public virtual BaseValueNode<float>{
+protected:
+	IVoronoiLayers(uint, NodeTree *);
+	~IVoronoiLayers();
+public:
+	virtual void Evaluate(const void *);
+	static IVoronoiLayers * Create(uint, NodeTree *);
+	enum INPUT{
+		INPUT_OCTAVES,
+		INPUT_FREQ,
+		INPUT_AMP,
+		INPUT_FJUMP,
+		INPUT_GAIN,
+		INPUT_POSITION,
+		INPUT_COUNT
+	};
+	enum OUTPUT_FLOAT{
+		OUTPUT_FLOAT_NOISE,
+		OUTPUT_FLOAT_MAXIMUM,
+		OUTPUT_FLOAT_COUNT
+	};
+};
+
 class BaseFogNode : public virtual BaseNode{
 protected:
 	BaseFogNode(uint, NodeTree *);

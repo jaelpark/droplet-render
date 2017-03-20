@@ -2,6 +2,9 @@
 #include "node.h"
 #include "noise.h"
 
+#define USE_SSE2
+#include "sse_mathfun.h"
+
 namespace PerlinNoise{
 
 static const dfloat3 g_perlin_data[512+2] = {
@@ -179,7 +182,7 @@ static const dfloat3 g_perlin_data[512+2] = {
 	{-0.944031f,-0.326599f,-0.045624f},
 };
 
-static const int g_perlin_data_ub[512 + 2] = {
+static const int g_perlin_data_ub[512+2] = {
 	0xA2, 0xA0, 0x19, 0x3B, 0xF8, 0xEB, 0xAA, 0xEE, 0xF3, 0x1C, 0x67, 0x28,
 	0x1D, 0xED, 0x0,  0xDE, 0x95, 0x2E, 0xDC, 0x3F, 0x3A, 0x82, 0x35, 0x4D,
 	0x6C, 0xBA, 0x36, 0xD0, 0xF6, 0xC,  0x79, 0x32, 0xD1, 0x59, 0xF4, 0x8,
@@ -361,6 +364,54 @@ sfloat1 noise(const sfloat4 &_pos){
 
 }
 
+namespace Voronoi{
+
+sfloat4 fhash(sfloat4 p){
+	static sfloat4 c[3] = {
+		sfloat4(float4(235.2f,122.9f,11.56f,0.0f)),
+		sfloat4(float4(113.7f,55.77f,155.8f,0.0f)),
+		sfloat4(float4(323.5f,139.1f,82.35f,0.0f))
+	};
+	sfloat4 v;
+	for(uint i = 0; i < 3; ++i){
+		v.v[i] = sin_ps(sfloat4::dot3(p,c[i]))*sfloat1(25.5e3f); //^^
+		v.v[i] -= sfloat1::floor(v.v[i]);
+	}
+	v.v[3] = sfloat1::zero();
+	return v;
+}
+
+std::tuple<sfloat1,sfloat1> distance(const sfloat4 &pos){
+	sfloat4 pl = sfloat4::floor(pos);
+	sfloat4 pf = pos-pl;
+
+	sfloat1 m[2];
+	m[0] = sfloat1(1e3f);
+	m[1] = m[0];
+	for(int k = -1; k <= 1; ++k)
+		for(int j = -1; j <= 1; ++j)
+			for(int i = -1; i <= 1; ++i){
+				sfloat4 b = sfloat4(float4(i,j,k,0.0f));
+				sfloat4 r = b-pf+fhash((pl+b)*sfloat1(2.5f));
+				sfloat1 d = sfloat4::dot3(r,r);
+
+				sfloat1 lm0 = sfloat1::Less(d,m[0]);
+				//sfloat1 lm1 = sfloat1::Less(d,m[1]);
+				//lm1 = sfloat1::AndNot(lm0,lm1);
+
+				//m[1] = sfloat1::Or(sfloat1::And(lm0,m[0]),sfloat1::AndNot(lm0,m[1]));
+				m[0] = sfloat1::Or(sfloat1::And(lm0,d),sfloat1::AndNot(lm0,m[0]));
+
+				//m[1] = sfloat1::Or(sfloat1::And(lm1,d),sfloat1::AndNot(lm1,m[1]));
+			}
+
+	m[0] = sfloat1::sqrt(m[0]);
+	//m[1] = sfloat1::sqrt(m[1]);
+	return std::tuple<sfloat1,sfloat1>(m[0],m[1]);
+}
+
+}
+
 namespace fBm{
 
 sfloat1 noise(const sfloat4 &_pos, uint octaves, float freq, float amp, float fjump, float gain){
@@ -377,6 +428,21 @@ float GetAmplitudeMax(uint octaves, float amp, float gain){
 	float s = 0.0f;
 	for(uint i = 0; i < octaves; ++i){
 		s += amp;
+		amp *= gain;
+	}
+	return s;
+}
+
+}
+
+namespace Layers{
+
+sfloat1 voronoi(const sfloat4 &_pos, uint octaves, float freq, float amp, float fjump, float gain){
+	sfloat1 s = sfloat1::zero();
+	for(uint i = 0; i < octaves; ++i){
+		sfloat1 a = sfloat1(amp);
+		s += a-std::get<0>(Voronoi::distance(_pos*freq))*a;
+		freq *= fjump;
 		amp *= gain;
 	}
 	return s;
@@ -415,13 +481,49 @@ void FbmNoise::Evaluate(const void *pp){
 	BaseValueResult<float> &rs = this->BaseValueNode<float>::result.local();
 	rs.value[OUTPUT_FLOAT_NOISE] = f.get<0>();
 	rs.value[OUTPUT_FLOAT_MAXIMUM] = fBm::GetAmplitudeMax(poctn->locr(indices[INPUT_OCTAVES]),pampn->locr(indices[INPUT_AMP]),
-		pgainn->locr(indices[INPUT_GAIN])); //Calculate the maximum value given. Works only when all the input parameters are constant.
+		pgainn->locr(indices[INPUT_GAIN])); //Calculate the maximum output value. Works only when all the input parameters are constant.
 	BaseValueResult<dfloat3> &rv = this->BaseValueNode<dfloat3>::result.local();
 	rv.value[OUTPUT_VECTOR_NOISE] = dfloat3(0.57735f*float4(f.get4())); //normalize by 1/sqrt(3) to have max length equal to amplitude
 }
 
 IFbmNoise * IFbmNoise::Create(uint level, NodeTree *pnt){
 	return new FbmNoise(level,pnt);
+}
+
+VoronoiLayers::VoronoiLayers(uint _level, NodeTree *pnt) : BaseValueNode<float>(_level,pnt), BaseNode(_level,pnt), IVoronoiLayers(_level,pnt){
+	//
+}
+
+VoronoiLayers::~VoronoiLayers(){
+	//
+}
+
+void VoronoiLayers::Evaluate(const void *pp){
+	BaseValueNode<int> *poctn = dynamic_cast<BaseValueNode<int>*>(pnodes[INPUT_OCTAVES]);
+	BaseValueNode<float> *pfreqn = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_FREQ]);
+	BaseValueNode<float> *pampn = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_AMP]);
+	BaseValueNode<float> *pfjumpn = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_FJUMP]);
+	BaseValueNode<float> *pgainn = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_GAIN]);
+	BaseValueNode<dfloat3> *pnode = dynamic_cast<BaseValueNode<dfloat3>*>(pnodes[INPUT_POSITION]);
+
+	dfloat3 dposw = pnode->locr(indices[INPUT_POSITION]);
+	sfloat4 sposw = sfloat4(float4(dposw.x,dposw.y,dposw.z,0.0f))+sfloat4(
+		float4(0.0f),
+		float4(1.0f,0.0f,0.0f,0.0f),
+		float4(0.0f,1.0f,0.0f,0.0f),
+		float4(0.0f,0.0f,1.0f,0.0f))*float4(154.7f);
+
+	sfloat1 f = Layers::voronoi(sposw,poctn->locr(indices[INPUT_OCTAVES]),pfreqn->locr(indices[INPUT_FREQ]),
+		pampn->locr(indices[INPUT_AMP]),pfjumpn->locr(indices[INPUT_FJUMP]),pgainn->locr(indices[INPUT_GAIN]));
+
+	BaseValueResult<float> &rs = this->BaseValueNode<float>::result.local();
+	rs.value[OUTPUT_FLOAT_NOISE] = f.get<0>();
+	rs.value[OUTPUT_FLOAT_MAXIMUM] = fBm::GetAmplitudeMax(poctn->locr(indices[INPUT_OCTAVES]),pampn->locr(indices[INPUT_AMP]),
+		pgainn->locr(indices[INPUT_GAIN]));
+}
+
+IVoronoiLayers * IVoronoiLayers::Create(uint level, NodeTree *pnt){
+	return new VoronoiLayers(level,pnt);
 }
 
 }

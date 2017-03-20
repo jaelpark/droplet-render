@@ -194,7 +194,19 @@ IFbmNoise::~IFbmNoise(){
 }
 
 void IFbmNoise::Evaluate(const void *pp){
+	//unused, implementation at FbmNoise::Evaluate
+}
+
+IVoronoiLayers::IVoronoiLayers(uint _level, NodeTree *pnt) : BaseValueNode<float>(_level,pnt), BaseNode(_level,pnt){
 	//
+}
+
+IVoronoiLayers::~IVoronoiLayers(){
+	//
+}
+
+void IVoronoiLayers::Evaluate(const void *pp){
+	//unused, implementation at VoronoiLayers::Evaluate
 }
 
 BaseFogNode::BaseFogNode(uint level, NodeTree *pnt) : BaseNode(level,pnt){
@@ -462,6 +474,8 @@ BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, No
 		return new VectorXYZ(level,pnt);
 	}else if(strcmp(pname,"ClNodeFbmNoise") == 0){
 		return IFbmNoise::Create(level,pnt);
+	}else if(strcmp(pname,"ClNodeVoronoiLayers") == 0){
+		return IVoronoiLayers::Create(level,pnt);
 
 	}else if(strcmp(pname,"ClNodeFloatInput") == 0){
 		return new FloatInput(level,pnt);
