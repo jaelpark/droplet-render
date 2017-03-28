@@ -179,8 +179,7 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 
 	//finally, sample with given density and position
 	sample();*/
-
-	//float st = 0.5f-0.5f/(1.0f-expf(-3.0f*(float)r+5.0f))+0.5f;
+	
 	sfloat1 msigmaa = sfloat1(pkernel->msigmaa);
 	sfloat1 msigmas = sfloat1(pkernel->msigmas);
 	sfloat1 msigmae = msigmaa+msigmas;
@@ -312,14 +311,12 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 		sfloat4 lc = sfloat4::zero();
 		sfloat4 le = sfloat4::zero();
 		//skip (sky)lighting calculations if all the incident rays scatter (don't reach sun or sky)
-		//if(rm.AnyTrue() && !(pkernel->flags & RENDER_TRANSPARENT && r == 0)){
 		if(rm.AnyTrue() && r > 0){
 			for(uint i = 0, n = KernelSampler::BaseLight::lights.size(); i < n; ++i)
 				lc += KernelSampler::BaseLight::lights[i]->Evaluate(rd);
 
 			//skylighting
-			//sfloat1 rdz = sfloat1::abs(rd.v[2]); //add/remove abs to remove/get ground
-			sfloat1 rdz = rd.v[2]; //add/remove abs to remove/get ground
+			sfloat1 rdz = rd.v[2];
 			sfloat1 sth = sfloat1::sqrt(1.0f-rd.v[2]*rd.v[2]);
 			sfloat1 cth = rdz;
 			sfloat1 slth = sfloat1::sqrt(1.0f-pkernel->skydir.z*pkernel->skydir.z);
@@ -347,7 +344,6 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 				sfloat1 zenh = sfloat1::sqrt(thcs);
 				ca.v[i] = (sfloat1::one()+caf[0]*exp_ps(caf[1]/(thcs+0.01f)))*(caf[2]+caf[3]*expm+caf[5]*raym+caf[6]*miem+caf[7]*zenh);
 				ca.v[i] *= pkernel->pskyms->radiances[i];
-				//ca.v[i] = 0.00035f*sfloat1::pow(ca.v[i],2.2f); //convert to linear and adjust exposure
 				ca.v[i] = 1e-3f*sfloat1::pow(ca.v[i],2.2f); //convert to linear and adjust exposure
 			}
 
@@ -398,9 +394,6 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 
 			//(HG_Phase(X)*SampleVolume(X)*p1/(p1+L_Pdf(X)))/p1 => (HG_Phase(X)=p1)*SampleVolume(X)/(p1+L_Pdf(X)) = p1*SampleVolume(X)/(p1+L_Pdf(X))
 			//(HG_Phase(Y)*SampleVolume(Y)*p2/(HG_Phase(Y)+p2))/p2 => HG_phase(Y)*SampleVolume(Y)/(HG_Phase(Y)+p2)
-			/*sfloat4 p3 = pkernel->ppf->EvaluateRGB(sfloat4::dot3(lrd,rd));
-			sfloat4 cm = s1*p1/(p1+KernelSampler::BaseLight::lights[0]->Pdf(srd))+s2*p3/(p3+p2);//s1*p1/(p1+L_Pdf(srd,la))+s2*p3/(p3+p2);
-			cm *= msigmas/msigmae;*/
 
 			sfloat4 p3 = pkernel->ppf->EvaluateRGB(sfloat4::dot3(lrd,rd));
 			sfloat4 w1 = p1/(p1+KernelSampler::BaseLight::lights[0]->Pdf(srd));
@@ -408,9 +401,6 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 
 			sfloat4 cl1 = (dif1*w1+dif2*w2)*msigmas/msigmae;//s1*p1/(p1+L_Pdf(srd,la))+s2*p3/(p3+p2);
 			sfloat4 cs1 = (sky1*w1+sky2*w2)*msigmas/msigmae;
-
-			//s1=HG_Phase(X)*SampleVolume(X)
-			//s1*p1/(p1+L_Pdf(X))
 #else
 			//phase function sampling
 			sfloat1 u1 = RNG_Sample(prs), u2 = RNG_Sample(prs);
@@ -552,7 +542,6 @@ bool RenderKernel::Initialize(const Scene *pscene, const SceneOcclusion *psceneo
 
 	this->ppf = ppf;
 
-	//TODO: set direction according to primary light
 	float th = acosf(skydir.z);
 	float se = XM_PIDIV2-th; //solar elevation
 
