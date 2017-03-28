@@ -289,7 +289,7 @@ class ClParticleSystemPanel(bpy.types.Panel):
 	#return [(m.name,m.name,m.name,"TEXTURE",x) for x, m in enumerate(bpy.data.images)];
 
 class ClLampProperties(bpy.types.PropertyGroup):
-	intensity = FloatProperty(name="Intensity",default=10.0,min=0.0);
+	intensity = FloatProperty(name="Intensity",default=1.0,min=0.0);
 	color = FloatVectorProperty(name="Color",default=[1,1,1],subtype='COLOR',size=3);
 	angle = FloatProperty(name="Angle",default=0.010,min=0.0,max=1.0,precision=3);
 
