@@ -473,7 +473,7 @@ void FbmNoise::Evaluate(const void *pp){
 		float4(0.0f),
 		float4(1.0f,0.0f,0.0f,0.0f),
 		float4(0.0f,1.0f,0.0f,0.0f),
-		float4(0.0f,0.0f,1.0f,0.0f))*float4(154.7f);
+		float4(0.0f,0.0f,1.0f,0.0f))*float4(154.7f/pfreqn->locr(indices[INPUT_FREQ]));
 
 	sfloat1 f = fBm::noise(sposw,poctn->locr(indices[INPUT_OCTAVES]),pfreqn->locr(indices[INPUT_FREQ]),
 		pampn->locr(indices[INPUT_AMP]),pfjumpn->locr(indices[INPUT_FJUMP]),pgainn->locr(indices[INPUT_GAIN]));
@@ -511,7 +511,7 @@ void VoronoiLayers::Evaluate(const void *pp){
 		float4(0.0f),
 		float4(1.0f,0.0f,0.0f,0.0f),
 		float4(0.0f,1.0f,0.0f,0.0f),
-		float4(0.0f,0.0f,1.0f,0.0f))*float4(154.7f);
+		float4(0.0f,0.0f,1.0f,0.0f))*float4(154.7f/pfreqn->locr(indices[INPUT_FREQ]));
 
 	sfloat1 f = Layers::voronoi(sposw,poctn->locr(indices[INPUT_OCTAVES]),pfreqn->locr(indices[INPUT_FREQ]),
 		pampn->locr(indices[INPUT_AMP]),pfjumpn->locr(indices[INPUT_FJUMP]),pgainn->locr(indices[INPUT_GAIN]));
