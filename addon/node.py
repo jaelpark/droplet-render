@@ -219,7 +219,11 @@ class ClNodeScalarMath(bpy.types.Node):
 		("e","Exp",""),
 		("s","Sin",""),
 		("c","Cos",""),
-		("t","Tan","")));
+		("t","Tan",""),
+		("G","IsGreater",""),
+		("g","IsGreaterOrEqual",""),
+		("L","IsLess",""),
+		("l","IsLessOrEqual","")));
 		# ("S","arcsin",""),
 		# ("C","arccos",""),
 		# ("T","arctan","")));
