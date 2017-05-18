@@ -473,7 +473,25 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 			fobj.pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOGPOST);
 
 			Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(fobj.pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOGPOST]);
-			openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
+			switch(dynamic_cast<Node::OutputNode*>(fobj.pnt->GetRoot())->opch){
+			default:
+			case 'M':
+				openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
+				break;
+			case 'm':
+				openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
+				break;
+			case '+':
+				openvdb::tools::compSum(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
+				break;
+			case '*':
+				openvdb::tools::compMul(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
+				break;
+			case '=':
+				openvdb::tools::compReplace(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
+				break;
+			}
+
 		}
 
 		delete pqsampler;

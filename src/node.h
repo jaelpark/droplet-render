@@ -363,7 +363,7 @@ public:
 
 class OutputNode : public BaseNode{
 public:
-	OutputNode(NodeTree *);
+	OutputNode(NodeTree *, char);
 	~OutputNode();
 	void Evaluate(const void *);
 	enum INPUT{
@@ -373,6 +373,7 @@ public:
 		INPUT_SURFACE,
 		INPUT_COUNT,
 	};
+	char opch; //fog post processor blend operation
 };
 
 class NodeTree{

@@ -319,11 +319,24 @@ class ClNodeSurfaceOutput(bpy.types.Node):
 	bl_idname = "ClNodeSurfaceOutput";
 	bl_label = "Surface Output";
 
+	op = EnumProperty(name="Blend",description="Fog.Post blend operator",default="M",items=(
+		("M","Max",""),
+		("m","Min",""),
+		("+","Add",""),
+		#("-","Sub",""),
+		("*","Mul",""),
+		#("/","Div",""),
+		("=","Replace","")));
+
 	def init(self, context):
 		self.inputs.new("ClNodeFogSocket","Fog");
 		self.inputs.new("ClNodeFogSocket","Fog.Post");
 		self.inputs.new("ClNodeVectorFieldSocket","Vector");
 		self.inputs.new("ClNodeSurfaceSocket","Surface");
+
+	def draw_buttons(self, context, layout):
+		if len(self.inputs["Fog.Post"].links) > 0:
+			layout.prop(self,"op");
 
 		#self.color = (0.7,0.7,0.8);
 		#self.use_custom_color = True;
