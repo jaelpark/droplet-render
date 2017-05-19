@@ -435,7 +435,7 @@ void Advection::Evaluate(const void *pp){
 
 			float th = pthrs->locr(indices[INPUT_THRESHOLD]);
 			if(f > th){
-				std::get<1>(fgt).setValue(c,f);
+				std::get<1>(fgt).setValue(c,0.0f); //std::get<1>(fgt).setValue(c,f);
 				continue;
 			}
 
@@ -465,7 +465,8 @@ void Advection::Evaluate(const void *pp){
 				pntree->EvaluateNodes0(&np1,level+1,emask);
 			}
 
-			std::get<1>(fgt).setValue(c,f+p);
+			//std::get<1>(fgt).setValue(c,f+p);
+			std::get<1>(fgt).setValue(c,p);
 		}
 	});
 
