@@ -416,10 +416,6 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 		}
 	}
 
-	openvdb::FloatGrid::Ptr ptfog = openvdb::FloatGrid::create(); //temporary grid to store the fog to be post-processed
-	ptfog->setTransform(pgridtr);
-	ptfog->setGridClass(openvdb::GRID_FOG_VOLUME);
-
 	openvdb::Vec3SGrid::Ptr ptvel = openvdb::Vec3SGrid::create();
 	ptvel->setTransform(pgridtr);
 	ptvel->setGridClass(openvdb::GRID_FOG_VOLUME);
@@ -430,10 +426,9 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 
 		Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(SceneData::SmokeCache::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOG]);
 		if(pdfn->pdgrid->activeVoxelCount() > 0){
-			if(SceneData::SmokeCache::objs[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST){
+			if(SceneData::SmokeCache::objs[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST)
 				fogppl.push_back(PostFogParams(SceneData::SmokeCache::objs[i],pdfn->pdgrid->deepCopy()));
-				openvdb::tools::compMax(*ptfog,*pdfn->pdgrid);
-			}else openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
+			openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
 		}
 	}
 
@@ -443,10 +438,9 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 
 		Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOG]);
 		if(pdfn->pdgrid->activeVoxelCount() > 0){
-			if(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST){
+			if(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST)
 				fogppl.push_back(PostFogParams(SceneData::ParticleSystem::prss[i],pdfn->pdgrid->deepCopy()));
-				openvdb::tools::compMax(*ptfog,*pdfn->pdgrid);
-			}else openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
+			openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
 		}
 
 		Node::BaseVectorFieldNode1 *pvfn = dynamic_cast<Node::BaseVectorFieldNode1*>(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_VECTOR]);
@@ -456,13 +450,10 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 
 	//fog post-processor
 	if(fogppl.size() > 0){
-		openvdb::FloatGrid::Ptr pqfog = pgrid[VOLUME_BUFFER_FOG]->deepCopy();
-		openvdb::tools::compMax(*pqfog,*ptfog);
-
 		openvdb::Vec3SGrid::Ptr pgrad = openvdb::tools::gradient(*pqsdf);
 
 		FloatGridBoxSampler *pqsampler = new FloatGridBoxSampler(*pqsdf);
-		FloatGridBoxSampler *ppsampler = new FloatGridBoxSampler(*pqfog);
+		FloatGridBoxSampler *ppsampler = new FloatGridBoxSampler(*pgrid[VOLUME_BUFFER_FOG]);
 		VectorGridBoxSampler *pvsampler = new VectorGridBoxSampler(*ptvel);
 		VectorGridBoxSampler *pgsampler = new VectorGridBoxSampler(*pgrad);
 		FloatGridBoxSampler *pdsampler = new FloatGridBoxSampler(*pgrid[VOLUME_BUFFER_SDF]);
@@ -479,7 +470,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 				openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
 				break;
 			case 'm':
-				openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
+				openvdb::tools::compMin(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
 				break;
 			case '+':
 				openvdb::tools::compSum(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
@@ -491,7 +482,6 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 				openvdb::tools::compReplace(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
 				break;
 			}
-
 		}
 
 		delete pqsampler;
