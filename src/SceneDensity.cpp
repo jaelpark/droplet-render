@@ -96,7 +96,7 @@ void ParticleInput::Evaluate(const void *pp){
 		return;
 	}
 
-	BaseValueNode<float> *psizen = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_SIZE]); //should lifetime determine the size?
+	BaseValueNode<float> *psizen = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_SIZE]);
 	BaseValueNode<float> *pcoffn = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_CUTOFF]);
 
 	dfloat3 zr(0.0f);
@@ -433,6 +433,9 @@ void Advection::Evaluate(const void *pp){
 			ValueNodeParams np1((dfloat3*)posw.asPointer(),(dfloat3*)posw.asPointer(),0.0f,f,(dfloat3*)posw.asPointer(),f,0.0f,pd);
 			pntree->EvaluateNodes0(&np1,level+1,emask);
 
+			if(np1.SampleGlobalDistance(*(dfloat3*)posw.asPointer(),false) < -pgridtr->voxelSize().x())
+				continue; //skip surface interior voxels
+
 			float th = pthrs->locr(indices[INPUT_THRESHOLD]);
 			if(f > th){
 				std::get<1>(fgt).setValue(c,0.0f); //std::get<1>(fgt).setValue(c,f);
@@ -450,10 +453,9 @@ void Advection::Evaluate(const void *pp){
 					break;
 				dfloat3 vs = pvn->locr(indices[INPUT_VELOCITY]);
 				float4 v = float4::load(&vs);
-				if(float4::dot3(v,v).get<0>() < 1e-5f)
+				if(float4::dot3(v,v).get<0>() < 1e-8f)
 					break;
 				rc += s*v;
-				//
 
 				openvdb::math::Vec3s poswa;
 				float4::store((dfloat3*)poswa.asPointer(),rc);
