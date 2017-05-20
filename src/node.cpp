@@ -309,10 +309,11 @@ void SceneInfo::Evaluate(const void *pp){
 	dfloat3 dposw = pnode->locr(indices[INPUT_POSITION]);
 
 	BaseValueResult<float> &rs = this->BaseValueNode<float>::result.local();
+	bool d = pd->SampleGlobalDistance(dposw,false) > 0.0f;
 	rs.value[OUTPUT_FLOAT_DISTANCE] = pd->SampleGlobalDistance(dposw,true);
+	rs.value[OUTPUT_FLOAT_SURFACE] = d?0.0f:1.0f;
 	rs.value[OUTPUT_FLOAT_DENSITY] = pd->SampleGlobalDensity(dposw);
-	//rs.value[OUTPUT_FLOAT_FINAL] = rs.value[OUTPUT_FLOAT_DISTANCE] > 0.0f?rs.value[OUTPUT_FLOAT_DENSITY]:1.0f;
-	rs.value[OUTPUT_FLOAT_FINAL] = pd->SampleGlobalDistance(dposw,false) > 0.0f?rs.value[OUTPUT_FLOAT_DENSITY]:1.0f;
+	rs.value[OUTPUT_FLOAT_FINAL] = d?rs.value[OUTPUT_FLOAT_DENSITY]:1.0f;
 
 	BaseValueResult<dfloat3> &rv = this->BaseValueNode<dfloat3>::result.local();
 	rv.value[OUTPUT_VECTOR_VECTOR] = pd->SampleGlobalVector(dposw);
