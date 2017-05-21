@@ -256,10 +256,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	PyObject *pycache = PyObject_GetAttrString(pyperf,"cache");
 	bool cache = PyObject_IsTrue(pycache);
 	uint clayer = PyGetUint(pyperf,"cachelayer");
-
-	//const char *pcms = PyUnicode_AsUTF8(pycache);
-	//SCENE_CACHE_MODE cm = (pcms[0] == 'R'?SCENE_CACHE_READ:pcms[0] == 'W'?SCENE_CACHE_WRITE:SCENE_CACHE_DISABLED);
-
+	
 	Py_DECREF(pycache);
 	Py_DECREF(pyperf);
 	/////
@@ -288,7 +285,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 		if((smask&omask) == 0)
 			continue;
 
-		uint flags = ((1<<clayer)&omask)?SCENEOBJ_CACHED:0;
+		uint flags = (((1<<clayer)&omask) != 0)?SCENEOBJ_CACHED:0;
 
 		//get particle systems
 		PyObject *ppro = PyObject_GetAttrString(pobj,"particle_systems");
@@ -551,7 +548,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 		}
 
 		gpscene = new Scene(); //TODO: interface for blender status reporting
-		gpscene->Initialize(dsize,maxd,qband,smask);
+		gpscene->Initialize(dsize,maxd,qband,smask,cache);
 
 		gpkernel = new RenderKernel();
 		gpkernel->Initialize(gpscene,gpsceneocc,&sviewi,&sproji,ppf,scattevs,msigmas,msigmaa,tilex,tiley,w,h,0);

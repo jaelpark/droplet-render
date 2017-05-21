@@ -359,13 +359,23 @@ static bool S_FindSceneInfo(SceneData::BaseObject *pto){
 	return false;
 }
 
+template<typename GridType>
+static openvdb::GridBase::Ptr S_ReadGridExcept(openvdb::io::File &vdbc, const char *pname){
+	openvdb::GridBase::Ptr pgridb = vdbc.readGrid(pname);
+	if(!pgridb){
+		vdbc.close();
+		throw(0);
+	}
+	return pgridb;
+}
+
 using PostFogParams = std::tuple<SceneData::BaseObject *, openvdb::FloatGrid::Ptr>;
 enum PFP{
 	PFP_OBJECT,
 	PFP_INPUTGRID
 };
 
-static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT], Scene *pscene){
+static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool cache, openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT], Scene *pscene){
 	openvdb::math::Transform::Ptr pgridtr = openvdb::math::Transform::createLinearTransform(s);
 
 	//Find if SceneInfo's distance or gradient output was used anywhere in the node trees and automatically determine if a query field should be constructed.
@@ -400,20 +410,57 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 	for(uint i = 0; i < SceneData::Surface::objs.size(); ++i){
 		if(SceneData::Surface::objs[i]->flags & SCENEOBJ_HOLDOUT)
 			continue;
-		Node::InputNodeParams snp(SceneData::Surface::objs[i],pgridtr,0,0,0,0,0);
-		SceneData::Surface::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_SURFACE);
 
-		Node::BaseSurfaceNode1 *pdsn = dynamic_cast<Node::BaseSurfaceNode1*>(SceneData::Surface::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_SURFACE]);
-		if(pdsn->vl.size() > 0){
-			openvdb::FloatGrid::Ptr ptgrid = pdsn->ComputeLevelSet(pgridtr,bvc,bvc);
+		openvdb::FloatGrid::Ptr ptgrid, phgrid;
 
-			if(qfield){
-				openvdb::FloatGrid::Ptr phgrid = pdsn->ComputeLevelSet(pqsdftr,bvc,2.0f);
-				openvdb::tools::csgUnion(*pqsdf,*phgrid);
+		char fn[256];
+		snprintf(fn,sizeof(fn),"/tmp/droplet-surface-cache-%s.vdb",SceneData::Surface::objs[i]->pname);
+		openvdb::io::File vdbc(fn);
+		try{
+			if(!cache || !(SceneData::Surface::objs[i]->flags & SCENEOBJ_CACHED))
+				throw(0);
+			vdbc.open(false);
+			{
+				if(qfield){
+					phgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(S_ReadGridExcept<openvdb::FloatGrid>(vdbc,"query"));
+					openvdb::tools::csgUnion(*pqsdf,*phgrid);
+				}
+
+				ptgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(S_ReadGridExcept<openvdb::FloatGrid>(vdbc,"surface"));
+
+				DebugPrintf("Read cached surface (%s) (%u/%u), VDB %f MB\n",SceneData::Surface::objs[i]->pname,i+1,SceneData::Surface::objs.size(),(float)ptgrid->memUsage()/1e6f);
+				openvdb::tools::csgUnion(*pgrid[VOLUME_BUFFER_SDF],*ptgrid);
 			}
+			vdbc.close();
+			//
+		}catch(...){
+			Node::InputNodeParams snp(SceneData::Surface::objs[i],pgridtr,0,0,0,0,0);
+			SceneData::Surface::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_SURFACE);
 
-			DebugPrintf("Completed surface calculations (%s) (%u/%u), VDB %f MB\n",SceneData::Surface::objs[i]->pname,i+1,SceneData::Surface::objs.size(),(float)ptgrid->memUsage()/1e6f);
-			openvdb::tools::csgUnion(*pgrid[VOLUME_BUFFER_SDF],*ptgrid);
+			Node::BaseSurfaceNode1 *pdsn = dynamic_cast<Node::BaseSurfaceNode1*>(SceneData::Surface::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_SURFACE]);
+			if(pdsn->vl.size() > 0){
+				if(qfield){
+					phgrid = pdsn->ComputeLevelSet(pqsdftr,bvc,2.0f);
+					openvdb::tools::csgUnion(*pqsdf,*phgrid);
+				}
+
+				ptgrid = pdsn->ComputeLevelSet(pgridtr,bvc,bvc);
+
+				if(cache){
+					ptgrid->setName("surface");
+					openvdb::GridCPtrVec gvec{ptgrid};
+					if(qfield){
+						phgrid->setName("query");
+						gvec.push_back(phgrid);
+					}
+
+					vdbc.write(gvec);
+					vdbc.close();
+				}
+
+				DebugPrintf("Completed surface calculations (%s) (%u/%u), VDB %f MB\n",SceneData::Surface::objs[i]->pname,i+1,SceneData::Surface::objs.size(),(float)ptgrid->memUsage()/1e6f);
+				openvdb::tools::csgUnion(*pgrid[VOLUME_BUFFER_SDF],*ptgrid);
+			}
 		}
 	}
 
@@ -683,7 +730,7 @@ Scene::~Scene(){
 	//
 }
 
-void Scene::Initialize(float s, uint maxd, float qb, uint smask){
+void Scene::Initialize(float s, uint maxd, float qb, uint smask, bool cache){
 	openvdb::initialize();
 
 	const float lvc = 8.0f; //minimum number of voxels in an octree leaf
@@ -692,65 +739,7 @@ void Scene::Initialize(float s, uint maxd, float qb, uint smask){
 	openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT];// = {0};
 	FloatGridBoxSampler *psampler[VOLUME_BUFFER_COUNT];
 
-	S_Create(s,qb,lvc,bvc,maxd,pgrid,this);
-
-	/*char vdbn[256], binn[256];
-	snprintf(vdbn,sizeof(vdbn),"/tmp/droplet-%x.vdb",smask);
-	snprintf(binn,sizeof(binn),"/tmp/droplet-%x.bin",smask);
-	openvdb::io::File vdbc(vdbn);
-	try{
-		if(cm != SCENE_CACHE_READ)
-			throw(0);
-
-		vdbc.open(false);
-		pgrid[VOLUME_BUFFER_SDF] = openvdb::gridPtrCast<openvdb::FloatGrid>(vdbc.readGrid("surface-levelset"));
-		pgrid[VOLUME_BUFFER_FOG] = openvdb::gridPtrCast<openvdb::FloatGrid>(vdbc.readGrid("fog-density"));
-		pgrid[VOLUME_BUFFER_FOG]->setTransform(pgrid[VOLUME_BUFFER_SDF]->transformPtr());
-		vdbc.close();
-
-		{
-			FILE *pf = fopen(binn,"rb");
-			if(!pf)
-				throw(0);
-			fread(&lvoxc,1,4,pf);
-			fread(&index,1,4,pf);
-			fread(&leafx[VOLUME_BUFFER_SDF],1,4,pf);
-			fread(&leafx[VOLUME_BUFFER_FOG],1,4,pf);
-
-			uint pobl = index+1;
-			ob.grow_to_at_least(pobl);
-			for(uint i = 0; i < pobl; ++i)
-				fread(&ob[i],1,sizeof(OctreeStructure),pf);
-
-			fclose(pf);
-		}
-
-	}catch(...){
-		if(cm == SCENE_CACHE_READ){
-			DebugPrintf("Attempt to read VDB-cache failed. Writing to a new one.\n");
-			cm = SCENE_CACHE_WRITE;
-		}
-
-		S_Create(s,qb,lvc,bvc,maxd,pgrid,this);
-		pgrid[VOLUME_BUFFER_SDF]->setName("surface-levelset");
-		pgrid[VOLUME_BUFFER_FOG]->setName("fog-density");
-
-		if(cm == SCENE_CACHE_WRITE){
-			openvdb::GridCPtrVec gvec{pgrid[VOLUME_BUFFER_SDF],pgrid[VOLUME_BUFFER_FOG]};
-			vdbc.write(gvec);
-			vdbc.close();
-
-			FILE *pf = fopen(binn,"wb");
-			fwrite(&lvoxc,1,4,pf);
-			fwrite(&index,1,4,pf);
-			fwrite(&leafx[VOLUME_BUFFER_SDF],1,4,pf);
-			fwrite(&leafx[VOLUME_BUFFER_FOG],1,4,pf);
-			for(uint i = 0; i < index+1; ++i)
-				fwrite(&ob[i],1,sizeof(OctreeStructure),pf);
-
-			fclose(pf);
-		}
-	}*/
+	S_Create(s,qb,lvc,bvc,maxd,cache,pgrid,this);
 
 	DebugPrintf("> Resampling volume data...\n");
 

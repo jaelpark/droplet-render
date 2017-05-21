@@ -145,7 +145,7 @@ class Scene{
 public:
 	Scene();
 	~Scene();
-	void Initialize(float, uint, float, uint);
+	void Initialize(float, uint, float, uint, bool);
 	void Destroy();
 	float *pvol[VOLUME_BUFFER_COUNT];
 	uint lvoxc;
