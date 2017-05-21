@@ -5,7 +5,7 @@ namespace SceneData{
 
 class PostFog : public BaseObject{
 public:
-	PostFog(Node::NodeTree *, openvdb::FloatGrid::Ptr);
+	PostFog(Node::NodeTree *, openvdb::FloatGrid::Ptr, uint);
 	~PostFog();
 	openvdb::FloatGrid::Ptr pdgrid; //input grid
 };

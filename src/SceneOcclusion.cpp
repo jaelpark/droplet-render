@@ -24,7 +24,7 @@ void SceneOcclusion::Initialize(){
 	pscene = rtcDeviceNewScene(pdev,RTC_SCENE_STATIC|RTC_SCENE_INCOHERENT|RTC_SCENE_HIGH_QUALITY,RTC_INTERSECT4);
 
 	for(uint i = 0; i < SceneData::Surface::objs.size(); ++i){
-		if(!SceneData::Surface::objs[i]->holdout)
+		if(!SceneData::Surface::objs[i]->flags & SCENEOBJ_HOLDOUT)
 			continue;
 		uint m = rtcNewTriangleMesh(pscene,RTC_GEOMETRY_STATIC,SceneData::Surface::objs[i]->tl.size()/3,SceneData::Surface::objs[i]->vl.size());
 

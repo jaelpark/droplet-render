@@ -398,7 +398,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 	std::vector<PostFogParams,tbb::cache_aligned_allocator<PostFogParams>> fogppl; //input grids to be post-processed
 
 	for(uint i = 0; i < SceneData::Surface::objs.size(); ++i){
-		if(SceneData::Surface::objs[i]->holdout)
+		if(SceneData::Surface::objs[i]->flags & SCENEOBJ_HOLDOUT)
 			continue;
 		Node::InputNodeParams snp(SceneData::Surface::objs[i],pgridtr,0,0,0,0,0);
 		SceneData::Surface::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_SURFACE);
@@ -464,7 +464,8 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 		FloatGridBoxSampler *pdsampler = new FloatGridBoxSampler(*pgrid[VOLUME_BUFFER_SDF]);
 
 		for(uint i = 0; i < fogppl.size(); ++i){
-			SceneData::PostFog fobj(std::get<PFP_OBJECT>(fogppl[i])->pnt,std::get<PFP_INPUTGRID>(fogppl[i]));
+			//TODO: determine cache flag by the status of objects involved in this pp step: mark "dirty" if any of the grids involved was not read from the cache.
+			SceneData::PostFog fobj(std::get<PFP_OBJECT>(fogppl[i])->pnt,std::get<PFP_INPUTGRID>(fogppl[i]),0);
 			Node::InputNodeParams snp(&fobj,pgridtr,pdsampler,pqsampler,ppsampler,pvsampler,pgsampler);
 			fobj.pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOGPOST);
 
@@ -609,7 +610,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 namespace SceneData{
 #define STRDUP(s) strcpy(new char[strlen(s)+1],s)
 
-BaseObject::BaseObject(Node::NodeTree *_pnt, const char *_pname) : pnt(_pnt){
+BaseObject::BaseObject(Node::NodeTree *_pnt, const char *_pname, uint _flags) : pnt(_pnt), flags(_flags){
 	pname = STRDUP(_pname);
 }
 
@@ -617,7 +618,7 @@ BaseObject::~BaseObject(){
 	delete []pname;
 }
 
-ParticleSystem::ParticleSystem(Node::NodeTree *_pnt, const char *pname) : BaseObject(_pnt,pname){
+ParticleSystem::ParticleSystem(Node::NodeTree *_pnt, const char *pname, uint flags) : BaseObject(_pnt,pname,flags){
 	ParticleSystem::prss.push_back(this);
 }
 
@@ -633,7 +634,7 @@ void ParticleSystem::DeleteAll(){
 
 std::vector<ParticleSystem *> ParticleSystem::prss;
 
-SmokeCache::SmokeCache(Node::NodeTree *_pnt, const char *pname, const char *_pvdb, const char *_prho, const char *_pvel) : BaseObject(_pnt,pname){
+SmokeCache::SmokeCache(Node::NodeTree *_pnt, const char *pname, uint flags, const char *_pvdb, const char *_prho, const char *_pvel) : BaseObject(_pnt,pname,flags){
 	SmokeCache::objs.push_back(this);
 	pvdb = STRDUP(_pvdb);
 	prho = STRDUP(_prho);
@@ -654,7 +655,7 @@ void SmokeCache::DeleteAll(){
 
 std::vector<SmokeCache *> SmokeCache::objs;
 
-Surface::Surface(Node::NodeTree *_pnt, const char *pname, bool _holdout) : BaseObject(_pnt,pname), holdout(_holdout){
+Surface::Surface(Node::NodeTree *_pnt, const char *pname, uint flags) : BaseObject(_pnt,pname,flags){
 	Surface::objs.push_back(this);
 }
 

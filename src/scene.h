@@ -1,12 +1,6 @@
 #ifndef SCENE_H
 #define SCENE_H
 
-/*enum SCENE_CACHE_MODE{
-	SCENE_CACHE_DISABLED,
-	SCENE_CACHE_READ,
-	SCENE_CACHE_WRITE
-};*/
-
 enum VOLUME_BUFFER{
 	VOLUME_BUFFER_SDF,
 	VOLUME_BUFFER_FOG,
@@ -56,17 +50,21 @@ class NodeTree;
 
 namespace SceneData{
 
+#define SCENEOBJ_CACHED 0x1
+#define SCENEOBJ_HOLDOUT 0x2
+
 class BaseObject{
 public:
-	BaseObject(Node::NodeTree *, const char *);
+	BaseObject(Node::NodeTree *, const char *, uint);
 	virtual ~BaseObject();
 	class Node::NodeTree *pnt;
 	const char *pname;
+	uint flags;
 };
 
 class ParticleSystem : public BaseObject{
 public:
-	ParticleSystem(Node::NodeTree *, const char *);
+	ParticleSystem(Node::NodeTree *, const char *, uint);
 	~ParticleSystem();
 	static void DeleteAll();
 	std::vector<dfloat3> pl; //position
@@ -76,7 +74,7 @@ public:
 
 class SmokeCache : public BaseObject{
 public:
-	SmokeCache(Node::NodeTree *, const char *, const char *, const char *, const char *);
+	SmokeCache(Node::NodeTree *, const char *, uint, const char *, const char *, const char *);
 	~SmokeCache();
 	static void DeleteAll();
 	const char *pvdb, *prho, *pvel;
@@ -85,12 +83,11 @@ public:
 
 class Surface : public BaseObject{
 public:
-	Surface(Node::NodeTree *, const char *, bool);
+	Surface(Node::NodeTree *, const char *, uint);
 	~Surface();
 	static void DeleteAll();
 	std::vector<dfloat3> vl;
 	std::vector<uint> tl;
-	bool holdout;
 	static std::vector<Surface *> objs;
 };
 

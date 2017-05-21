@@ -288,6 +288,8 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 		if((smask&omask) == 0)
 			continue;
 
+		uint flags = ((1<<clayer)&omask)?SCENEOBJ_CACHED:0;
+
 		//get particle systems
 		PyObject *ppro = PyObject_GetAttrString(pobj,"particle_systems");
 		PyObject *ppsl = PyObject_CallMethod(ppro,"values","");
@@ -306,7 +308,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 				DebugPrintf("Warning: invalid node tree %s. Skipping particle system (index=%u,%u).\n",pnodename,i,j);
 				continue;
 			}
-			SceneData::ParticleSystem *pprs = new SceneData::ParticleSystem(m->second,pname); //TODO: reserve() the particle vector size
+			SceneData::ParticleSystem *pprs = new SceneData::ParticleSystem(m->second,pname,flags); //TODO: reserve() the particle vector size
 
 			Py_DECREF(ppn);
 			Py_DECREF(psd);
@@ -397,7 +399,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 				DebugPrintf("Warning: invalid node tree %s. Skipping surface (index=%u).\n",pnodename,i);
 				continue;
 			}
-			SceneData::Surface *psobj = new SceneData::Surface(m->second,pname,holdout);
+			SceneData::Surface *psobj = new SceneData::Surface(m->second,pname,flags|(holdout?SCENEOBJ_HOLDOUT:0));
 
 			//check if SmokeCache node was used
 			for(uint j = 0; j < m->second->nodes1.size(); ++j){
@@ -406,7 +408,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 					PyObject *pyvdb = PyObject_GetAttrString(psd,"vdbcache");
 					PyObject *pyrho = PyObject_GetAttrString(psd,"vdbrho");
 					PyObject *pyvel = PyObject_GetAttrString(psd,"vdbvel");
-					SceneData::SmokeCache *pprs = new SceneData::SmokeCache(m->second,pname,
+					SceneData::SmokeCache *pprs = new SceneData::SmokeCache(m->second,pname,flags,
 						PyUnicode_AsUTF8(pyvdb),PyUnicode_AsUTF8(pyrho),PyUnicode_AsUTF8(pyvel));
 					Py_DECREF(pyvdb);
 					Py_DECREF(pyrho);
