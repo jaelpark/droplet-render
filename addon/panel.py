@@ -250,7 +250,7 @@ class ClMaterialPanel(bpy.types.Panel):
 
 class ClSmokePanel(bpy.types.Panel):
 	bl_idname = "ClSmokePanel";
-	bl_label = "OpenVDB cache";
+	bl_label = "OpenVDB smoke cache";
 	bl_space_type = "PROPERTIES";
 	bl_region_type = "WINDOW";
 	bl_context = "material";
@@ -260,6 +260,7 @@ class ClSmokePanel(bpy.types.Panel):
 		return context.scene.render.engine == config.dre_engineid and context.active_object.type == 'MESH';
 
 	def draw(self, context):
+		self.layout.row().label("SmokeCache node source VDB");
 		self.layout.row().prop(context.object.droplet,"vdbcache");
 		self.layout.row().prop(context.object.droplet,"vdbrho");
 		self.layout.row().prop(context.object.droplet,"vdbvel");
@@ -284,9 +285,6 @@ class ClParticleSystemPanel(bpy.types.Panel):
 
 	def draw(self, context):
 		context.particle_system.settings.droplet.draw(context,self.layout);
-
-#def TextureSelection(self, context):
-	#return [(m.name,m.name,m.name,"TEXTURE",x) for x, m in enumerate(bpy.data.images)];
 
 class ClLampProperties(bpy.types.PropertyGroup):
 	intensity = FloatProperty(name="Intensity",default=1.0,min=0.0);
