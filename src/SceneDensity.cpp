@@ -14,7 +14,7 @@
 
 namespace SceneData{
 
-PostFog::PostFog(Node::NodeTree *_pnt, openvdb::FloatGrid::Ptr _pdgrid) : BaseObject(_pnt), pdgrid(_pdgrid){
+PostFog::PostFog(Node::NodeTree *_pnt, openvdb::FloatGrid::Ptr _pdgrid) : BaseObject(_pnt,"PostFog"), pdgrid(_pdgrid){
 	//
 }
 

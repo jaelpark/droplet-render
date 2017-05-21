@@ -121,11 +121,16 @@ class ClGridPanel(bpy.types.Panel):
 class ClPerformanceProperties(bpy.types.PropertyGroup):
 	tilex = IntProperty(name="X",default=128,min=4,description="Horizontal tile size. By design all threads contribute to one tile simultaneously."); #step=2
 	tiley = IntProperty(name="Y",default=128,description="Vertical tile size. By design all threads contribute to one tile simultaneously.");
-	cache = EnumProperty(name="Cache mode",default="0",items=(
-		("0","Off","Caching disabled. Grid is always recreated."),
-		("R","RW","Read the grid from a cache. A new cache is created from the current scene if unavailable. Currently manual cache management is required since it's not possible to track all changes made to the scene (data, surface nodes, textures etc.)"),
-		("W","W","Write always and overwrite any previous caches. Manual overwriting is required when changes have been made.")));
-	cachename = StringProperty(name="Name",subtype="FILE_NAME",default="default",description="Cache file postfix in system temp location to avoid name conflicts.");
+	#deprecated ######
+	cache = BoolProperty(name="Enable",default=False,description="Enable the grid disk caching for individual objects. Until the object cache is reconstructed, the object is unaffected by any changes to it or its nodes.");
+	cachelayer = IntProperty(name="Layer",default=10,min=0,max=19,description="Objects in this scene layer are read from the cache, or written to it if the cache doesn't exist. Remove the object from this layer to reconstruct the cache.");
+	cachedir = StringProperty(name="Path",subtype="DIR_PATH",default="/tmp/",description="Location for the VDB cache.");
+	# cache = EnumProperty(name="Cache mode",default="0",items=(
+	# 	("0","Off","Caching disabled. Grid is always recreated."),
+	# 	("R","RW","Read the grid from a cache. A new cache is created from the current scene if unavailable. Currently manual cache management is required since it's not possible to track all changes made to the scene (data, surface nodes, textures etc.)"),
+	# 	("W","W","Write always and overwrite any previous caches. Manual overwriting is required when changes have been made.")));
+	# cachename = StringProperty(name="Name",subtype="FILE_NAME",default="default",description="Cache file postfix in system temp location to avoid name conflicts.");
+	##################
 	samples = IntProperty(name="Int.Samples",default=100,min=1,description="Maximum number of samples taken internally by the render engine before returning to update the render result. Higher number of internal samples results in slightly faster render times, but also increases the interval between visual updates.");
 
 	def draw(self, context, layout):
@@ -138,10 +143,14 @@ class ClPerformanceProperties(bpy.types.PropertyGroup):
 		c.row().prop(self,"samples");
 
 		c = s.column();
-		c.row().label("Caching:",icon="FILE");
-		c.row().prop(self,"cache",expand=True);
-		if self.cache != "0":
-			c.row().prop(self,"cachename");
+		c.row().label("Caching:");#,icon="FILE");
+		c.row().prop(self,"cache");
+		c.row().prop(self,"cachelayer");
+		c.row().label("Location:");
+		c.row().prop(self,"cachedir");
+		# c.row().prop(self,"cache",expand=True);
+		# if self.cache != "0":
+		# 	c.row().prop(self,"cachename");
 
 class ClPerformancePanel(bpy.types.Panel):
 	bl_idname = "ClPerformancePanel";
@@ -227,6 +236,11 @@ class ClObjectProperties(bpy.types.PropertyGroup):
 	holdout = BoolProperty(name="Holdout Mesh",default=False,description="Tell Droplet that this is a holdout mesh. Holdouts will occlude rays and create shadowing among clouds. This is also required when compositing with results from other render engines. Available only if \"occlusion geometry\" option is enabled and Droplet was built with Intel Embree support.");
 	#zonly = BoolProperty(name="Depth Only",default=False,description="Block only primary camera rays.");
 	nodetree = EnumProperty(name="Node group",items=NodeGroupSelection,description="Node group to be used for this object");
+	#cache
+	#vdbdir = StringProperty(name="Directory",subtype="DIR_PATH",default="/tmp/");
+	# vdbsdf = BoolProperty(name="Surface",default=False,description="Enable surface cache for this object. Changes to the scene or node setup won't affect the result, until the cache is recomputed.");
+	# vdbfog = BoolProperty(name="Fog",default=False,description="Enable fog cache for this object. Changes to the scene or node setup won't affect the result, until the cache is recomputed.");
+	#smoke
 	vdbcache = StringProperty(name="File",subtype="FILE_PATH",description="Path to the OpenVDB .vdb cache. Required if the node tree makes use of the SmokeCache. Can be set to point to the Blender produced .vdb cache of desired frame (smoke simulations), for example. Loaded density and/or velocity grids will be upsampled to match current grid resolution.");
 	vdbrho = StringProperty(name="Density",default="density",description="Density grid name. For Blender smoke caches, default value can be used. Leave empty if unavailable.");
 	vdbvel = StringProperty(name="Velocity",default="velocity",description="Velocity grid name. For Blender smoke caches, default value can be used. Leave empty if unavailable.");
@@ -248,6 +262,23 @@ class ClMaterialPanel(bpy.types.Panel):
 		if not context.object.droplet.holdout:
 			self.layout.row().prop(context.object.droplet,"nodetree");
 
+# class ClCachePanel(bpy.types.Panel):
+# 	bl_idname = "ClCachePanel";
+# 	bl_label = "OpenVDB disk cache";
+# 	bl_space_type = "PROPERTIES";
+# 	bl_region_type = "WINDOW";
+# 	bl_context = "material";
+#
+# 	@classmethod
+# 	def poll(cls, context):
+# 		return context.scene.render.engine == config.dre_engineid and context.active_object.type == 'MESH';
+#
+# 	def draw(self, context):
+# 		#TODO: cache entries should be grid resolution dependent
+# 		#self.layout.row().prop(context.object.droplet,"vdbdir");
+# 		self.layout.row().prop(context.object.droplet,"vdbsdf");
+# 		self.layout.row().prop(context.object.droplet,"vdbfog");
+
 class ClSmokePanel(bpy.types.Panel):
 	bl_idname = "ClSmokePanel";
 	bl_label = "OpenVDB smoke cache";
@@ -260,7 +291,7 @@ class ClSmokePanel(bpy.types.Panel):
 		return context.scene.render.engine == config.dre_engineid and context.active_object.type == 'MESH';
 
 	def draw(self, context):
-		self.layout.row().label("SmokeCache node source VDB");
+		self.layout.row().label("VDB source for the SmokeCache node");
 		self.layout.row().prop(context.object.droplet,"vdbcache");
 		self.layout.row().prop(context.object.droplet,"vdbrho");
 		self.layout.row().prop(context.object.droplet,"vdbvel");

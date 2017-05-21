@@ -250,9 +250,22 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 
 	Py_DECREF(pngn);
 
+	//////
+	//caching
+	PyObject *pyperf = PyObject_GetAttrString(pscene,"blcloudperf");
+	PyObject *pycache = PyObject_GetAttrString(pyperf,"cache");
+	bool cache = PyObject_IsTrue(pycache);
+	uint clayer = PyGetUint(pyperf,"cachelayer");
+
+	//const char *pcms = PyUnicode_AsUTF8(pycache);
+	//SCENE_CACHE_MODE cm = (pcms[0] == 'R'?SCENE_CACHE_READ:pcms[0] == 'W'?SCENE_CACHE_WRITE:SCENE_CACHE_DISABLED);
+
+	Py_DECREF(pycache);
+	Py_DECREF(pyperf);
+	/////
+
 	PyObject *pbmeshn = PyUnicode_FromString("bmesh");
 	PyObject *pbmesh = PyImport_Import(pbmeshn);
-
 	PyObject *pbmops = PyObject_GetAttrString(pbmesh,"ops");
 
 	PyObject *pyoat = PyObject_GetAttrString(pscene,"objects");
@@ -260,6 +273,9 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	uint objc = PyList_Size(pyobl);
 	for(uint i = 0; i < objc; ++i){
 		PyObject *pobj = PyList_GetItem(pyobl,i);
+
+		PyObject *pyname = PyObject_GetAttrString(pobj,"name");
+		const char *pname = PyUnicode_AsUTF8(pyname);
 
 		//check whether the object is on an active render layer
 		PyObject *pyrls = PyObject_GetAttrString(pobj,"layers");
@@ -281,16 +297,16 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 			PyObject *pst = PyObject_GetAttrString(pps,"settings"); //settings.droplet?
 			PyObject *psd = PyObject_GetAttrString(pst,"droplet");
 			PyObject *ppn = PyObject_GetAttrString(psd,"nodetree");
-			const char *pname = PyUnicode_AsUTF8(ppn);
+			const char *pnodename = PyUnicode_AsUTF8(ppn);
 
 			std::unordered_map<Py_hash_t, Node::NodeTree *>::const_iterator m = std::find_if(ntm.begin(),ntm.end(),[=](const std::unordered_map<Py_hash_t, Node::NodeTree *>::value_type &t)->bool{
-				return strcmp(t.second->name,pname) == 0;
+				return strcmp(t.second->name,pnodename) == 0;
 			});
 			if(m == ntm.end()){
-				DebugPrintf("Warning: invalid node tree %s. Skipping particle system (index=%u,%u).\n",pname,i,j);
+				DebugPrintf("Warning: invalid node tree %s. Skipping particle system (index=%u,%u).\n",pnodename,i,j);
 				continue;
 			}
-			SceneData::ParticleSystem *pprs = new SceneData::ParticleSystem(m->second); //TODO: reserve() the particle vector size
+			SceneData::ParticleSystem *pprs = new SceneData::ParticleSystem(m->second,pname); //TODO: reserve() the particle vector size
 
 			Py_DECREF(ppn);
 			Py_DECREF(psd);
@@ -371,17 +387,17 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 			PyObject *psd = PyObject_GetAttrString(pobj,"droplet");
 			PyObject *ppn = PyObject_GetAttrString(psd,"nodetree");
 			PyObject *pyholdout = PyObject_GetAttrString(psd,"holdout");
-			const char *pname = PyUnicode_AsUTF8(ppn);
+			const char *pnodename = PyUnicode_AsUTF8(ppn);
 			bool holdout = PyObject_IsTrue(pyholdout);
 
 			std::unordered_map<Py_hash_t, Node::NodeTree *>::const_iterator m = std::find_if(ntm.begin(),ntm.end(),[=](const std::unordered_map<Py_hash_t, Node::NodeTree *>::value_type &t)->bool{
-				return strcmp(t.second->name,pname) == 0;
+				return strcmp(t.second->name,pnodename) == 0;
 			});
 			if(m == ntm.end()){
-				DebugPrintf("Warning: invalid node tree %s. Skipping surface (index=%u).\n",pname,i);
+				DebugPrintf("Warning: invalid node tree %s. Skipping surface (index=%u).\n",pnodename,i);
 				continue;
 			}
-			SceneData::Surface *psobj = new SceneData::Surface(m->second,holdout);
+			SceneData::Surface *psobj = new SceneData::Surface(m->second,pname,holdout);
 
 			//check if SmokeCache node was used
 			for(uint j = 0; j < m->second->nodes1.size(); ++j){
@@ -390,8 +406,8 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 					PyObject *pyvdb = PyObject_GetAttrString(psd,"vdbcache");
 					PyObject *pyrho = PyObject_GetAttrString(psd,"vdbrho");
 					PyObject *pyvel = PyObject_GetAttrString(psd,"vdbvel");
-					SceneData::SmokeCache *pprs = new SceneData::SmokeCache(m->second,
-						PyUnicode_AsUTF8(pyvdb),PyUnicode_AsUTF8(pyrho), PyUnicode_AsUTF8(pyvel));
+					SceneData::SmokeCache *pprs = new SceneData::SmokeCache(m->second,pname,
+						PyUnicode_AsUTF8(pyvdb),PyUnicode_AsUTF8(pyrho),PyUnicode_AsUTF8(pyvel));
 					Py_DECREF(pyvdb);
 					Py_DECREF(pyrho);
 					Py_DECREF(pyvel);
@@ -473,6 +489,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 		}
 
 		Py_DECREF(ptype);
+		Py_DECREF(pyname);
 	}
 
 	Py_DECREF(pyoat);
@@ -506,17 +523,13 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	uint maxd = PyGetUint(pygrid,"maxdepth");
 	Py_DECREF(pygrid);
 
-	PyObject *pyperf = PyObject_GetAttrString(pscene,"blcloudperf");
+	/*PyObject *pyperf = PyObject_GetAttrString(pscene,"blcloudperf");
 	PyObject *pycache = PyObject_GetAttrString(pyperf,"cache");
 	const char *pcms = PyUnicode_AsUTF8(pycache);
 	SCENE_CACHE_MODE cm = (pcms[0] == 'R'?SCENE_CACHE_READ:pcms[0] == 'W'?SCENE_CACHE_WRITE:SCENE_CACHE_DISABLED);
-	/*if(cm != SCENE_CACHE_DISABLED){
-		//TODO: get cachename
-		//pass it somehow to threaded Scene() construction
-	}*/
 
 	Py_DECREF(pycache);
-	Py_DECREF(pyperf);
+	Py_DECREF(pyperf);*/
 
 	PyObject *pyworld = PyObject_GetAttrString(pscene,"world");
 	PyObject *pywsettings = PyObject_GetAttrString(pyworld,"droplet");
@@ -536,7 +549,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 		}
 
 		gpscene = new Scene(); //TODO: interface for blender status reporting
-		gpscene->Initialize(dsize,maxd,qband,cm,smask);
+		gpscene->Initialize(dsize,maxd,qband,smask);
 
 		gpkernel = new RenderKernel();
 		gpkernel->Initialize(gpscene,gpsceneocc,&sviewi,&sproji,ppf,scattevs,msigmas,msigmaa,tilex,tiley,w,h,0);

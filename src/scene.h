@@ -1,11 +1,11 @@
 #ifndef SCENE_H
 #define SCENE_H
 
-enum SCENE_CACHE_MODE{
+/*enum SCENE_CACHE_MODE{
 	SCENE_CACHE_DISABLED,
 	SCENE_CACHE_READ,
 	SCENE_CACHE_WRITE
-};
+};*/
 
 enum VOLUME_BUFFER{
 	VOLUME_BUFFER_SDF,
@@ -58,14 +58,15 @@ namespace SceneData{
 
 class BaseObject{
 public:
-	BaseObject(Node::NodeTree *);
+	BaseObject(Node::NodeTree *, const char *);
 	virtual ~BaseObject();
 	class Node::NodeTree *pnt;
+	const char *pname;
 };
 
 class ParticleSystem : public BaseObject{
 public:
-	ParticleSystem(Node::NodeTree *);
+	ParticleSystem(Node::NodeTree *, const char *);
 	~ParticleSystem();
 	static void DeleteAll();
 	std::vector<dfloat3> pl; //position
@@ -75,7 +76,7 @@ public:
 
 class SmokeCache : public BaseObject{
 public:
-	SmokeCache(Node::NodeTree *, const char *, const char *, const char *);
+	SmokeCache(Node::NodeTree *, const char *, const char *, const char *, const char *);
 	~SmokeCache();
 	static void DeleteAll();
 	const char *pvdb, *prho, *pvel;
@@ -84,7 +85,7 @@ public:
 
 class Surface : public BaseObject{
 public:
-	Surface(Node::NodeTree *, bool);
+	Surface(Node::NodeTree *, const char *, bool);
 	~Surface();
 	static void DeleteAll();
 	std::vector<dfloat3> vl;
@@ -147,7 +148,7 @@ class Scene{
 public:
 	Scene();
 	~Scene();
-	void Initialize(float, uint, float, SCENE_CACHE_MODE, uint);
+	void Initialize(float, uint, float, uint);
 	void Destroy();
 	float *pvol[VOLUME_BUFFER_COUNT];
 	uint lvoxc;

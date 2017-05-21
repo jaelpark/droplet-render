@@ -412,7 +412,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 				openvdb::tools::csgUnion(*pqsdf,*phgrid);
 			}
 
-			DebugPrintf("Completed surface calculations (%u/%u), VDB %f MB\n",i+1,SceneData::Surface::objs.size(),(float)ptgrid->memUsage()/1e6f);
+			DebugPrintf("Completed surface calculations (%s) (%u/%u), VDB %f MB\n",SceneData::Surface::objs[i]->pname,i+1,SceneData::Surface::objs.size(),(float)ptgrid->memUsage()/1e6f);
 			openvdb::tools::csgUnion(*pgrid[VOLUME_BUFFER_SDF],*ptgrid);
 		}
 	}
@@ -430,7 +430,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 			if(SceneData::SmokeCache::objs[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST)
 				fogppl.push_back(PostFogParams(SceneData::SmokeCache::objs[i],pdfn->pdgrid->deepCopy()));
 
-			DebugPrintf("Completed fog (smoke) calculations (%u/%u), VDB %f MB\n",i+1,SceneData::SmokeCache::objs.size(),(float)pdfn->pdgrid->memUsage()/1e6f);
+			DebugPrintf("Completed fog (smoke cache) calculations (%s) (%u/%u), VDB %f MB\n",SceneData::SmokeCache::objs[i]->pname,i+1,SceneData::SmokeCache::objs.size(),(float)pdfn->pdgrid->memUsage()/1e6f);
 			openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
 		}
 	}
@@ -444,7 +444,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 			if(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST)
 				fogppl.push_back(PostFogParams(SceneData::ParticleSystem::prss[i],pdfn->pdgrid->deepCopy()));
 
-			DebugPrintf("Completed fog (particles) calculations (%u/%u), VDB %f MB\n",i+1,SceneData::ParticleSystem::prss.size(),(float)pdfn->pdgrid->memUsage()/1e6f);
+			DebugPrintf("Completed fog (particles) calculations (%s) (%u/%u), VDB %f MB\n",SceneData::ParticleSystem::prss[i]->pname,i+1,SceneData::ParticleSystem::prss.size(),(float)pdfn->pdgrid->memUsage()/1e6f);
 			openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
 		}
 
@@ -607,16 +607,17 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 }
 
 namespace SceneData{
+#define STRDUP(s) strcpy(new char[strlen(s)+1],s)
 
-BaseObject::BaseObject(Node::NodeTree *_pnt) : pnt(_pnt){
-	//
+BaseObject::BaseObject(Node::NodeTree *_pnt, const char *_pname) : pnt(_pnt){
+	pname = STRDUP(_pname);
 }
 
 BaseObject::~BaseObject(){
-	//
+	delete []pname;
 }
 
-ParticleSystem::ParticleSystem(Node::NodeTree *_pnt) : BaseObject(_pnt){
+ParticleSystem::ParticleSystem(Node::NodeTree *_pnt, const char *pname) : BaseObject(_pnt,pname){
 	ParticleSystem::prss.push_back(this);
 }
 
@@ -632,13 +633,11 @@ void ParticleSystem::DeleteAll(){
 
 std::vector<ParticleSystem *> ParticleSystem::prss;
 
-SmokeCache::SmokeCache(Node::NodeTree *_pnt, const char *_pvdb, const char *_prho, const char *_pvel) : BaseObject(_pnt){
+SmokeCache::SmokeCache(Node::NodeTree *_pnt, const char *pname, const char *_pvdb, const char *_prho, const char *_pvel) : BaseObject(_pnt,pname){
 	SmokeCache::objs.push_back(this);
-#define STRDUP(s) strcpy(new char[strlen(s)+1],s)
 	pvdb = STRDUP(_pvdb);
 	prho = STRDUP(_prho);
 	pvel = STRDUP(_pvel);
-#undef STRDUP
 }
 
 SmokeCache::~SmokeCache(){
@@ -655,7 +654,7 @@ void SmokeCache::DeleteAll(){
 
 std::vector<SmokeCache *> SmokeCache::objs;
 
-Surface::Surface(Node::NodeTree *_pnt, bool _holdout) : BaseObject(_pnt), holdout(_holdout){
+Surface::Surface(Node::NodeTree *_pnt, const char *pname, bool _holdout) : BaseObject(_pnt,pname), holdout(_holdout){
 	Surface::objs.push_back(this);
 }
 
@@ -673,6 +672,8 @@ std::vector<Surface *> Surface::objs;
 
 }
 
+#undef STRDUP
+
 Scene::Scene(){
 	//
 }
@@ -681,7 +682,7 @@ Scene::~Scene(){
 	//
 }
 
-void Scene::Initialize(float s, uint maxd, float qb, SCENE_CACHE_MODE cm, uint smask){
+void Scene::Initialize(float s, uint maxd, float qb, uint smask){
 	openvdb::initialize();
 
 	const float lvc = 8.0f; //minimum number of voxels in an octree leaf
@@ -690,7 +691,9 @@ void Scene::Initialize(float s, uint maxd, float qb, SCENE_CACHE_MODE cm, uint s
 	openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT];// = {0};
 	FloatGridBoxSampler *psampler[VOLUME_BUFFER_COUNT];
 
-	char vdbn[256], binn[256];
+	S_Create(s,qb,lvc,bvc,maxd,pgrid,this);
+
+	/*char vdbn[256], binn[256];
 	snprintf(vdbn,sizeof(vdbn),"/tmp/droplet-%x.vdb",smask);
 	snprintf(binn,sizeof(binn),"/tmp/droplet-%x.bin",smask);
 	openvdb::io::File vdbc(vdbn);
@@ -746,7 +749,7 @@ void Scene::Initialize(float s, uint maxd, float qb, SCENE_CACHE_MODE cm, uint s
 
 			fclose(pf);
 		}
-	}
+	}*/
 
 	DebugPrintf("> Resampling volume data...\n");
 
