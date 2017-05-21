@@ -412,6 +412,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 				openvdb::tools::csgUnion(*pqsdf,*phgrid);
 			}
 
+			DebugPrintf("Completed surface calculations (%u/%u), VDB %f MB\n",i+1,SceneData::Surface::objs.size(),(float)ptgrid->memUsage()/1e6f);
 			openvdb::tools::csgUnion(*pgrid[VOLUME_BUFFER_SDF],*ptgrid);
 		}
 	}
@@ -428,6 +429,8 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 		if(pdfn->pdgrid->activeVoxelCount() > 0){
 			if(SceneData::SmokeCache::objs[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST)
 				fogppl.push_back(PostFogParams(SceneData::SmokeCache::objs[i],pdfn->pdgrid->deepCopy()));
+
+			DebugPrintf("Completed fog (smoke) calculations (%u/%u), VDB %f MB\n",i+1,SceneData::SmokeCache::objs.size(),(float)pdfn->pdgrid->memUsage()/1e6f);
 			openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
 		}
 	}
@@ -440,6 +443,8 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 		if(pdfn->pdgrid->activeVoxelCount() > 0){
 			if(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST)
 				fogppl.push_back(PostFogParams(SceneData::ParticleSystem::prss[i],pdfn->pdgrid->deepCopy()));
+
+			DebugPrintf("Completed fog (particles) calculations (%u/%u), VDB %f MB\n",i+1,SceneData::ParticleSystem::prss.size(),(float)pdfn->pdgrid->memUsage()/1e6f);
 			openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
 		}
 
@@ -464,6 +469,8 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 			fobj.pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOGPOST);
 
 			Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(fobj.pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOGPOST]);
+
+			DebugPrintf("Completed post processing step (%u/%u), VDB %f MB\n",i+1,fogppl.size(),(float)pdfn->pdgrid->memUsage()/1e6f);
 			switch(dynamic_cast<Node::OutputNode*>(fobj.pnt->GetRoot())->opch){
 			default:
 			case 'M':
@@ -553,8 +560,9 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, openvdb
 		mlevel = maxd;
 	}
 
-	DebugPrintf("Center = (%.3f, %.3f, %.3f)\nExtents = (%.3f, %.3f, %.3f) (max w = %.3f)\n",
-		scaabb.sc.x,scaabb.sc.y,scaabb.sc.z,scaabb.se.x,scaabb.se.y,scaabb.se.z,d);
+	float msdf = (float)pgrid[VOLUME_BUFFER_SDF]->memUsage()/1e6f, mfog = (float)pgrid[VOLUME_BUFFER_FOG]->memUsage()/1e6f;
+	DebugPrintf("Center = (%.3f, %.3f, %.3f)\nExtents = (%.3f, %.3f, %.3f) (max w = %.3f)\nVDB total = %f MB\n  SDF = %f MB\n  Fog = %f MB\n",
+		scaabb.sc.x,scaabb.sc.y,scaabb.sc.z,scaabb.se.x,scaabb.se.y,scaabb.se.z,d,msdf+mfog,msdf,mfog);
 
 	float y = powf(2.0f,(float)mlevel);
 	float r = y*lvc; //sparse voxel resolution
@@ -798,9 +806,9 @@ void Scene::Initialize(float s, uint maxd, float qb, SCENE_CACHE_MODE cm, uint s
 	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i)
 		delete psampler[i];
 
-	uint sdfs = leafx[VOLUME_BUFFER_SDF]*lvoxc3*sizeof(float);
-	uint fogs = leafx[VOLUME_BUFFER_FOG]*lvoxc3*sizeof(float);
-	DebugPrintf("Volume size = %f MB\n  SDF = %f MB\n  Fog = %f MB\n",(float)(sdfs+fogs)/1e6f,(float)sdfs/1e6f,(float)fogs/1e6f);
+	float msdf = (float)(leafx[VOLUME_BUFFER_SDF]*lvoxc3*sizeof(float))/1e6f;
+	float mfog = (float)(leafx[VOLUME_BUFFER_FOG]*lvoxc3*sizeof(float))/1e6f;
+	DebugPrintf("Volume size = %f MB\n  SDF = %f MB\n  Fog = %f MB\n",msdf+mfog,msdf,mfog);
 	//
 }
 

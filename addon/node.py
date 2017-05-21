@@ -163,7 +163,7 @@ class ClNodeParticleInput(bpy.types.Node):
 	bl_label = "ParticleSystem.SphereRaster";
 
 	def init(self, context):
-		self.inputs.new("ClNodeFloatSocket","Size");
+		self.inputs.new("ClNodeFloatSocket","Radius");
 		self.inputs.new("ClNodeFloatSocket","Cutoff");
 		self.outputs.new("ClNodeFogSocket","Fog");
 
