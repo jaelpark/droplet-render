@@ -24,6 +24,10 @@ BaseNode::~BaseNode(){
 	//
 }
 
+void BaseNode::Clear(){
+	//
+}
+
 //HACK: prevent double listing caused by multiple inheritance
 #define MIHACK(l) for(uint i = 0; i < l.size(); ++i)\
 	if(l[i] == this)\
@@ -227,6 +231,10 @@ void BaseFogNode::Evaluate(const void *pp){
 	//
 }
 
+void BaseFogNode::Clear(){
+	//
+}
+
 BaseSurfaceNode::BaseSurfaceNode(uint level, NodeTree *pnt) : BaseNode(level,pnt){
 	//printf("BaseSurfaceNode()\n");
 	MIHACK(pnt->nodes1);
@@ -234,6 +242,10 @@ BaseSurfaceNode::BaseSurfaceNode(uint level, NodeTree *pnt) : BaseNode(level,pnt
 }
 
 BaseSurfaceNode::~BaseSurfaceNode(){
+	//
+}
+
+void BaseSurfaceNode::Clear(){
 	//
 }
 
@@ -252,6 +264,10 @@ BaseVectorFieldNode::~BaseVectorFieldNode(){
 }
 
 void BaseVectorFieldNode::Evaluate(const void *pp){
+	//
+}
+
+void BaseVectorFieldNode::Clear(){
 	//
 }
 
@@ -410,15 +426,20 @@ NodeTree::~NodeTree(){
 }
 
 void NodeTree::EvaluateNodes0(const void *pp, uint max, uint mask){
-	for(uint i = 0; i < nodes0.size() && nodes0[i]->level >= max; ++i)
+	for(uint i = 0, n = nodes0.size(); i < n && nodes0[i]->level >= max; ++i)
 		if(nodes0[i]->emask & mask)
 			nodes0[i]->Evaluate(pp);
 }
 
 void NodeTree::EvaluateNodes1(const void *pp, uint max, uint mask){
-	for(uint i = 0; i < nodes1.size() && nodes1[i]->level >= max; ++i)
+	for(uint i = 0, n = nodes1.size(); i < n && nodes1[i]->level >= max; ++i)
 		if(nodes1[i]->emask & mask)
 			nodes1[i]->Evaluate(pp);
+	//clear all the grids except for the root and the first level nodes connected to it (at the back of the list)
+	if(nodes1.size() > 1){
+		for(uint i = 0; nodes1[i]->level > 1; ++i)
+			nodes1[i]->Clear();
+	}
 }
 
 void NodeTree::ApplyBranchMask(){

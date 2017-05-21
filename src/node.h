@@ -28,6 +28,7 @@ protected:
 public:
 	virtual ~BaseNode();
 	virtual void Evaluate(const void *) = 0;
+	virtual void Clear();
 	BaseNode *pnodes[12];
 	NodeTree *pntree; //can be null
 	uint indices[12]; //index to the input node (pnodes[x]) output socket, per-socket-type basis
@@ -165,9 +166,8 @@ protected:
 	virtual ~BaseFogNode();
 public:
 	virtual void Evaluate(const void *);
+	virtual void Clear();
 	static BaseFogNode * Create(uint, NodeTree *);
-	static void SortNodes();
-	static void EvaluateAll(const void *, uint);
 };
 
 class BaseSurfaceNode : public virtual BaseNode{
@@ -177,6 +177,7 @@ protected:
 	virtual ~BaseSurfaceNode();
 public:
 	virtual void Evaluate(const void *);
+	virtual void Clear();
 	static BaseSurfaceNode * Create(uint, NodeTree *);
 };
 
@@ -186,6 +187,7 @@ protected:
 	virtual ~BaseVectorFieldNode();
 public:
 	virtual void Evaluate(const void *);
+	virtual void Clear();
 	static BaseVectorFieldNode * Create(uint, NodeTree *);
 };
 
@@ -273,6 +275,7 @@ protected:
 	~IFieldInput();
 public:
 	virtual void Evaluate(const void *) = 0;
+	virtual void Clear() = 0;
 	static IFieldInput * Create(uint, NodeTree *);
 	enum INPUT{
 		INPUT_RASTERIZATIONRES,
@@ -292,6 +295,7 @@ protected:
 	~ISmokeCache();
 public:
 	virtual void Evaluate(const void *) = 0;
+	virtual void Clear() = 0;
 	static ISmokeCache * Create(uint, NodeTree *);
 	enum OUTPUT_FOG{
 		OUTPUT_FOG_DENSITY,
@@ -383,6 +387,7 @@ public:
 	~NodeTree();
 	void EvaluateNodes0(const void *, uint, uint);
 	void EvaluateNodes1(const void *, uint, uint);
+	//void Cleanup();
 	void ApplyBranchMask();
 	void SortNodes();
 	BaseNode * GetRoot() const;

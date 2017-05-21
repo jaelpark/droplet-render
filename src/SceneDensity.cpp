@@ -35,6 +35,13 @@ BaseFogNode1::~BaseFogNode1(){
 	//
 }
 
+void BaseFogNode1::Clear(){
+	//printf("clear() fog %f MB\n",(float)pdgrid->memUsage()/1e6f);
+	//default BaseFog clear()
+	//Classes inheriting both fog and field will have to implement this separately.
+	pdgrid->clear();
+}
+
 BaseFogNode * BaseFogNode::Create(uint level, NodeTree *pnt){
 	return new BaseFogNode1(level,pnt);
 }
@@ -46,6 +53,11 @@ BaseVectorFieldNode1::BaseVectorFieldNode1(uint _level, NodeTree *pnt) : BaseVec
 
 BaseVectorFieldNode1::~BaseVectorFieldNode1(){
 	//
+}
+
+void BaseVectorFieldNode1::Clear(){
+	//default VectorField clear()
+	pvgrid->clear();
 }
 
 BaseVectorFieldNode * BaseVectorFieldNode::Create(uint level, NodeTree *pnt){
@@ -246,6 +258,11 @@ void FieldInput::Evaluate(const void *pp){
 		pvgrid->tree().prune();
 }
 
+void FieldInput::Clear(){
+	pdgrid->clear();
+	pvgrid->clear();
+}
+
 IFieldInput * IFieldInput::Create(uint level, NodeTree *pnt){
 	return new FieldInput(level,pnt);
 }
@@ -303,6 +320,11 @@ void SmokeCache::Evaluate(const void *pp){
 	}catch(const openvdb::IoError &e){
 		DebugPrintf("SmokeCache: %s\n",e.what());
 	}
+}
+
+void SmokeCache::Clear(){
+	pdgrid->clear();
+	pvgrid->clear();
 }
 
 ISmokeCache * ISmokeCache::Create(uint level, NodeTree *pnt){

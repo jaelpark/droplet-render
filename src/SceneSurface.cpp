@@ -12,13 +12,18 @@
 namespace Node{
 
 BaseSurfaceNode1::BaseSurfaceNode1(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt), BaseNode(_level,pnt){
-	//
 	pbgrid = openvdb::FloatGrid::create();
 	pbgrid->setGridClass(openvdb::GRID_FOG_VOLUME);
 }
 
 BaseSurfaceNode1::~BaseSurfaceNode1(){
 	//
+}
+
+void BaseSurfaceNode1::Clear(){
+	//printf("clear() surface %f MB\n",(float)pbgrid->memUsage()/1e6f);
+	//default Surface clear()
+	pbgrid->clear();
 }
 
 openvdb::FloatGrid::Ptr BaseSurfaceNode1::ComputeLevelSet(openvdb::math::Transform::Ptr pgridtr, float ebvc, float ibvc) const{

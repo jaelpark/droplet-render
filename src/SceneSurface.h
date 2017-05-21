@@ -8,6 +8,7 @@ class BaseSurfaceNode1 : public virtual BaseSurfaceNode{
 public:
 	BaseSurfaceNode1(uint, NodeTree *);
 	~BaseSurfaceNode1();
+	virtual void Clear();
 	openvdb::FloatGrid::Ptr ComputeLevelSet(openvdb::math::Transform::Ptr, float, float) const;
 	openvdb::FloatGrid::Ptr pbgrid; //billowing grid
 	std::vector<openvdb::Vec3s> vl;
