@@ -414,23 +414,19 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 		openvdb::FloatGrid::Ptr ptgrid, phgrid;
 
 		char fn[256];
-		snprintf(fn,sizeof(fn),"%s/droplet-surface-cache-%s.vdb",pcachedir,SceneData::Surface::objs[i]->pname); //TODO: grid resolution
-		printf("%s\n",fn);
+		snprintf(fn,sizeof(fn),"%s/droplet-surface-cache-%s.vdb",pcachedir,SceneData::Surface::objs[i]->pname);
 		openvdb::io::File vdbc(fn);
 		try{
 			if(!cache || !(SceneData::Surface::objs[i]->flags & SCENEOBJ_CACHED))
 				throw(0);
 			vdbc.open(false);
-			{
-				if(qfield){
-					phgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(S_ReadGridExcept(vdbc,"query"));
-					openvdb::tools::csgUnion(*pqsdf,*phgrid);
-				}
 
-				ptgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(S_ReadGridExcept(vdbc,"surface"));
+			ptgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(S_ReadGridExcept(vdbc,"surface"));
+			if(qfield)
+				phgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(S_ReadGridExcept(vdbc,"surface.query"));
 
-				DebugPrintf("Read cached surface (%s) (%u/%u), VDB %f MB\n",SceneData::Surface::objs[i]->pname,i+1,SceneData::Surface::objs.size(),(float)ptgrid->memUsage()/1e6f);
-			}
+			DebugPrintf("Read cached surface (%s) (%u/%u), VDB %f MB\n",SceneData::Surface::objs[i]->pname,i+1,SceneData::Surface::objs.size(),(float)ptgrid->memUsage()/1e6f);
+
 			vdbc.close();
 
 		}catch(...){
@@ -438,31 +434,32 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 			SceneData::Surface::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_SURFACE);
 
 			Node::BaseSurfaceNode1 *pdsn = dynamic_cast<Node::BaseSurfaceNode1*>(SceneData::Surface::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_SURFACE]);
-			if(pdsn->vl.size() > 0){
+
+			if(pdsn->vl.size() == 0)
+				continue;
+
+			if(qfield)
+				phgrid = pdsn->ComputeLevelSet(pqsdftr,bvc,2.0f);
+
+			ptgrid = pdsn->ComputeLevelSet(pgridtr,bvc,bvc);
+
+			if(cache){
+				ptgrid->setName("surface");
+				openvdb::GridCPtrVec gvec{ptgrid};
 				if(qfield){
-					phgrid = pdsn->ComputeLevelSet(pqsdftr,bvc,2.0f);
-					openvdb::tools::csgUnion(*pqsdf,*phgrid);
+					phgrid->setName("surface.query");
+					gvec.push_back(phgrid);
 				}
-
-				ptgrid = pdsn->ComputeLevelSet(pgridtr,bvc,bvc);
-
-				if(cache){
-					ptgrid->setName("surface");
-					openvdb::GridCPtrVec gvec{ptgrid};
-					if(qfield){
-						phgrid->setName("query");
-						gvec.push_back(phgrid);
-					}
-
-					vdbc.write(gvec);
-					vdbc.close();
-				}
-
-				DebugPrintf("Completed surface calculations (%s) (%u/%u), VDB %f MB\n",SceneData::Surface::objs[i]->pname,i+1,SceneData::Surface::objs.size(),(float)ptgrid->memUsage()/1e6f);
+				vdbc.write(gvec);
+				vdbc.close();
 			}
+
+			DebugPrintf("Completed surface calculations (%s) (%u/%u), VDB %f MB\n",SceneData::Surface::objs[i]->pname,i+1,SceneData::Surface::objs.size(),(float)ptgrid->memUsage()/1e6f);
 		}
 
 		openvdb::tools::csgUnion(*pgrid[VOLUME_BUFFER_SDF],*ptgrid);
+		if(qfield)
+			openvdb::tools::csgUnion(*pqsdf,*phgrid);
 	}
 
 	openvdb::Vec3SGrid::Ptr ptvel = openvdb::Vec3SGrid::create();
@@ -479,14 +476,13 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 			if(!cache || !(SceneData::SmokeCache::objs[i]->flags & SCENEOBJ_CACHED))
 				throw(0);
 			vdbc.open(false);
-			{
-				pdgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(S_ReadGridExcept(vdbc,"fog"));
 
-				if(SceneData::SmokeCache::objs[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST)
-					fogppl.push_back(PostFogParams(SceneData::SmokeCache::objs[i],pdgrid->deepCopy(),SceneData::SmokeCache::objs[i]->flags));
+			pdgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(S_ReadGridExcept(vdbc,"fog"));
+			if(SceneData::SmokeCache::objs[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST)
+				fogppl.push_back(PostFogParams(SceneData::SmokeCache::objs[i],pdgrid->deepCopy(),SceneData::SmokeCache::objs[i]->flags));
 
-				DebugPrintf("Read cached fog (smoke cache) (%s) (%u/%u), VDB %f MB\n",SceneData::SmokeCache::objs[i]->pname,i+1,SceneData::SmokeCache::objs.size(),(float)pdgrid->memUsage()/1e6f);
-			}
+			DebugPrintf("Read cached fog (smoke cache) (%s) (%u/%u), VDB %f MB\n",SceneData::SmokeCache::objs[i]->pname,i+1,SceneData::SmokeCache::objs.size(),(float)pdgrid->memUsage()/1e6f);
+
 			vdbc.close();
 
 		}catch(...){
@@ -494,19 +490,17 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 			SceneData::SmokeCache::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOG);
 
 			pdgrid = dynamic_cast<Node::BaseFogNode1*>(SceneData::SmokeCache::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOG])->pdgrid;
-			if(pdgrid->activeVoxelCount() > 0){
-				if(SceneData::SmokeCache::objs[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST)
-					fogppl.push_back(PostFogParams(SceneData::SmokeCache::objs[i],pdgrid->deepCopy(),0));
+			if(SceneData::SmokeCache::objs[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST)
+				fogppl.push_back(PostFogParams(SceneData::SmokeCache::objs[i],pdgrid->deepCopy(),0));
 
-				if(cache){
-					pdgrid->setName("fog");
-					openvdb::GridCPtrVec gvec{pdgrid};
-					vdbc.write(gvec);
-					vdbc.close();
-				}
-
-				DebugPrintf("Completed fog (smoke cache) calculations (%s) (%u/%u), VDB %f MB\n",SceneData::SmokeCache::objs[i]->pname,i+1,SceneData::SmokeCache::objs.size(),(float)pdgrid->memUsage()/1e6f);
+			if(cache){
+				pdgrid->setName("fog");
+				openvdb::GridCPtrVec gvec{pdgrid};
+				vdbc.write(gvec);
+				vdbc.close();
 			}
+
+			DebugPrintf("Completed fog (smoke cache) calculations (%s) (%u/%u), VDB %f MB\n",SceneData::SmokeCache::objs[i]->pname,i+1,SceneData::SmokeCache::objs.size(),(float)pdgrid->memUsage()/1e6f);
 		}
 
 		openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdgrid);
@@ -523,15 +517,14 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 			if(!cache || !(SceneData::ParticleSystem::prss[i]->flags & SCENEOBJ_CACHED))
 				throw(0);
 			vdbc.open(false);
-			{
-				pdgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(S_ReadGridExcept(vdbc,"fog"));
-				pvgrid = openvdb::gridPtrCast<openvdb::Vec3SGrid>(S_ReadGridExcept(vdbc,"vel"));
 
-				if(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST)
-					fogppl.push_back(PostFogParams(SceneData::ParticleSystem::prss[i],pdgrid->deepCopy(),SceneData::ParticleSystem::prss[i]->flags));
+			pdgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(S_ReadGridExcept(vdbc,"fog"));
+			pvgrid = openvdb::gridPtrCast<openvdb::Vec3SGrid>(S_ReadGridExcept(vdbc,"vel"));
+			if(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST)
+				fogppl.push_back(PostFogParams(SceneData::ParticleSystem::prss[i],pdgrid->deepCopy(),SceneData::ParticleSystem::prss[i]->flags));
 
-				DebugPrintf("Read cached fog (particles) (%s) (%u/%u), VDB %f MB\n",SceneData::ParticleSystem::prss[i]->pname,i+1,SceneData::ParticleSystem::prss.size(),(float)pdgrid->memUsage()/1e6f);
-			}
+			DebugPrintf("Read cached fog (particles) (%s) (%u/%u), VDB %f MB\n",SceneData::ParticleSystem::prss[i]->pname,i+1,SceneData::ParticleSystem::prss.size(),(float)pdgrid->memUsage()/1e6f);
+
 			vdbc.close();
 
 		}catch(...){
@@ -540,20 +533,18 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 
 			pdgrid = dynamic_cast<Node::BaseFogNode1*>(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOG])->pdgrid;
 			pvgrid = dynamic_cast<Node::BaseVectorFieldNode1*>(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_VECTOR])->pvgrid;
-			if(pdgrid->activeVoxelCount() > 0 || pvgrid->activeVoxelCount() > 0){ //TODO: <-- remove?
-				if(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST)
-					fogppl.push_back(PostFogParams(SceneData::ParticleSystem::prss[i],pdgrid->deepCopy(),0));
+			if(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST)
+				fogppl.push_back(PostFogParams(SceneData::ParticleSystem::prss[i],pdgrid->deepCopy(),0));
 
-				if(cache){
-					pdgrid->setName("fog");
-					pvgrid->setName("vel");
-					openvdb::GridCPtrVec gvec{pdgrid,pvgrid};
-					vdbc.write(gvec);
-					vdbc.close();
-				}
-
-				DebugPrintf("Completed fog (particles) calculations (%s) (%u/%u), VDB %f MB\n",SceneData::ParticleSystem::prss[i]->pname,i+1,SceneData::ParticleSystem::prss.size(),(float)pdgrid->memUsage()/1e6f);
+			if(cache){
+				pdgrid->setName("fog");
+				pvgrid->setName("vel");
+				openvdb::GridCPtrVec gvec{pdgrid,pvgrid};
+				vdbc.write(gvec);
+				vdbc.close();
 			}
+
+			DebugPrintf("Completed fog (particles) calculations (%s) (%u/%u), VDB %f MB\n",SceneData::ParticleSystem::prss[i]->pname,i+1,SceneData::ParticleSystem::prss.size(),(float)pdgrid->memUsage()/1e6f);
 		}
 
 		openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdgrid);
