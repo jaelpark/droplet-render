@@ -250,13 +250,17 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 
 	Py_DECREF(pngn);
 
-	//////
 	//caching
 	PyObject *pyperf = PyObject_GetAttrString(pscene,"blcloudperf");
 	PyObject *pycache = PyObject_GetAttrString(pyperf,"cache");
+	PyObject *pycachedir = PyObject_GetAttrString(pyperf,"cachedir");
+
 	bool cache = PyObject_IsTrue(pycache);
 	uint clayer = PyGetUint(pyperf,"cachelayer");
-	
+	static char cachedir[256];
+	strncpy(cachedir,PyUnicode_AsUTF8(pycachedir),sizeof(cachedir));
+
+	Py_DECREF(pycachedir);
 	Py_DECREF(pycache);
 	Py_DECREF(pyperf);
 	/////
@@ -548,7 +552,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 		}
 
 		gpscene = new Scene(); //TODO: interface for blender status reporting
-		gpscene->Initialize(dsize,maxd,qband,smask,cache);
+		gpscene->Initialize(dsize,maxd,qband,smask,cache,cachedir);
 
 		gpkernel = new RenderKernel();
 		gpkernel->Initialize(gpscene,gpsceneocc,&sviewi,&sproji,ppf,scattevs,msigmas,msigmaa,tilex,tiley,w,h,0);

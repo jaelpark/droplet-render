@@ -368,13 +368,14 @@ static openvdb::GridBase::Ptr S_ReadGridExcept(openvdb::io::File &vdbc, const ch
 	return pgridb;
 }
 
-using PostFogParams = std::tuple<SceneData::BaseObject *, openvdb::FloatGrid::Ptr>;
+using PostFogParams = std::tuple<SceneData::BaseObject *, openvdb::FloatGrid::Ptr, uint>;
 enum PFP{
 	PFP_OBJECT,
-	PFP_INPUTGRID
+	PFP_INPUTGRID,
+	PFP_FLAGS
 };
 
-static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool cache, openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT], Scene *pscene){
+static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool cache, const char *pcachedir, openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT], Scene *pscene){
 	openvdb::math::Transform::Ptr pgridtr = openvdb::math::Transform::createLinearTransform(s);
 
 	//Find if SceneInfo's distance or gradient output was used anywhere in the node trees and automatically determine if a query field should be constructed.
@@ -413,7 +414,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 		openvdb::FloatGrid::Ptr ptgrid, phgrid;
 
 		char fn[256];
-		snprintf(fn,sizeof(fn),"/tmp/droplet-surface-cache-%s.vdb",SceneData::Surface::objs[i]->pname); //TODO: grid resolution
+		snprintf(fn,sizeof(fn),"%s/droplet-surface-cache-%s.vdb",pcachedir,SceneData::Surface::objs[i]->pname); //TODO: grid resolution
 		openvdb::io::File vdbc(fn);
 		try{
 			if(!cache || !(SceneData::Surface::objs[i]->flags & SCENEOBJ_CACHED))
@@ -431,7 +432,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 				openvdb::tools::csgUnion(*pgrid[VOLUME_BUFFER_SDF],*ptgrid);
 			}
 			vdbc.close();
-			//
+
 		}catch(...){
 			Node::InputNodeParams snp(SceneData::Surface::objs[i],pgridtr,0,0,0,0,0);
 			SceneData::Surface::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_SURFACE);
@@ -471,7 +472,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 		openvdb::FloatGrid::Ptr pdgrid;
 
 		char fn[256];
-		snprintf(fn,sizeof(fn),"/tmp/droplet-smoke-cache-%s.vdb",SceneData::SmokeCache::objs[i]->pname);
+		snprintf(fn,sizeof(fn),"%s/droplet-smoke-cache-%s.vdb",pcachedir,SceneData::SmokeCache::objs[i]->pname);
 		openvdb::io::File vdbc(fn);
 		try{
 			if(!cache || !(SceneData::SmokeCache::objs[i]->flags & SCENEOBJ_CACHED))
@@ -481,7 +482,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 				pdgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(S_ReadGridExcept(vdbc,"fog"));
 
 				if(SceneData::SmokeCache::objs[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST)
-					fogppl.push_back(PostFogParams(SceneData::SmokeCache::objs[i],pdgrid->deepCopy()));
+					fogppl.push_back(PostFogParams(SceneData::SmokeCache::objs[i],pdgrid->deepCopy(),SceneData::SmokeCache::objs[i]->flags));
 
 				DebugPrintf("Read cached fog (smoke cache) (%s) (%u/%u), VDB %f MB\n",SceneData::SmokeCache::objs[i]->pname,i+1,SceneData::SmokeCache::objs.size(),(float)pdgrid->memUsage()/1e6f);
 				openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdgrid);
@@ -495,7 +496,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 			pdgrid = dynamic_cast<Node::BaseFogNode1*>(SceneData::SmokeCache::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOG])->pdgrid;
 			if(pdgrid->activeVoxelCount() > 0){
 				if(SceneData::SmokeCache::objs[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST)
-					fogppl.push_back(PostFogParams(SceneData::SmokeCache::objs[i],pdgrid->deepCopy()));
+					fogppl.push_back(PostFogParams(SceneData::SmokeCache::objs[i],pdgrid->deepCopy(),0));
 
 				if(cache){
 					pdgrid->setName("fog");
@@ -515,7 +516,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 		openvdb::Vec3SGrid::Ptr pvgrid;
 
 		char fn[256];
-		snprintf(fn,sizeof(fn),"/tmp/droplet-fog-cache-%s.vdb",SceneData::ParticleSystem::prss[i]->pname);
+		snprintf(fn,sizeof(fn),"%s/droplet-fog-cache-%s.vdb",pcachedir,SceneData::ParticleSystem::prss[i]->pname);
 		openvdb::io::File vdbc(fn);
 		try{
 			if(!cache || !(SceneData::ParticleSystem::prss[i]->flags & SCENEOBJ_CACHED))
@@ -526,7 +527,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 				pvgrid = openvdb::gridPtrCast<openvdb::Vec3SGrid>(S_ReadGridExcept(vdbc,"vel"));
 
 				if(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST)
-					fogppl.push_back(PostFogParams(SceneData::ParticleSystem::prss[i],pdgrid->deepCopy()));
+					fogppl.push_back(PostFogParams(SceneData::ParticleSystem::prss[i],pdgrid->deepCopy(),SceneData::SmokeCache::objs[i]->flags));
 
 				DebugPrintf("Read cached fog (particles) (%s) (%u/%u), VDB %f MB\n",SceneData::ParticleSystem::prss[i]->pname,i+1,SceneData::ParticleSystem::prss.size(),(float)pdgrid->memUsage()/1e6f);
 				openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdgrid);
@@ -542,7 +543,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 			pvgrid = dynamic_cast<Node::BaseVectorFieldNode1*>(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_VECTOR])->pvgrid;
 			if(pdgrid->activeVoxelCount() > 0 || pvgrid->activeVoxelCount() > 0){ //TODO: <-- remove?
 				if(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST)
-					fogppl.push_back(PostFogParams(SceneData::ParticleSystem::prss[i],pdgrid->deepCopy()));
+					fogppl.push_back(PostFogParams(SceneData::ParticleSystem::prss[i],pdgrid->deepCopy(),0));
 
 				if(cache){
 					pdgrid->setName("fog");
@@ -570,8 +571,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 		FloatGridBoxSampler *pdsampler = new FloatGridBoxSampler(*pgrid[VOLUME_BUFFER_SDF]);
 
 		for(uint i = 0; i < fogppl.size(); ++i){
-			//TODO: determine cache flag by the status of objects involved in this pp step: mark "dirty" if any of the grids involved was not read from the cache.
-			SceneData::PostFog fobj(std::get<PFP_OBJECT>(fogppl[i])->pnt,std::get<PFP_INPUTGRID>(fogppl[i]),0);
+			SceneData::PostFog fobj(std::get<PFP_OBJECT>(fogppl[i])->pnt,std::get<PFP_INPUTGRID>(fogppl[i]),std::get<PFP_FLAGS>(fogppl[i]));
 			Node::InputNodeParams snp(&fobj,pgridtr,pdsampler,pqsampler,ppsampler,pvsampler,pgsampler);
 			fobj.pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOGPOST);
 
@@ -789,7 +789,7 @@ Scene::~Scene(){
 	//
 }
 
-void Scene::Initialize(float s, uint maxd, float qb, uint smask, bool cache){
+void Scene::Initialize(float s, uint maxd, float qb, uint smask, bool cache, const char *pcachedir){
 	openvdb::initialize();
 
 	const float lvc = 8.0f; //minimum number of voxels in an octree leaf
@@ -798,7 +798,7 @@ void Scene::Initialize(float s, uint maxd, float qb, uint smask, bool cache){
 	openvdb::FloatGrid::Ptr pgrid[VOLUME_BUFFER_COUNT];// = {0};
 	FloatGridBoxSampler *psampler[VOLUME_BUFFER_COUNT];
 
-	S_Create(s,qb,lvc,bvc,maxd,cache,pgrid,this);
+	S_Create(s,qb,lvc,bvc,maxd,cache,pcachedir,pgrid,this);
 
 	DebugPrintf("> Resampling volume data...\n");
 

@@ -123,7 +123,7 @@ class ClPerformanceProperties(bpy.types.PropertyGroup):
 	tiley = IntProperty(name="Y",default=128,description="Vertical tile size. By design all threads contribute to one tile simultaneously.");
 	#deprecated ######
 	cache = BoolProperty(name="Enable",default=False,description="Enable the grid disk caching for individual objects. Until the object cache is reconstructed, the object is unaffected by any changes to it or its nodes.");
-	cachelayer = IntProperty(name="Layer",default=10,min=0,max=19,description="Objects in this scene layer are read from the cache, or written to it if the cache doesn't exist. Remove the object from this layer to reconstruct the cache.");
+	cachelayer = IntProperty(name="Layer",default=10,min=0,max=19,description="Objects in this scene layer are read from the cache, or written to it if the cache doesn't exist. Remove the object from this layer to reconstruct the cache, or manually delete the cache files.");
 	cachedir = StringProperty(name="Path",subtype="DIR_PATH",default="/tmp/",description="Location for the VDB cache.");
 	# cache = EnumProperty(name="Cache mode",default="0",items=(
 	# 	("0","Off","Caching disabled. Grid is always recreated."),
