@@ -415,6 +415,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 
 		char fn[256];
 		snprintf(fn,sizeof(fn),"%s/droplet-surface-cache-%s.vdb",pcachedir,SceneData::Surface::objs[i]->pname); //TODO: grid resolution
+		printf("%s\n",fn);
 		openvdb::io::File vdbc(fn);
 		try{
 			if(!cache || !(SceneData::Surface::objs[i]->flags & SCENEOBJ_CACHED))
@@ -429,7 +430,6 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 				ptgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(S_ReadGridExcept(vdbc,"surface"));
 
 				DebugPrintf("Read cached surface (%s) (%u/%u), VDB %f MB\n",SceneData::Surface::objs[i]->pname,i+1,SceneData::Surface::objs.size(),(float)ptgrid->memUsage()/1e6f);
-				openvdb::tools::csgUnion(*pgrid[VOLUME_BUFFER_SDF],*ptgrid);
 			}
 			vdbc.close();
 
@@ -459,9 +459,10 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 				}
 
 				DebugPrintf("Completed surface calculations (%s) (%u/%u), VDB %f MB\n",SceneData::Surface::objs[i]->pname,i+1,SceneData::Surface::objs.size(),(float)ptgrid->memUsage()/1e6f);
-				openvdb::tools::csgUnion(*pgrid[VOLUME_BUFFER_SDF],*ptgrid);
 			}
 		}
+
+		openvdb::tools::csgUnion(*pgrid[VOLUME_BUFFER_SDF],*ptgrid);
 	}
 
 	openvdb::Vec3SGrid::Ptr ptvel = openvdb::Vec3SGrid::create();
@@ -485,7 +486,6 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 					fogppl.push_back(PostFogParams(SceneData::SmokeCache::objs[i],pdgrid->deepCopy(),SceneData::SmokeCache::objs[i]->flags));
 
 				DebugPrintf("Read cached fog (smoke cache) (%s) (%u/%u), VDB %f MB\n",SceneData::SmokeCache::objs[i]->pname,i+1,SceneData::SmokeCache::objs.size(),(float)pdgrid->memUsage()/1e6f);
-				openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdgrid);
 			}
 			vdbc.close();
 
@@ -506,9 +506,10 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 				}
 
 				DebugPrintf("Completed fog (smoke cache) calculations (%s) (%u/%u), VDB %f MB\n",SceneData::SmokeCache::objs[i]->pname,i+1,SceneData::SmokeCache::objs.size(),(float)pdgrid->memUsage()/1e6f);
-				openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdgrid);
 			}
 		}
+
+		openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdgrid);
 	}
 
 	for(uint i = 0; i < SceneData::ParticleSystem::prss.size(); ++i){
@@ -527,11 +528,9 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 				pvgrid = openvdb::gridPtrCast<openvdb::Vec3SGrid>(S_ReadGridExcept(vdbc,"vel"));
 
 				if(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST)
-					fogppl.push_back(PostFogParams(SceneData::ParticleSystem::prss[i],pdgrid->deepCopy(),SceneData::SmokeCache::objs[i]->flags));
+					fogppl.push_back(PostFogParams(SceneData::ParticleSystem::prss[i],pdgrid->deepCopy(),SceneData::ParticleSystem::prss[i]->flags));
 
 				DebugPrintf("Read cached fog (particles) (%s) (%u/%u), VDB %f MB\n",SceneData::ParticleSystem::prss[i]->pname,i+1,SceneData::ParticleSystem::prss.size(),(float)pdgrid->memUsage()/1e6f);
-				openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdgrid);
-				openvdb::tools::compSum(*ptvel,*pvgrid);
 			}
 			vdbc.close();
 
@@ -554,55 +553,80 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 				}
 
 				DebugPrintf("Completed fog (particles) calculations (%s) (%u/%u), VDB %f MB\n",SceneData::ParticleSystem::prss[i]->pname,i+1,SceneData::ParticleSystem::prss.size(),(float)pdgrid->memUsage()/1e6f);
-				openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdgrid);
-				openvdb::tools::compSum(*ptvel,*pvgrid);
 			}
 		}
+
+		openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdgrid);
+		openvdb::tools::compSum(*ptvel,*pvgrid);
 	}
 
 	//fog post-processor
 	if(fogppl.size() > 0){
 		openvdb::Vec3SGrid::Ptr pgrad = openvdb::tools::gradient(*pqsdf);
-
-		FloatGridBoxSampler *pqsampler = new FloatGridBoxSampler(*pqsdf);
-		FloatGridBoxSampler *ppsampler = new FloatGridBoxSampler(*pgrid[VOLUME_BUFFER_FOG]);
-		VectorGridBoxSampler *pvsampler = new VectorGridBoxSampler(*ptvel);
-		VectorGridBoxSampler *pgsampler = new VectorGridBoxSampler(*pgrad);
-		FloatGridBoxSampler *pdsampler = new FloatGridBoxSampler(*pgrid[VOLUME_BUFFER_SDF]);
+		openvdb::FloatGrid::Ptr pdgrid;
 
 		for(uint i = 0; i < fogppl.size(); ++i){
-			SceneData::PostFog fobj(std::get<PFP_OBJECT>(fogppl[i])->pnt,std::get<PFP_INPUTGRID>(fogppl[i]),std::get<PFP_FLAGS>(fogppl[i]));
-			Node::InputNodeParams snp(&fobj,pgridtr,pdsampler,pqsampler,ppsampler,pvsampler,pgsampler);
-			fobj.pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOGPOST);
+			char fn[256];
+			snprintf(fn,sizeof(fn),"%s/droplet-post-cache-%s.vdb",pcachedir,std::get<PFP_OBJECT>(fogppl[i])->pname);
+			openvdb::io::File vdbc(fn);
+			try{
+				if(!cache || !(SceneData::ParticleSystem::prss[i]->flags & SCENEOBJ_CACHED))
+					throw(0);
+				vdbc.open(false);
 
-			Node::BaseFogNode1 *pdfn = dynamic_cast<Node::BaseFogNode1*>(fobj.pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOGPOST]);
+				pdgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(S_ReadGridExcept(vdbc,"fog"));
+				DebugPrintf("Read post processing results (%s) (%u/%u), VDB %f MB\n",std::get<PFP_OBJECT>(fogppl[i])->pname,i+1,fogppl.size(),(float)pdgrid->memUsage()/1e6f);
 
-			DebugPrintf("Completed post processing step (%u/%u), VDB %f MB\n",i+1,fogppl.size(),(float)pdfn->pdgrid->memUsage()/1e6f);
-			switch(dynamic_cast<Node::OutputNode*>(fobj.pnt->GetRoot())->opch){
+				vdbc.close();
+
+			}catch(...){
+				FloatGridBoxSampler *pqsampler = new FloatGridBoxSampler(*pqsdf);
+				FloatGridBoxSampler *ppsampler = new FloatGridBoxSampler(*pgrid[VOLUME_BUFFER_FOG]);
+				VectorGridBoxSampler *pvsampler = new VectorGridBoxSampler(*ptvel);
+				VectorGridBoxSampler *pgsampler = new VectorGridBoxSampler(*pgrad);
+				FloatGridBoxSampler *pdsampler = new FloatGridBoxSampler(*pgrid[VOLUME_BUFFER_SDF]);
+
+				SceneData::PostFog fobj(std::get<PFP_OBJECT>(fogppl[i])->pnt,std::get<PFP_INPUTGRID>(fogppl[i]),std::get<PFP_FLAGS>(fogppl[i]));
+				Node::InputNodeParams snp(&fobj,pgridtr,pdsampler,pqsampler,ppsampler,pvsampler,pgsampler);
+				fobj.pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOGPOST);
+
+				delete pqsampler;
+				delete ppsampler;
+				delete pvsampler;
+				delete pgsampler;
+				delete pdsampler;
+
+				pdgrid = dynamic_cast<Node::BaseFogNode1*>(fobj.pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOGPOST])->pdgrid;
+
+				if(cache){
+					pdgrid->setName("fog");
+					openvdb::GridCPtrVec gvec{pdgrid};
+					vdbc.write(gvec);
+					vdbc.close();
+				}
+
+				DebugPrintf("Completed post processing step (%s) (%u/%u), VDB %f MB\n",std::get<PFP_OBJECT>(fogppl[i])->pname,i+1,fogppl.size(),(float)pdgrid->memUsage()/1e6f);
+			}
+
+			switch(dynamic_cast<Node::OutputNode*>(std::get<PFP_OBJECT>(fogppl[i])->pnt->GetRoot())->opch){
 			default:
 			case 'M':
-				openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
+				openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdgrid);
 				break;
 			case 'm':
-				openvdb::tools::compMin(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
+				openvdb::tools::compMin(*pgrid[VOLUME_BUFFER_FOG],*pdgrid);
 				break;
 			case '+':
-				openvdb::tools::compSum(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
+				openvdb::tools::compSum(*pgrid[VOLUME_BUFFER_FOG],*pdgrid);
 				break;
 			case '*':
-				openvdb::tools::compMul(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
+				openvdb::tools::compMul(*pgrid[VOLUME_BUFFER_FOG],*pdgrid);
 				break;
 			case '=':
-				openvdb::tools::compReplace(*pgrid[VOLUME_BUFFER_FOG],*pdfn->pdgrid);
+				openvdb::tools::compReplace(*pgrid[VOLUME_BUFFER_FOG],*pdgrid);
 				break;
 			}
 		}
-
-		delete pqsampler;
-		delete ppsampler;
-		delete pvsampler;
-		delete pgsampler;
-		delete pdsampler;
 	}
 
 	/*
