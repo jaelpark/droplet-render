@@ -300,7 +300,12 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 			PyObject *pst = PyObject_GetAttrString(pps,"settings"); //settings.droplet?
 			PyObject *psd = PyObject_GetAttrString(pst,"droplet");
 			PyObject *ppn = PyObject_GetAttrString(psd,"nodetree");
+			PyObject *pyname1 = PyObject_GetAttrString(pps,"name");
 			const char *pnodename = PyUnicode_AsUTF8(ppn);
+			const char *psystname = PyUnicode_AsUTF8(pyname1);
+
+			char name[256];
+			snprintf(name,sizeof(name),"%s.%s",pname,psystname);
 
 			std::unordered_map<Py_hash_t, Node::NodeTree *>::const_iterator m = std::find_if(ntm.begin(),ntm.end(),[=](const std::unordered_map<Py_hash_t, Node::NodeTree *>::value_type &t)->bool{
 				return strcmp(t.second->name,pnodename) == 0;
@@ -309,8 +314,9 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 				DebugPrintf("Warning: invalid node tree %s. Skipping particle system (index=%u,%u).\n",pnodename,i,j);
 				continue;
 			}
-			SceneData::ParticleSystem *pprs = new SceneData::ParticleSystem(m->second,pname,flags); //TODO: reserve() the particle vector size
+			SceneData::ParticleSystem *pprs = new SceneData::ParticleSystem(m->second,name,flags); //TODO: reserve() the particle vector size
 
+			Py_DECREF(pyname1);
 			Py_DECREF(ppn);
 			Py_DECREF(psd);
 			Py_DECREF(pst);
