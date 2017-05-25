@@ -179,7 +179,7 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 
 	//finally, sample with given density and position
 	sample();*/
-	
+
 	sfloat1 msigmaa = sfloat1(pkernel->msigmaa);
 	sfloat1 msigmas = sfloat1(pkernel->msigmas);
 	sfloat1 msigmae = msigmaa+msigmas;
@@ -414,11 +414,6 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 			sfloat4 cm = SampleVolume(rc,lrd,sfloat1::AndNot(rm,sint1::trueI()),pkernel,prs,ls,r+1,1)*HG_Phase(sfloat4::dot3(lrd,rd))*msigmas
 				/(msigmae*L_Pdf(lrd,la));*/
 #endif
-			/*sfloat1 hm = sfloat1::Greater(cm.v[0],sfloat1(1e5f)); //temp hack to deal with some bug, will be properly fixed later
-			cm.v[0] = sfloat1::Or(sfloat1::And(hm,c.v[0]/(float)(s+1)),sfloat1::AndNot(hm,cm.v[0]));
-			cm.v[1] = sfloat1::Or(sfloat1::And(hm,c.v[1]/(float)(s+1)),sfloat1::AndNot(hm,cm.v[1]));
-			cm.v[2] = sfloat1::Or(sfloat1::And(hm,c.v[2]/(float)(s+1)),sfloat1::AndNot(hm,cm.v[2]));*/
-
 			cl.v[0] += sfloat1::Or(sfloat1::And(rm,lc.v[0]),sfloat1::AndNot(rm,cl1.v[0]));
 			cl.v[1] += sfloat1::Or(sfloat1::And(rm,lc.v[1]),sfloat1::AndNot(rm,cl1.v[1]));
 			cl.v[2] += sfloat1::Or(sfloat1::And(rm,lc.v[2]),sfloat1::AndNot(rm,cl1.v[2]));
