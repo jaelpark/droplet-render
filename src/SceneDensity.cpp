@@ -38,7 +38,7 @@ BaseFogNode1::~BaseFogNode1(){
 void BaseFogNode1::Clear(){
 	//printf("clear() fog %f MB\n",(float)pdgrid->memUsage()/1e6f);
 	//default BaseFog clear()
-	//Classes inheriting both fog and field will have to implement this separately.
+	//Classes inheriting both fog and vector field will have to implement this separately.
 	pdgrid->clear();
 }
 
@@ -67,8 +67,7 @@ BaseVectorFieldNode * BaseVectorFieldNode::Create(uint level, NodeTree *pnt){
 class ParticleInputList{
 public:
 	typedef openvdb::Vec3R PosType;
-	ParticleInputList(SceneData::ParticleSystem *_pps, float _rscale) : pps(_pps), rscale(_rscale){}//, rscale(1.0f), vscale(1.0f){}
-	//ParticleInputList(openvdb::Real rscale1 = 1.0f, openvdb::Real vscale1 = 1.0f) : rscale(rscale1), vscale(vscale1){}
+	ParticleInputList(SceneData::ParticleSystem *_pps, float _rscale) : pps(_pps), rscale(_rscale){}
 
 	size_t size() const{
 		return pps->pl.size();
@@ -285,9 +284,6 @@ void SmokeCache::Evaluate(const void *pp){
 		return;
 	}
 
-	//Experimental Blender VDB smoke cache support. As long as there's no decent way to get cache name references with Python, this won't work.
-	//TODO: might want to get the velocity grid as well
-	//openvdb::io::File vdbc("/tmp/blendcache_droplet_random1/fog_000070_00.vdb");
 	openvdb::io::File vdbc(psmc->pvdb);
 	try{
 		vdbc.open(false);
@@ -460,7 +456,7 @@ void Advection::Evaluate(const void *pp){
 
 			float th = pthrs->locr(indices[INPUT_THRESHOLD]);
 			if(f > th){
-				std::get<1>(fgt).setValue(c,0.0f); //std::get<1>(fgt).setValue(c,f);
+				std::get<1>(fgt).setValue(c,0.0f);
 				continue;
 			}
 
@@ -470,7 +466,6 @@ void Advection::Evaluate(const void *pp){
 			uint ic = piters->locr(indices[INPUT_ITERATIONS]);
 			for(uint i = 0; i < ic; ++i){
 				p = pdn->locr(indices[INPUT_DENSITY]);
-				//TODO: do actual integration instead of sampling the last value?
 				if(p > th && flags & 1<<BOOL_BREAK_ITERATION)
 					break;
 				dfloat3 vs = pvn->locr(indices[INPUT_VELOCITY]);
@@ -489,7 +484,6 @@ void Advection::Evaluate(const void *pp){
 				pntree->EvaluateNodes0(&np1,level+1,emask);
 			}
 
-			//std::get<1>(fgt).setValue(c,f+p);
 			std::get<1>(fgt).setValue(c,p);
 		}
 	});
