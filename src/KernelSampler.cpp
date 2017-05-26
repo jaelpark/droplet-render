@@ -726,4 +726,29 @@ sfloat4 SunLight::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2
 	return b1*st*cph+b2*st*sph+lrd*ct;
 }
 
+EnvironmentLight::EnvironmentLight(){
+	//
+}
+
+EnvironmentLight::~EnvironmentLight(){
+	//
+}
+
+void EnvironmentLight::Initialize(uint w, uint h, const dfloat4 *ptex){
+	//
+}
+
+sfloat4 EnvironmentLight::Evaluate(const sfloat4 &rd) const{
+	return sfloat4(0.0f);
+}
+
+sfloat1 EnvironmentLight::Pdf(const sfloat4 &iv) const{
+	return sfloat1(1.0f/(2.0f*SM_PI));
+}
+
+sfloat4 EnvironmentLight::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2) const{
+	//unused
+	return sfloat4(0.0f);
+}
+
 }

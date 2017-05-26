@@ -200,22 +200,24 @@ class ClPassPanel(bpy.types.Panel):
 		self.layout.row().prop(context.scene.render.layers.active,"use_pass_diffuse");
 		self.layout.row().prop(context.scene.render.layers.active,"use_pass_environment");
 
-#def TextureSelection(self, context):
-	#return [(m.name,m.name,m.name,"TEXTURE",x) for x, m in enumerate(bpy.data.images)];
+def TextureSelection(self, context):
+	return [("!droplet.nan","( Not Used )","Map disabled","X",0)]\
+		+list(filter(lambda t: t[0] != "Render Result",[(m.name,m.name,m.name,"TEXTURE",x) for x, m in enumerate(bpy.data.images)]));
 
-class ClCompositeProperties(bpy.types.PropertyGroup):
+class ClEnvironmentProperties(bpy.types.PropertyGroup):
 	# depthcomp = BoolProperty(name="Depth compositing",default=False,description="Use external depth texture for compositing.");
 	# shadowpass = BoolProperty(name="Composite shadow pass",default=False,description="Create an additional shadow mask texture which may then be used to naturally cloud shadow scenes rendered with other render engines. During the shadow pass all the light sources are sampled from the positions reconstructed from the external depth. Same number of samples is used as for the primary cloud render. However, this phase tends to be much faster due to transparency-only rendering, ie. no scattering events are simulated.");
 	# depthtex = EnumProperty(name="Depth texture",items=TextureSelection,description="Depth texture to be used for render time compositing. This could be the depth output from the Cycles render engine. Note that render resolution and camera properties (clipping planes, fov) should be unaltered between render engines for correct results.");
-	# #still need the deep shadow map
+	envtex = EnumProperty(name="Environment Map",items=TextureSelection,description="Equirectangularly mapped environment texture to be used. The map is converted to spherical harmonics representation. The image should be low-frequency and should not include the sun.");
 	occlusion = BoolProperty(name="Occlusion Geometry",default=False,description="Enable holdout geometry occlusion testing. Every object marked as \"holdout\" will occlude rays creating shadows and lightshafts. Having occlusion geometry also enables compositing with other render engines. Holdout object itself is not visible. This feature may have a significant performance impact, and requires Droplet to be built with Intel Embree.");
 
 	def draw(self, context, layout):
+		layout.row().prop(self,"envtex");
 		layout.row().prop(self,"occlusion");
 
-class ClCompositePanel(bpy.types.Panel):
-	bl_idname = "ClCompositePanel";
-	bl_label = "Environment Compositor"
+class ClEnvironmentPanel(bpy.types.Panel):
+	bl_idname = "ClEnvironmentPanel";
+	bl_label = "Environment"
 	bl_space_type = "PROPERTIES";
 	bl_region_type = "WINDOW";
 	bl_context = "world";

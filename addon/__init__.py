@@ -197,7 +197,7 @@ def register():
 	bpy.types.Scene.blcloudsampling = PointerProperty(type=panel.ClSamplingProperties);
 	bpy.types.Scene.blcloudgrid = PointerProperty(type=panel.ClGridProperties);
 	bpy.types.Scene.blcloudperf = PointerProperty(type=panel.ClPerformanceProperties);
-	bpy.types.World.droplet = PointerProperty(type=panel.ClCompositeProperties);
+	bpy.types.World.droplet = PointerProperty(type=panel.ClEnvironmentProperties);
 
 	bpy.types.Object.droplet = PointerProperty(type=panel.ClObjectProperties);
 	bpy.types.ParticleSettings.droplet = PointerProperty(type=panel.ClParticleSystemProperties);

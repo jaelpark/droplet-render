@@ -532,20 +532,19 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	uint maxd = PyGetUint(pygrid,"maxdepth");
 	Py_DECREF(pygrid);
 
-	/*PyObject *pyperf = PyObject_GetAttrString(pscene,"blcloudperf");
-	PyObject *pycache = PyObject_GetAttrString(pyperf,"cache");
-	const char *pcms = PyUnicode_AsUTF8(pycache);
-	SCENE_CACHE_MODE cm = (pcms[0] == 'R'?SCENE_CACHE_READ:pcms[0] == 'W'?SCENE_CACHE_WRITE:SCENE_CACHE_DISABLED);
-
-	Py_DECREF(pycache);
-	Py_DECREF(pyperf);*/
-
 	PyObject *pyworld = PyObject_GetAttrString(pscene,"world");
 	PyObject *pywsettings = PyObject_GetAttrString(pyworld,"droplet");
 	PyObject *pyocclusion = PyObject_GetAttrString(pywsettings,"occlusion");
 	bool occlusion = PyObject_IsTrue(pyocclusion);
-
 	Py_DECREF(pyocclusion);
+
+	PyObject *pyenvtex = PyObject_GetAttrString(pywsettings,"envtex");
+	const char *penvtex = PyUnicode_AsUTF8(pyenvtex);
+	if(strcmp(penvtex,"!droplet.nan") != 0){
+		//
+	}
+	Py_DECREF(pyenvtex);
+
 	Py_DECREF(pywsettings);
 	Py_DECREF(pyworld);
 
@@ -557,7 +556,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 			gpsceneocc->Initialize();
 		}
 
-		gpscene = new Scene(); //TODO: interface for blender status reporting
+		gpscene = new Scene(); //TODO: interface for blender status reporting (get status with QueryResult)
 		gpscene->Initialize(dsize,maxd,qband,smask,cache,cachedir);
 
 		gpkernel = new RenderKernel();
@@ -620,7 +619,7 @@ static PyObject * DRE_EndRender(PyObject *pself, PyObject *pargs){
 
 static PyObject * DRE_QueryStatus(PyObject *pself, PyObject *pargs){
 	//
-	return Py_BuildValue("i",gstate);
+	return Py_BuildValue("i",gstate); //TODO: return tuple, state and status code
 }
 
 static PyObject * DRE_QueryResult(PyObject *pself, PyObject *pargs){
