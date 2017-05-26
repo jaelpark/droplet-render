@@ -5,13 +5,14 @@
 
 namespace KernelSampler{
 class PhaseFunction;
+class BaseEnv;
 }
 
 class RenderKernel{
 public:
 	RenderKernel();
 	~RenderKernel();
-	bool Initialize(const class Scene *, const class SceneOcclusion *, const dmatrix44 *, const dmatrix44 *, KernelSampler::PhaseFunction *, uint, float, float, uint, uint, uint, uint, uint);
+	bool Initialize(const class Scene *, const class SceneOcclusion *, const dmatrix44 *, const dmatrix44 *, KernelSampler::PhaseFunction *, KernelSampler::BaseEnv *, uint, float, float, uint, uint, uint, uint, uint);
 	void Render(uint, uint, uint, uint, uint);
 	void Destroy();
 	//
@@ -26,6 +27,7 @@ public:
 	const class SceneOcclusion *psceneocc;
 	struct ArHosekSkyModelState *pskyms;
 	KernelSampler::PhaseFunction *ppf;
+	KernelSampler::BaseEnv *penv;
 	dmatrix44 viewi;
 	dmatrix44 proji;
 	//

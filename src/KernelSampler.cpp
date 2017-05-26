@@ -664,6 +664,7 @@ sfloat4 MiePhase::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2
 	sincos_ps(th,&st.v,&ct.v);
 	sfloat1 sph, cph;
 	sincos_ps(ph.v,&sph.v,&cph.v);
+
 	return b1*st*cph+b2*st*sph+iv*ct;
 }
 
@@ -723,27 +724,86 @@ sfloat4 SunLight::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2
 	SamplingBasis(lrd,&b1,&b2);
 	sfloat1 sph, cph;
 	sincos_ps(ph.v,&sph.v,&cph.v);
+
 	return b1*st*cph+b2*st*sph+lrd*ct;
 }
 
-EnvLight::EnvLight(){
+BaseEnv::BaseEnv(){
 	//
 }
 
-EnvLight::~EnvLight(){
+BaseEnv::~BaseEnv(){
 	//
 }
 
-void EnvLight::Initialize(uint w, uint h, const dfloat4 *ptex){
+NullEnv::NullEnv(){
 	//
-	printf("envt: %u, %u, (%f,%f,%f,%f)\n",w,h,ptex[0].x,ptex[0].y,ptex[0].z,ptex[0].w);
 }
 
-sfloat4 EnvLight::Evaluate(const sfloat4 &rd) const{
+NullEnv::~NullEnv(){
+	//
+}
+
+sfloat4 NullEnv::Evaluate(const sfloat4 &rd) const{
 	return sfloat4(0.0f);
 }
 
-EnvLight EnvLight::genv;
-//float * EnvLight::ptexels = 0;
+NullEnv NullEnv::nenv;
+
+MapEnv::MapEnv(){
+	//
+}
+
+MapEnv::~MapEnv(){
+	//
+}
+
+dfloat4 * MapEnv::Initialize(uint w, uint h){
+	ptex = new dfloat4[w*h];
+	this->w = w;
+	this->h = h;
+	return ptex;
+}
+
+sfloat4 MapEnv::Evaluate(const sfloat4 &rd) const{
+	sfloat1 tha = sfloat1::acos(-rd.v[2])/SM_PI;
+	sfloat1 thb = sfloat1((float)h*tha);
+	sfloat1 thc = sfloat1::floor(thb);
+	thc = sfloat1::min(thc,(float)(h-1));
+	sfloat1 tht = thb-thc;
+	dfloatN thX = dfloatN(thc);
+
+	sfloat1 pha = 0.5+sfloat1::atan2(rd.v[1],-rd.v[0])/sfloat1(2.0f*SM_PI);
+	sfloat1 phb = sfloat1((float)w*pha);
+	sfloat1 phc = sfloat1::floor(phb);
+	phc = sfloat1::min(phc,(float)(w-1));
+	sfloat1 pht = phb-phc;
+	dfloatN phX = dfloatN(phc);
+
+	sfloat4 ce;
+	for(uint i = 0; i < 3; ++i){
+		dfloatN CA, CB, DA, DB;
+		for(uint j = 0; j < BLCLOUD_VSIZE; ++j){
+			CA.v[j] = ptex[(uint)(w*thX.v[j]+phX.v[j])][i];
+			CB.v[j] = ptex[(uint)(w*(thX.v[j]+1)+phX.v[j])][i];
+			DA.v[j] = ptex[(uint)(w*thX.v[j]+phX.v[j]+1)][i];
+			DB.v[j] = ptex[(uint)(w*(thX.v[j]+1)+phX.v[j]+1)][i];
+		}
+		sfloat1 ca = sfloat1::load(&CA);
+		sfloat1 cb = sfloat1::load(&CB);
+		sfloat1 da = sfloat1::load(&DA);
+		sfloat1 db = sfloat1::load(&DB);
+		ce.v[i] = sfloat1::lerp(sfloat1::lerp(ca,cb,tht),sfloat1::lerp(da,db,tht),pht);
+	}
+	ce.v[3] = sfloat1::one();
+
+	return ce;
+}
+
+void MapEnv::Destroy(){
+	delete []ptex;
+}
+
+MapEnv MapEnv::genv;
 
 }

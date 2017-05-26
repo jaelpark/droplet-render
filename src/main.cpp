@@ -19,7 +19,7 @@ static SceneOcclusion *gpsceneocc = 0;
 static enum ENGINE_STATE{
 	ENGINE_STATE_READY,
 	ENGINE_STATE_PROCESSING
-} gstate = ENGINE_STATE_READY; //for asynchronous Python-scripting, to prevent locking up the Blender interface
+} gstate = ENGINE_STATE_READY; //for asynchronous Python-scripting, to prevent locking up Blender's interface
 
 #ifndef __unix__
 #define strcasecmp stricmp
@@ -512,6 +512,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	PyObject *pypf = PyObject_GetAttrString(pysampling,"phasef");
 	const char *pypfs = PyUnicode_AsUTF8(pypf);
 	KernelSampler::PhaseFunction *ppf;
+
 	switch(pypfs[0]){
 	case 'H':
 		ppf = &KernelSampler::HGPhase::ghg;
@@ -537,11 +538,10 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	bool occlusion = PyObject_IsTrue(pyocclusion);
 	Py_DECREF(pyocclusion);
 
-	static dfloat4 *penvt = 0;
-	uint envr[2] = {0,0};
-
 	PyObject *pyenvtex = PyObject_GetAttrString(pywsettings,"envtex");
 	const char *penvtex = PyUnicode_AsUTF8(pyenvtex);
+	KernelSampler::BaseEnv *penv = &KernelSampler::NullEnv::nenv;
+
 	if(strcmp(penvtex,"(droplet.nan)") != 0){
 		PyObject *pyimages = PyObject_GetAttrString(pdata,"images");
 		PyObject *pytex = PyObject_GetItem(pyimages,pyenvtex);
@@ -550,10 +550,12 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 			PyObject *pyindex[2] = {Py_BuildValue("i",0),Py_BuildValue("i",1)};
 			PyObject *pyres[2] = {PyObject_GetItem(pysize,pyindex[0]),PyObject_GetItem(pysize,pyindex[1])};
 
-			envr[0] = PyLong_AsLong(pyres[0]);
-			envr[1] = PyLong_AsLong(pyres[1]);
-			penvt = new dfloat4[envr[0]*envr[1]];
-			DebugPrintf("Using environment map %s (%u x %u texels)\n",penvtex,envr[0],envr[1]);
+			uint x = PyLong_AsLong(pyres[0]);
+			uint y = PyLong_AsLong(pyres[1]);
+			penv = &KernelSampler::MapEnv::genv;
+			dfloat4 *penvt = KernelSampler::MapEnv::genv.Initialize(x,y);
+
+			DebugPrintf("Using environment map %s (%u x %u texels)\n",penvtex,x,y);
 
 			for(uint i = 0; i < 2; ++i){
 				Py_DECREF(pyres[i]);
@@ -567,13 +569,15 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 			uint px = 0;
 			for(PyObject *pni = PyIter_Next(ppi); pni; Py_DecRef(pni), pni = PyIter_Next(ppi), ++px)
 				((float*)penvt)[px] = PyFloat_AsDouble(pni);
-
 			Py_DECREF(ppi);
 			Py_DECREF(ppixels);
-			Py_DECREF(pytex);
 		}
+
+		Py_DECREF(pytex);
 		Py_DECREF(pyimages);
+
 	}
+
 	Py_DECREF(pyenvtex);
 
 	Py_DECREF(pywsettings);
@@ -587,17 +591,11 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 			gpsceneocc->Initialize();
 		}
 
-		if(penvt){
-			KernelSampler::EnvLight::genv.Initialize(envr[0],envr[1],penvt);
-			delete []penvt;
-			penvt = 0;
-		}
-
 		gpscene = new Scene(); //TODO: interface for blender status reporting (get status with QueryResult)
 		gpscene->Initialize(dsize,maxd,qband,smask,cache,cachedir);
 
 		gpkernel = new RenderKernel();
-		gpkernel->Initialize(gpscene,gpsceneocc,&sviewi,&sproji,ppf,scattevs,msigmas,msigmaa,tilex,tiley,w,h,0);
+		gpkernel->Initialize(gpscene,gpsceneocc,&sviewi,&sproji,ppf,penv,scattevs,msigmas,msigmaa,tilex,tiley,w,h,0);
 
 		SceneData::SmokeCache::DeleteAll();
 		SceneData::ParticleSystem::DeleteAll();
@@ -633,6 +631,10 @@ static PyObject * DRE_Render(PyObject *pself, PyObject *pargs){
 
 static PyObject * DRE_EndRender(PyObject *pself, PyObject *pargs){
 	KernelSampler::BaseLight::DeleteAll();
+
+	KernelSampler::MapEnv *penv = dynamic_cast<KernelSampler::MapEnv*>(gpkernel->penv);
+	if(penv)
+		penv->Destroy();
 
 	gpkernel->Destroy();
 	delete gpkernel;

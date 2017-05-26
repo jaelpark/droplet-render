@@ -136,6 +136,9 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 	cl = sfloat4::zero();
 	cs = sfloat4::zero();
 
+	//cs = pkernel->penv->Evaluate(rd)*(float)samples;
+	//return ctt;
+
 #ifdef USE_EMBREE
 	sfloat1 maxd = sfloat1(MAX_OCCLUSION_DIST);
 	sint1 mo = pkernel->psceneocc?
@@ -315,6 +318,7 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 			for(uint i = 0, n = KernelSampler::BaseLight::lights.size(); i < n; ++i)
 				lc += KernelSampler::BaseLight::lights[i]->Evaluate(rd);
 
+#ifdef USE_ARHOSEK_SKY
 			//skylighting
 			sfloat1 rdz = rd.v[2];
 			sfloat1 sth = sfloat1::sqrt(1.0f-rd.v[2]*rd.v[2]);
@@ -346,9 +350,13 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 				ca.v[i] *= pkernel->pskyms->radiances[i];
 				ca.v[i] = 1e-3f*sfloat1::pow(ca.v[i],2.2f); //convert to linear and adjust exposure
 			}
+#else
+			le = pkernel->penv->Evaluate(rd);
+#endif
 
 			lc.v[3] = sfloat1::one(); //alpha doesn't matter when r > 0
 			le.v[3] = lc.v[3];
+
 		}else{
 			lc.v[3] = sfloat1::AndNot(rm,sfloat1::one()); //alpha = 1 when scattering
 			le.v[3] = lc.v[3];
@@ -515,8 +523,9 @@ RenderKernel::~RenderKernel(){
 	//
 }
 
-bool RenderKernel::Initialize(const Scene *pscene, const SceneOcclusion *psceneocc, const dmatrix44 *pviewi, const dmatrix44 *pproji, KernelSampler::PhaseFunction *ppf, uint scattevs,
-	float msigmas, float msigmaa, uint tilex, uint tiley, uint w, uint h, uint flags){
+bool RenderKernel::Initialize(const Scene *pscene, const SceneOcclusion *psceneocc, const dmatrix44 *pviewi, const dmatrix44 *pproji,
+	 KernelSampler::PhaseFunction *ppf, KernelSampler::BaseEnv *penv,
+	 uint scattevs, float msigmas, float msigmaa, uint tilex, uint tiley, uint w, uint h, uint flags){
 	for(uint i = 0; i < BUFFER_COUNT; ++i)
 		if(!(phb[i] = (dfloat4*)_mm_malloc(tilex*tiley*16,16)))
 			return false;
@@ -536,6 +545,7 @@ bool RenderKernel::Initialize(const Scene *pscene, const SceneOcclusion *psceneo
 	skydir = dynamic_cast<KernelSampler::SunLight*>(KernelSampler::BaseLight::lights[0])->direction;
 
 	this->ppf = ppf;
+	this->penv = penv;
 
 	float th = acosf(skydir.z);
 	float se = XM_PIDIV2-th; //solar elevation

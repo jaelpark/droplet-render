@@ -415,20 +415,49 @@ public:
 
 	static inline sfloat1 acos(const sfloat1 &s){
 		//http://http.developer.nvidia.com/Cg/index_stdlib.html
-		sfloat1 x = sfloat1::abs(s);
+		/*sfloat1 x = sfloat1::abs(s);
 		sfloat1 r = sfloat1(-0.0187293f).madd(x,0.0742610f).msub(x,0.2121144f).madd(x,1.5707288f)*sfloat1::sqrt(sfloat1(1.0f)-x);
 		//sfloat1 r = ((((sfloat1(-0.0187293f)*x)+0.0742610f)*x-0.2121144f)*x+1.5707288f)*sfloat1::sqrt(sfloat1(1.0f)-x);
 		sfloat1 n = sfloat1::Less(x,sfloat1::zero());
 		r = r-sfloat1::And(sfloat1(2.0f)*r,n);
-		return sfloat1::And(sfloat1(SM_PI),n)+r;
+		return sfloat1::And(sfloat1(SM_PI),n)+r;*/
+		__attribute__((aligned(16))) float a[4];
+		_mm_store_ps(a,s.v);
+		sfloat1 r = sfloat1(
+			acosf(a[0]),
+			acosf(a[1]),
+			acosf(a[2]),
+			acosf(a[3]));
+		return r;
 	}
 
 	static inline sfloat1 asin(const sfloat1 &s){
-		sfloat1 x = sfloat1::abs(s);
+		/*sfloat1 x = sfloat1::abs(s);
 		sfloat1 r = sfloat1(0.5f*SM_PI)-sfloat1(-0.0187293f).madd(x,0.0742610f).msub(x,0.2121144f).madd(x,1.5707288f)*sfloat1::sqrt(sfloat1(1.0f)-x);
 		//sfloat1 r = sfloat1(0.5f*SM_PI)-((((sfloat1(-0.0187293f)*x)+0.0742610f)*x-0.2121144f)*x+1.5707288f)*sfloat1::sqrt(sfloat1(1.0f)-x);
 		sfloat1 n = sfloat1::Less(x,sfloat1::zero());
-		return r-sfloat1::And(sfloat1(2.0f)*r,n);
+		return r-sfloat1::And(sfloat1(2.0f)*r,n);*/
+		__attribute__((aligned(16))) float a[4];
+		_mm_store_ps(a,s.v);
+		sfloat1 r = sfloat1(
+			asinf(a[0]),
+			asinf(a[1]),
+			asinf(a[2]),
+			asinf(a[3]));
+		return r;
+	}
+
+	static inline sfloat1 atan2(const sfloat1 &_a, const sfloat1 &_b){
+		__attribute__((aligned(16))) float a[4];
+		__attribute__((aligned(16))) float b[4];
+		_mm_store_ps(a,_a.v);
+		_mm_store_ps(b,_b.v);
+		sfloat1 r = sfloat1(
+			atan2f(a[0],b[0]),
+			atan2f(a[1],b[1]),
+			atan2f(a[2],b[2]),
+			atan2f(a[3],b[3]));
+		return r;
 	}
 
 	static inline sfloat1 abs(const sfloat1 &s){
