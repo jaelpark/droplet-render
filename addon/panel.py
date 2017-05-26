@@ -201,8 +201,8 @@ class ClPassPanel(bpy.types.Panel):
 		self.layout.row().prop(context.scene.render.layers.active,"use_pass_environment");
 
 def TextureSelection(self, context):
-	return [("!droplet.nan","( Not Used )","Map disabled","X",0)]\
-		+list(filter(lambda t: t[0] != "Render Result",[(m.name,m.name,m.name,"TEXTURE",x) for x, m in enumerate(bpy.data.images)]));
+	return [("(droplet.nan)","( Not Used )","Map disabled","X",0)]\
+		+list(filter(lambda t: t[0] != "Render Result" and t[0] != "Viewer Node",[(m.name,m.name,m.name,"TEXTURE",x+1) for x, m in enumerate(bpy.data.images)]));
 
 class ClEnvironmentProperties(bpy.types.PropertyGroup):
 	# depthcomp = BoolProperty(name="Depth compositing",default=False,description="Use external depth texture for compositing.");

@@ -297,7 +297,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 		uint prc = PyList_Size(ppsl);
 		for(uint j = 0; j < prc; ++j){
 			PyObject *pps = PyList_GetItem(ppsl,j);
-			PyObject *pst = PyObject_GetAttrString(pps,"settings"); //settings.droplet?
+			PyObject *pst = PyObject_GetAttrString(pps,"settings");
 			PyObject *psd = PyObject_GetAttrString(pst,"droplet");
 			PyObject *ppn = PyObject_GetAttrString(psd,"nodetree");
 			PyObject *pyname1 = PyObject_GetAttrString(pps,"name");
@@ -321,7 +321,6 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 			Py_DECREF(psd);
 			Py_DECREF(pst);
 
-			//TODO: Get visibility status. There's some weird modifier class for this.
 			PyObject *ppr = PyObject_GetAttrString(pps,"particles");
 			PyObject *ppi = PyObject_GetIter(ppr);
 			for(PyObject *pni = PyIter_Next(ppi); pni; Py_DecRef(pni), pni = PyIter_Next(ppi)){
@@ -538,10 +537,42 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	bool occlusion = PyObject_IsTrue(pyocclusion);
 	Py_DECREF(pyocclusion);
 
+	static dfloat4 *penvt = 0;
+	uint envr[2] = {0,0};
+
 	PyObject *pyenvtex = PyObject_GetAttrString(pywsettings,"envtex");
 	const char *penvtex = PyUnicode_AsUTF8(pyenvtex);
-	if(strcmp(penvtex,"!droplet.nan") != 0){
-		//
+	if(strcmp(penvtex,"(droplet.nan)") != 0){
+		PyObject *pyimages = PyObject_GetAttrString(pdata,"images");
+		PyObject *pytex = PyObject_GetItem(pyimages,pyenvtex);
+		if(pytex){
+			PyObject *pysize = PyObject_GetAttrString(pytex,"size");
+			PyObject *pyindex[2] = {Py_BuildValue("i",0),Py_BuildValue("i",1)};
+			PyObject *pyres[2] = {PyObject_GetItem(pysize,pyindex[0]),PyObject_GetItem(pysize,pyindex[1])};
+
+			envr[0] = PyLong_AsLong(pyres[0]);
+			envr[1] = PyLong_AsLong(pyres[1]);
+			penvt = new dfloat4[envr[0]*envr[1]];
+			DebugPrintf("Using environment map %s (%u x %u texels)\n",penvtex,envr[0],envr[1]);
+
+			for(uint i = 0; i < 2; ++i){
+				Py_DECREF(pyres[i]);
+				Py_DECREF(pyindex[i]);
+			}
+			Py_DECREF(pysize);
+
+			PyObject *ppixels = PyObject_GetAttrString(pytex,"pixels");
+			PyObject *ppi = PyObject_GetIter(ppixels);
+			//
+			uint px = 0;
+			for(PyObject *pni = PyIter_Next(ppi); pni; Py_DecRef(pni), pni = PyIter_Next(ppi), ++px)
+				((float*)penvt)[px] = PyFloat_AsDouble(pni);
+
+			Py_DECREF(ppi);
+			Py_DECREF(ppixels);
+			Py_DECREF(pytex);
+		}
+		Py_DECREF(pyimages);
 	}
 	Py_DECREF(pyenvtex);
 
@@ -554,6 +585,12 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 		if(occlusion){
 			gpsceneocc = new SceneOcclusion();
 			gpsceneocc->Initialize();
+		}
+
+		if(penvt){
+			KernelSampler::EnvLight::genv.Initialize(envr[0],envr[1],penvt);
+			delete []penvt;
+			penvt = 0;
 		}
 
 		gpscene = new Scene(); //TODO: interface for blender status reporting (get status with QueryResult)

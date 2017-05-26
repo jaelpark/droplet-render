@@ -59,15 +59,15 @@ public:
 	float cosAngle;
 };
 
-class EnvironmentLight : public BaseLight{
+class EnvLight{ //not a BaseLight! EnvLight is not sampled, phase function is instead
 public:
-	EnvironmentLight();
-	~EnvironmentLight();
+	EnvLight();
+	~EnvLight();
 	void Initialize(uint, uint, const dfloat4 *);
 	sfloat4 Evaluate(const sfloat4 &) const;
-	sfloat1 Pdf(const sfloat4 &) const;
-	sfloat4 Sample(const sfloat4 &, const sfloat1 &, const sfloat1 &) const;
 	//spherical harmonics
+	static EnvLight genv;
+	//static float *ptexels;
 };
 
 /*class EnvironmentMap : public BaseLight{

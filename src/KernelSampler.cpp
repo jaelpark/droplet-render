@@ -726,29 +726,24 @@ sfloat4 SunLight::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2
 	return b1*st*cph+b2*st*sph+lrd*ct;
 }
 
-EnvironmentLight::EnvironmentLight(){
+EnvLight::EnvLight(){
 	//
 }
 
-EnvironmentLight::~EnvironmentLight(){
+EnvLight::~EnvLight(){
 	//
 }
 
-void EnvironmentLight::Initialize(uint w, uint h, const dfloat4 *ptex){
+void EnvLight::Initialize(uint w, uint h, const dfloat4 *ptex){
 	//
+	printf("envt: %u, %u, (%f,%f,%f,%f)\n",w,h,ptex[0].x,ptex[0].y,ptex[0].z,ptex[0].w);
 }
 
-sfloat4 EnvironmentLight::Evaluate(const sfloat4 &rd) const{
+sfloat4 EnvLight::Evaluate(const sfloat4 &rd) const{
 	return sfloat4(0.0f);
 }
 
-sfloat1 EnvironmentLight::Pdf(const sfloat4 &iv) const{
-	return sfloat1(1.0f/(2.0f*SM_PI));
-}
-
-sfloat4 EnvironmentLight::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2) const{
-	//unused
-	return sfloat4(0.0f);
-}
+EnvLight EnvLight::genv;
+//float * EnvLight::ptexels = 0;
 
 }
