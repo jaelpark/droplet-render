@@ -14,7 +14,7 @@
 #define USE_SSE2
 #include "sse_mathfun.h"
 
-//http://developer.nvidia.com/GPUGems3/gpugems3_ch37.html
+//https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch37.html
 //vectorized version
 inline __m128i RNG_TausStep(__m128i z, __m128i s1, __m128i s2, __m128i s3, __m128i m){
 	__m128i a, b;
