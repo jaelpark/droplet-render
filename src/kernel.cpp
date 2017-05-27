@@ -136,8 +136,11 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 	cl = sfloat4::zero();
 	cs = sfloat4::zero();
 
-	//cs = pkernel->penv->Evaluate(rd)*(float)samples;
-	//return ctt;
+	/*cs = pkernel->penv->Evaluate(rd);
+	for(uint i = 0; i < 3; ++i)
+		cs.v[i] = sfloat1::pow(cs.v[i],2.2f);
+	cs *= (float)samples;
+	return ctt;*/
 
 #ifdef USE_EMBREE
 	sfloat1 maxd = sfloat1(MAX_OCCLUSION_DIST);
@@ -318,7 +321,7 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 			for(uint i = 0, n = KernelSampler::BaseLight::lights.size(); i < n; ++i)
 				lc += KernelSampler::BaseLight::lights[i]->Evaluate(rd);
 
-#ifdef USE_ARHOSEK_SKY
+#ifdef USE_ARHOSEK_SKYMODEL
 			//skylighting
 			sfloat1 rdz = rd.v[2];
 			sfloat1 sth = sfloat1::sqrt(1.0f-rd.v[2]*rd.v[2]);
@@ -352,6 +355,8 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 			}
 #else
 			le = pkernel->penv->Evaluate(rd);
+			for(uint i = 0; i < 3; ++i)
+				le.v[i] = sfloat1::pow(le.v[i],2.2f);
 #endif
 
 			lc.v[3] = sfloat1::one(); //alpha doesn't matter when r > 0

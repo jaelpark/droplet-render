@@ -356,6 +356,10 @@ public:
 	}
 
 	static inline sfloat1 saturate(const sfloat1 &s){
+		return _mm_max_ps(_mm_min_ps(s.v,_mm_set1_ps(1.0f)),_mm_set1_ps(0.0f));
+	}
+
+	static inline sfloat1 saturate2(const sfloat1 &s){
 		return _mm_max_ps(_mm_min_ps(s.v,_mm_set1_ps(1.0f)),_mm_set1_ps(-1.0f));
 	}
 

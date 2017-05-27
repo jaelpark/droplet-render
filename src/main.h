@@ -16,6 +16,28 @@ __attribute__ ((aligned(16)))
 
 typedef unsigned int uint;
 
+/*
+class StatusLogger{
+public:
+	StatusLogger();
+	~StatusLogger();
+	void Log(bool, const char *, ...);
+	static StatusLogger logger;
+};
+
+StatusLogger::StatusLogger(){
+	//
+}
+
+StatusLogger::StatusLogger(){
+	//
+}
+
+void StatusLogger::Log(bool status, const char *pfmt, ...){
+	//
+}
+*/
+
 //#define DebugPrintf printf
 void DebugPrintf(const char *, ...);
 
