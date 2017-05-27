@@ -31,7 +31,6 @@ class ClRenderProperties(bpy.types.PropertyGroup):
 
 		c = s.column();
 		c.row().prop(self,"res_p");
-		#c.row().prop(self,"transparent");
 
 class ClRenderPanel(bpy.types.Panel):
 	bl_idname = "ClRenderPanel";
@@ -53,8 +52,9 @@ class ClSamplingProperties(bpy.types.PropertyGroup):
 	msigmas = FloatProperty(name="Sigma.S",default=18.0,min=0.001,description="Macroscopic scattering cross section for maximum density.");
 	msigmaa = FloatProperty(name="Sigma.A",default=0.001,min=0.001,description="Macroscopic absorption cross section for maximum density.");
 	phasef = EnumProperty(name="Phase function",default="M",items=(
-		("H","Henyey-Greenstein","Henyey-Greenstein phase function with anisotropy g=0.35. A fast approximation with plausible results."),
+		("H","Henyey-Greenstein","Henyey-Greenstein phase function. A fast approximation with plausible results."),
 		("M","Mie","Precomputed RGB Mie phase function for typical cloud droplets. Being the most accurate this is also the most inefficient due to partly unvectorized table lookups. Note that spectral rendering is required to correctly sample for different wavelengths, although in case of Mie the dispersion is small enough to be approximated without separating the RGB channels.")));
+	#phasea = FloatProperty(name="Anisotropy",default=0.35,description="Anisotropy parameter 'g' for the Henyey-Greenstein phase function.");
 
 	def draw(self, context, layout):
 		s = layout.split();
@@ -71,7 +71,9 @@ class ClSamplingProperties(bpy.types.PropertyGroup):
 		c.row().prop(self,"scatterevs");
 
 		c.row().label("Phase function:");
-		c.row().prop(self,"phasef");
+		#c.row().prop(self,"phasef");
+		#if self.phasef == "H":
+			#c.row().prop(self,"phasea");
 
 class ClSamplingPanel(bpy.types.Panel):
 	bl_idname = "ClSamplingPanel";
@@ -125,12 +127,6 @@ class ClPerformanceProperties(bpy.types.PropertyGroup):
 	cache = BoolProperty(name="Enable",default=False,description="Enable the grid disk caching for individual objects. Until the object cache is reconstructed, the object is unaffected by any changes to it or its nodes.");
 	cachelayer = IntProperty(name="Layer",default=10,min=0,max=19,description="Objects in this scene layer are read from the cache, or written to it if the cache doesn't exist. Remove the object from this layer to reconstruct the cache, or manually delete the cache files.");
 	cachedir = StringProperty(name="Path",subtype="DIR_PATH",default="/tmp/",description="Location for the VDB cache.");
-	# cache = EnumProperty(name="Cache mode",default="0",items=(
-	# 	("0","Off","Caching disabled. Grid is always recreated."),
-	# 	("R","RW","Read the grid from a cache. A new cache is created from the current scene if unavailable. Currently manual cache management is required since it's not possible to track all changes made to the scene (data, surface nodes, textures etc.)"),
-	# 	("W","W","Write always and overwrite any previous caches. Manual overwriting is required when changes have been made.")));
-	# cachename = StringProperty(name="Name",subtype="FILE_NAME",default="default",description="Cache file postfix in system temp location to avoid name conflicts.");
-	##################
 	samples = IntProperty(name="Int.Samples",default=100,min=1,description="Maximum number of samples taken internally by the render engine before returning to update the render result. Higher number of internal samples results in slightly faster render times, but also increases the interval between visual updates.");
 
 	def draw(self, context, layout):
@@ -148,9 +144,6 @@ class ClPerformanceProperties(bpy.types.PropertyGroup):
 		c.row().prop(self,"cachelayer");
 		c.row().label("Location:");
 		c.row().prop(self,"cachedir");
-		# c.row().prop(self,"cache",expand=True);
-		# if self.cache != "0":
-		# 	c.row().prop(self,"cachename");
 
 class ClPerformancePanel(bpy.types.Panel):
 	bl_idname = "ClPerformancePanel";
@@ -237,7 +230,6 @@ def NodeGroupSelection(self, context):
 
 class ClObjectProperties(bpy.types.PropertyGroup):
 	holdout = BoolProperty(name="Holdout Mesh",default=False,description="Tell Droplet that this is a holdout mesh. Holdouts will occlude rays and create shadowing among clouds. This is also required when compositing with results from other render engines. Available only if \"occlusion geometry\" option is enabled and Droplet was built with Intel Embree support.");
-	#zonly = BoolProperty(name="Depth Only",default=False,description="Block only primary camera rays.");
 	nodetree = EnumProperty(name="Node group",items=NodeGroupSelection,description="Node group to be used for this object");
 	#cache
 	#vdbdir = StringProperty(name="Directory",subtype="DIR_PATH",default="/tmp/");
