@@ -95,15 +95,6 @@ public:
 	static MapEnv genv;
 };
 
-/*class EnvironmentMap : public BaseLight{
-public:
-	EnvironmentMap();
-	~EnvironmentMap();
-	sfloat4 Evaluate(const sfloat4 &) const;
-	sfloat1 Pdf(const sfloat4 &) const;
-	sfloat4 Sample(const sfloat4 &, const sfloat1 &, const sfloat1 &) const;
-};*/
-
 }
 
 #endif

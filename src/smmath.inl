@@ -335,12 +335,6 @@ public:
 		return _mm_set1_ps(1.0f);
 	}
 
-	/*static inline sfloat1 selectctrl(uint a, uint b, uint c, uint d){
-		__m128i t = _mm_set_epi32(d,c,b,a);
-		t = _mm_cmpgt_epi32(t,_mm_setzero_si128());
-		return _mm_castsi128_ps(t);
-	}*/
-
 	static inline sfloat1 select(const sfloat1 &a, const sfloat1 &b, const sfloat1 &c){
 		__m128 t1 = _mm_andnot_ps(c.v,a.v);
 		__m128 t2 = _mm_and_ps(c.v,b.v);
@@ -418,50 +412,36 @@ public:
 	}
 
 	static inline sfloat1 acos(const sfloat1 &s){
-		//http://http.developer.nvidia.com/Cg/index_stdlib.html
-		/*sfloat1 x = sfloat1::abs(s);
+		//http://developer.nvidia.com/Cg/index_stdlib.html
+		sfloat1 x = sfloat1::abs(s);
 		sfloat1 r = sfloat1(-0.0187293f).madd(x,0.0742610f).msub(x,0.2121144f).madd(x,1.5707288f)*sfloat1::sqrt(sfloat1(1.0f)-x);
-		//sfloat1 r = ((((sfloat1(-0.0187293f)*x)+0.0742610f)*x-0.2121144f)*x+1.5707288f)*sfloat1::sqrt(sfloat1(1.0f)-x);
-		sfloat1 n = sfloat1::Less(x,sfloat1::zero());
+		sfloat1 n = sfloat1::Less(s,sfloat1::zero());
 		r = r-sfloat1::And(sfloat1(2.0f)*r,n);
-		return sfloat1::And(sfloat1(SM_PI),n)+r;*/
-		__attribute__((aligned(16))) float a[4];
-		_mm_store_ps(a,s.v);
-		sfloat1 r = sfloat1(
-			acosf(a[0]),
-			acosf(a[1]),
-			acosf(a[2]),
-			acosf(a[3]));
-		return r;
+		return sfloat1::And(sfloat1(SM_PI),n)+r;
 	}
 
 	static inline sfloat1 asin(const sfloat1 &s){
-		/*sfloat1 x = sfloat1::abs(s);
+		sfloat1 x = sfloat1::abs(s);
 		sfloat1 r = sfloat1(0.5f*SM_PI)-sfloat1(-0.0187293f).madd(x,0.0742610f).msub(x,0.2121144f).madd(x,1.5707288f)*sfloat1::sqrt(sfloat1(1.0f)-x);
-		//sfloat1 r = sfloat1(0.5f*SM_PI)-((((sfloat1(-0.0187293f)*x)+0.0742610f)*x-0.2121144f)*x+1.5707288f)*sfloat1::sqrt(sfloat1(1.0f)-x);
-		sfloat1 n = sfloat1::Less(x,sfloat1::zero());
-		return r-sfloat1::And(sfloat1(2.0f)*r,n);*/
-		__attribute__((aligned(16))) float a[4];
-		_mm_store_ps(a,s.v);
-		sfloat1 r = sfloat1(
-			asinf(a[0]),
-			asinf(a[1]),
-			asinf(a[2]),
-			asinf(a[3]));
-		return r;
+		sfloat1 n = sfloat1::Less(s,sfloat1::zero());
+		return r-sfloat1::And(sfloat1(2.0f)*r,n);
 	}
 
-	static inline sfloat1 atan2(const sfloat1 &_a, const sfloat1 &_b){
-		__attribute__((aligned(16))) float a[4];
-		__attribute__((aligned(16))) float b[4];
-		_mm_store_ps(a,_a.v);
-		_mm_store_ps(b,_b.v);
-		sfloat1 r = sfloat1(
-			atan2f(a[0],b[0]),
-			atan2f(a[1],b[1]),
-			atan2f(a[2],b[2]),
-			atan2f(a[3],b[3]));
-		return r;
+	static inline sfloat1 atan2(const sfloat1 &y, const sfloat1 &x){
+		sfloat1 X = sfloat1::abs(x), Y = sfloat1::abs(y);
+		sfloat1 a = sfloat1::min(X,Y)/sfloat1::max(X,Y);
+		sfloat1 b = a*a;
+
+		sfloat1 m;
+		a *= sfloat1(-0.013480470f).madd(b,0.057477314f).msub(b,0.121239071f).madd(b,0.195635925f).msub(b,0.332994597f).madd(b,0.999995630f);
+		m = sfloat1::Greater(Y,X);
+		a = sfloat1::Or(sfloat1::And(m,sfloat1(0.5f*SM_PI)-a),sfloat1::AndNot(m,a));
+		m = sfloat1::Less(x,sfloat1::zero());
+		a = sfloat1::Or(sfloat1::And(m,sfloat1(SM_PI)-a),sfloat1::AndNot(m,a));
+		m = sfloat1::Less(y,sfloat1::zero());
+		a = sfloat1::Or(sfloat1::And(m,-a),sfloat1::AndNot(m,a));
+
+		return a;
 	}
 
 	static inline sfloat1 abs(const sfloat1 &s){
