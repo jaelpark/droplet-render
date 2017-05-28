@@ -14,6 +14,7 @@ public:
 	~RenderKernel();
 	bool Initialize(const class Scene *, const class SceneOcclusion *, const dmatrix44 *, const dmatrix44 *, KernelSampler::PhaseFunction *, KernelSampler::BaseEnv *, uint, float, float, uint, uint, uint, uint, uint);
 	void Render(uint, uint, uint, uint, uint);
+	void Shadow(uint, uint, uint, uint, uint);
 	void Destroy();
 	//
 	enum BUFFER{

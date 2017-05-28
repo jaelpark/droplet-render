@@ -48,19 +48,6 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 	bl_use_preview = False;
 	bl_use_exclude_layers = True;
 
-	def update_render_passes(self, scene, srl):
-		#intern/cycles/blender/addon/__init__.py
-		#intern/cycles/blender/addon/engine.py
-		self.register_pass(scene,srl,"Combined",4,"RGBA","COLOR");
-		#self.register_pass(scene,srl,"Directional",3,"RGB","COLOR");
-		#self.register_pass(scene,srl,"Environment",3,"RGB","COLOR");
-		if srl.use_pass_transmission_direct:
-			self.register_pass(scene,srl,"TransDir",3,"RGB","COLOR");
-		if srl.use_pass_transmission_indirect:
-			self.register_pass(scene,srl,"TransInd",3,"RGB","COLOR");
-		if srl.use_pass_shadow:
-			self.register_pass(scene,srl,"Shadow",3,"RGB","COLOR");
-
 	def RenderTiles(self, f):
 		nx = int(ceil(self.width/self.tilew));
 		ny = int(ceil(self.height/self.tileh));
@@ -94,6 +81,19 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 			if not f((tile1[0],tile1[1],tilew,tileh),nx*ny-len(tiles),nx*ny):
 				break;
 
+	def update_render_passes(self, scene, srl):
+		#intern/cycles/blender/addon/__init__.py
+		#intern/cycles/blender/addon/engine.py
+		self.register_pass(scene,srl,"Combined",4,"RGBA","COLOR");
+		#self.register_pass(scene,srl,"Directional",3,"RGB","COLOR");
+		#self.register_pass(scene,srl,"Environment",3,"RGB","COLOR");
+		if srl.use_pass_transmission_direct:
+			self.register_pass(scene,srl,"TransDir",3,"RGB","COLOR");
+		if srl.use_pass_transmission_indirect:
+			self.register_pass(scene,srl,"TransInd",3,"RGB","COLOR");
+		if srl.use_pass_shadow:
+			self.register_pass(scene,srl,"Shadow",3,"RGB","COLOR");
+
 	def update(self, data, scene):
 		self.samples_ext = scene.blcloudsampling.samples;
 		self.samples_int = scene.blcloudperf.samples;
@@ -103,6 +103,9 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 		self.tileh = scene.blcloudperf.tiley;
 		self.layer = [x for x, m in enumerate(scene.render.layers) if scene.render.layers.active == m][0];
 		self.smask = 0;
+		self.primary = scene.render.layers.active.use_pass_combined or\
+			scene.render.layers.active.use_pass_transmission_direct or scene.render.layers.active.use_pass_transmission_indirect;
+		self.shadow = scene.render.layers.active.use_pass_shadow;
 		for i,sclayer in enumerate(scene.layers):
 			self.smask |= int(sclayer and scene.render.layers.active.layers[i])<<i;
 
@@ -128,27 +131,23 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 			d1 = min(self.samples_ext-i*self.samples_int,self.samples_int);
 
 			libdroplet.Render(tile[0],tile[1],tile[2],tile[3],d1);
-
 			while True:
 				qr = libdroplet.QueryResult(0);
 				if qr is not None:
 					break;
+
 			dd += d1;
 			cl += qr;
 			cs += libdroplet.QueryResult(1);
-
 			fd = 1.0/float(dd);
 
-			rpass = result.layers[self.layer].passes.find_by_type("COMBINED",result.views[0].name);
-			#rpass = result.layers[self.layer].passes.find_by_name("Combined",result.views[0].name);
+			rpass = result.layers[self.layer].passes.find_by_type("COMBINED",result.views[0].name); #find_by_name("Combined",result.views[0].name);
 			if rpass is not None:
 				rpass.rect = (cl+cs)*np.array([fd,fd,fd,0.5*fd]);
 			rpass = result.layers[self.layer].passes.find_by_type("TRANSMISSION_DIRECT",result.views[0].name);
-			#rpass = result.layers[self.layer].passes.find_by_name("Directional",result.views[0].name);
 			if rpass is not None:
 				rpass.rect = np.delete(cl,3,1)*fd;
 			rpass = result.layers[self.layer].passes.find_by_type("TRANSMISSION_INDIRECT",result.views[0].name);
-			#rpass = result.layers[self.layer].passes.find_by_name("Environment",result.views[0].name);
 			if rpass is not None:
 				rpass.rect = np.delete(cs,3,1)*fd;
 
@@ -159,16 +158,44 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 		return True;
 
 	def RenderShadow(self, tile, index, total):
-		#self.update_stats("Path tracing tile ("+str(index)+"/"+str(total)+")",str(dd)+"/"+str(self.samples_ext)+" samples");
-		self.update_stats("Calculating shadowing");
+		#
+		result = self.begin_result(tile[0],tile[1],tile[2],tile[3]);
+		cl = np.zeros((tile[2]*tile[3],4)); #light sources
+		cs = cl.copy(); #environment
 
+		dd = 0;
 		for i in range(0,1):
-			rpass = result.layers[self.layer].passes.find_by_type("SHADOW",result.views[0].name);
+			if self.test_break():
+				self.end_result(result);
+				return False;
 
-			#libdroplet.Shadow()
+			self.update_stats("Shadowing tile ("+str(index)+"/"+str(total)+")","0/100 samples");
+			d1 = 100;
+
+			libdroplet.Shadow(tile[0],tile[1],tile[2],tile[3],d1);
+			while True:
+				qr = libdroplet.QueryResult(0);
+				if qr is not None:
+					break;
+
+			dd += d1;
+			fd = 1.0/float(dd);
+
+			rpass = result.layers[self.layer].passes.find_by_type("SHADOW",result.views[0].name);
+			if rpass is not None:
+				rpass.rect = qr*np.array([fd,fd,fd,0.5*fd]); #TODO: channels?
+
+			self.update_result(result);
+			self.update_progress(1.0-(total-index)/(total)+i/(sc*total));
+
+		self.end_result(result);
+		return True;
 
 	def render(self, scene):
-		self.RenderTiles(self.RenderScene);
+		if self.primary:
+			self.RenderTiles(self.RenderScene);
+		if self.shadow:
+			self.RenderTiles(self.RenderShadow);
 		libdroplet.EndRender();
 
 def register():

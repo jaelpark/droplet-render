@@ -572,6 +572,12 @@ void RenderKernel::Render(uint x0, uint y0, uint tilex, uint tiley, uint samples
 	K_Render(&viewi,&proji,this,x0,y0,tilex,tiley,w,h,samples,phb);
 }
 
+void RenderKernel::Shadow(uint x0, uint y0, uint tilex, uint tiley, uint samples){
+	tilew = tilex;
+	tileh = tiley;
+	//K_Render(&viewi,&proji,this,x0,y0,tilex,tiley,w,h,samples,phb);
+}
+
 void RenderKernel::Destroy(){
 	arhosekskymodelstate_free(pskyms);
 	for(uint i = 0; i < BUFFER_COUNT; ++i)

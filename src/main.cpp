@@ -630,6 +630,25 @@ static PyObject * DRE_Render(PyObject *pself, PyObject *pargs){
 	return Py_None;
 }
 
+static PyObject * DRE_Shadow(PyObject *pself, PyObject *pargs){
+	uint x0, y0, tilex, tiley, samples;
+	if(!gpkernel || !PyArg_ParseTuple(pargs,"IIIII",&x0,&y0,&tilex,&tiley,&samples))
+		return 0;
+
+	Py_INCREF(Py_None);
+	if(gstate != ENGINE_STATE_READY)
+		return Py_None;
+
+	gstate = ENGINE_STATE_PROCESSING;
+	std::thread async([=]()->void{
+		gpkernel->Shadow(x0,y0,tilex,tiley,samples);
+		gstate = ENGINE_STATE_READY;
+	});
+	async.detach();
+
+	return Py_None;
+}
+
 static PyObject * DRE_EndRender(PyObject *pself, PyObject *pargs){
 	KernelSampler::BaseLight::DeleteAll();
 
@@ -688,11 +707,12 @@ static PyObject * DRE_QueryResult(PyObject *pself, PyObject *pargs){
 }
 
 static PyMethodDef g_blmethods[] = {
-	{"BeginRender",DRE_BeginRender,METH_VARARGS,"BeginRender() doc string"}, //CreateDevice
-	{"Render",DRE_Render,METH_VARARGS,"Render() doc string"},
-	{"EndRender",DRE_EndRender,METH_NOARGS,"EndRender() doc string"},
-	{"QueryStatus",DRE_QueryStatus,METH_NOARGS,"QueryStatus() doc string"},
-	{"QueryResult",DRE_QueryResult,METH_VARARGS,"QueryResult() doc string"},
+	{"BeginRender",DRE_BeginRender,METH_VARARGS,"Import the scene and configuration, construct the volumes."}, //CreateDevice
+	{"Render",DRE_Render,METH_VARARGS,"Render single tile with given rectangle and sample count."},
+	{"Shadow",DRE_Shadow,METH_VARARGS,"Render the shadow pass for a single tile."},
+	{"EndRender",DRE_EndRender,METH_NOARGS,"Release the scene and render resource."},
+	{"QueryStatus",DRE_QueryStatus,METH_NOARGS,"Check scene construction status."},
+	{"QueryResult",DRE_QueryResult,METH_VARARGS,"Check tile render status."},
 	{0,0,0,0}
 };
 

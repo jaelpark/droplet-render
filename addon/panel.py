@@ -217,7 +217,7 @@ class ClPassPanel(bpy.types.Panel):
 
 	def draw(self, context):
 		self.layout.row().label("Directional and environment lighting");
-		self.layout.row().prop(context.scene.render.layers.active,"use_pass_combined");
+		self.layout.row().prop(context.scene.render.layers.active,"use_pass_combined"); #update(), render()
 		self.layout.row().prop(context.scene.render.layers.active,"use_pass_transmission_direct");
 		self.layout.row().prop(context.scene.render.layers.active,"use_pass_transmission_indirect");
 		#context.scene.blcloudpasses.draw(context,self.layout);
