@@ -600,7 +600,8 @@ sfloat1 MiePhase::Evaluate(const sfloat1 &ct) const{
 	sfloat1 a = sfloat1::acos(ct1)/SM_PI;
 	sfloat1 b = sfloat1((float)miedl*a);
 	sfloat1 c = sfloat1::floor(b);
-	c = sfloat1::min(c,(float)(miedl-1));
+	c = sfloat1::min(c,(float)(miedl-2));
+	c = sfloat1::max(c,0.0f);
 	sfloat1 t = b-c; //frac(b)
 	dfloatN X = dfloatN(c);
 	dfloatN MA, MB;
@@ -618,7 +619,8 @@ sfloat4 MiePhase::EvaluateRGB(const sfloat1 &ct) const{
 	sfloat1 a = sfloat1::acos(ct1)/SM_PI;
 	sfloat1 b = sfloat1((float)miedl*a);
 	sfloat1 c = sfloat1::floor(b);
-	c = sfloat1::min(c,(float)(miedl-1));
+	c = sfloat1::min(c,(float)(miedl-2));
+	c = sfloat1::max(c,0.0f);
 	sfloat1 t = b-c; //frac(b)
 	dfloatN X = dfloatN(c);
 	sfloat4 ph;
@@ -768,14 +770,16 @@ sfloat4 MapEnv::Evaluate(const sfloat4 &rd) const{
 	sfloat1 tha = sfloat1::acos(-rd.v[2])/SM_PI;
 	sfloat1 thb = sfloat1((float)h*sfloat1::saturate(tha));
 	sfloat1 thc = sfloat1::floor(thb);
-	thc = sfloat1::min(thc,(float)(h-1));
+	thc = sfloat1::min(thc,(float)(h-2));
+	thc = sfloat1::max(thc,0.0f);
 	sfloat1 tht = thb-thc;
 	dfloatN thX = dfloatN(thc);
 
 	sfloat1 pha = 0.5+sfloat1::atan2(rd.v[1],-rd.v[0])/sfloat1(2.0f*SM_PI);
 	sfloat1 phb = sfloat1((float)w*sfloat1::saturate(pha));
 	sfloat1 phc = sfloat1::floor(phb);
-	phc = sfloat1::min(phc,(float)(w-1));
+	phc = sfloat1::min(phc,(float)(w-2));
+	phc = sfloat1::max(phc,0.0f);
 	sfloat1 pht = phb-phc;
 	dfloatN phX = dfloatN(phc);
 
