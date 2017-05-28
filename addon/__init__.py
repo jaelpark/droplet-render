@@ -75,15 +75,17 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 			self.register_pass(scene,srl,"TransDir",3,"RGB","COLOR");
 		if srl.use_pass_transmission_indirect:
 			self.register_pass(scene,srl,"TransInd",3,"RGB","COLOR");
+		if srl.use_pass_shadow:
+			self.register_pass(scene,srl,"Shadow",3,"RGB","COLOR");
 
-	# def DrawBorder(self, result, tilew, tileh, tilew1, tileh1):
+	# def DrawBorder(self, result, tilew1, tileh1):
 	# 	bcolor = [0.9,0.5,0.0,1.0];
 	# 	for x in range(0,tilew1):
 	# 		result.layers[0].passes[0].rect[x] = bcolor;
-	# 		result.layers[0].passes[0].rect[tileh*(tileh1-1)+x] = bcolor;
+	# 		result.layers[0].passes[0].rect[(tileh1-1)*tilew1+x] = bcolor;
 	# 	for y in range(0,tileh1):
-	# 		result.layers[0].passes[0].rect[tileh*y] = bcolor;
-	# 		result.layers[0].passes[0].rect[tileh*y+(tilew1-1)] = bcolor;
+	# 		result.layers[0].passes[0].rect[y*tilew1] = bcolor;
+	# 		result.layers[0].passes[0].rect[y*tilew1+(tilew1-1)] = bcolor;
 
 	def render(self, scene):
 		sc = int(ceil(self.samples_ext/self.samples_int)); #external sample count
@@ -120,7 +122,7 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 			cl = np.zeros((tilew1*tileh1,4)); #light sources
 			cs = cl.copy(); #environment
 
-			#self.DrawBorder(result,self.tilew,self.tileh,tilew1,tileh1);
+			#self.DrawBorder(result,tilew1,tileh1);
 			#self.update_result(result);
 
 			dd = 0; #total accumulated sample count
@@ -158,7 +160,7 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 					rpass.rect = np.delete(cs,3,1)*fd;
 
 				#if i < sc-1:
-					#self.DrawBorder(result,self.tilew,self.tileh,tilew1,tileh1);
+					#self.DrawBorder(result,tilew1,tileh1);
 
 				self.update_result(result);
 				self.update_progress(1.0-len(tiles)/(nx*ny)+i/(sc*nx*ny));

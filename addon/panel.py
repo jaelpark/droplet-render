@@ -216,25 +216,32 @@ class ClPassPanel(bpy.types.Panel):
 		return context.scene.render.engine == config.dre_engineid;
 
 	def draw(self, context):
+		self.layout.row().label("Directional and environment lighting");
 		self.layout.row().prop(context.scene.render.layers.active,"use_pass_combined");
-		#context.scene.blcloudpasses.draw(context,self.layout);
 		self.layout.row().prop(context.scene.render.layers.active,"use_pass_transmission_direct");
 		self.layout.row().prop(context.scene.render.layers.active,"use_pass_transmission_indirect");
+		#context.scene.blcloudpasses.draw(context,self.layout);
+		self.layout.row().label("Shadow mask for external depth buffer");
+		self.layout.row().prop(context.scene.render.layers.active,"use_pass_shadow");
 
-def TextureSelection(self, context):
+def TextureSelectionRGB(self, context):
 	return [("(droplet.nan)","( Not Used )","Map disabled","X",0)]\
-		+list(filter(lambda t: t[0] != "Render Result" and t[0] != "Viewer Node",[(m.name,m.name,m.name,"TEXTURE",x+1) for x, m in enumerate(bpy.data.images)]));
+		+list(filter(lambda t: bpy.data.images[t[0]].channels == 4 and t[0] != "Render Result" and t[0] != "Viewer Node",[(m.name,m.name,m.name,"IMAGE_COL",x+1) for x, m in enumerate(bpy.data.images)])); #IMAGE_RGP
+
+def TextureSelectionR(self, context):
+	return [("(droplet.nan)","( Not Used )","Map disabled","X",0)]\
+		+list(filter(lambda t: bpy.data.images[t[0]].channels == 1 and t[0] != "Render Result" and t[0] != "Viewer Node",[(m.name,m.name,m.name,"TEXTURE",x+1) for x, m in enumerate(bpy.data.images)]));
 
 class ClEnvironmentProperties(bpy.types.PropertyGroup):
-	# depthcomp = BoolProperty(name="Depth compositing",default=False,description="Use external depth texture for compositing.");
-	# shadowpass = BoolProperty(name="Composite shadow pass",default=False,description="Create an additional shadow mask texture which may then be used to naturally cloud shadow scenes rendered with other render engines. During the shadow pass all the light sources are sampled from the positions reconstructed from the external depth. Same number of samples is used as for the primary cloud render. However, this phase tends to be much faster due to transparency-only rendering, ie. no scattering events are simulated.");
-	# depthtex = EnumProperty(name="Depth texture",items=TextureSelection,description="Depth texture to be used for render time compositing. This could be the depth output from the Cycles render engine. Note that render resolution and camera properties (clipping planes, fov) should be unaltered between render engines for correct results.");
-	#envtex = EnumProperty(name="Environment Map",items=TextureSelection,description="Equirectangularly mapped environment texture to be used. The map is converted to spherical harmonics representation. The image should be low-frequency and should not include the sun.");
-	envtex = EnumProperty(name="Environment Map",items=TextureSelection,description="Equirectangularly mapped environment texture to be used. The image should be low-frequency and should not include the sun.");
-	occlusion = BoolProperty(name="Occlusion Geometry",default=False,description="Enable holdout geometry occlusion testing. Every object marked as \"holdout\" will occlude rays creating shadows and lightshafts. Having occlusion geometry also enables compositing with other render engines. Holdout object itself is not visible. This feature may have a significant performance impact, and requires Droplet to be built with Intel Embree.");
+	envtex = EnumProperty(name="Environment Map",items=TextureSelectionRGB,description="Equirectangularly mapped environment texture to be used (sky and groud). The image should be low-frequency and should not include the sun.");
+	depthtex = EnumProperty(name="Depth Map",items=TextureSelectionR,description="The optionial depth texture from the primary render engine. This can be used to calculate local shadowing for the reconstructed locations (shadow pass). The camera properties should match the primary render (view, projection) and the map should be unnormalized and linear. Cycles depth output is readily usable, assuming that the camera is shared between the two renders.");
+	occlusion = BoolProperty(name="Occlusion Geometry",default=False,description="Enable holdout geometry occlusion testing. Every object marked as holdout will occlude rays creating shadows and lightshafts. Having occlusion geometry also enables compositing with other render engines. Holdout object itself is not visible. This feature may have a significant performance impact, and requires Droplet to be built with Intel Embree.");
 
 	def draw(self, context, layout):
+		layout.row().label("Environment Lighting:");
 		layout.row().prop(self,"envtex");
+		layout.row().label("Render Compositing:");
+		layout.row().prop(self,"depthtex"); #TODO: allow only 1-channel textures
 		layout.row().prop(self,"occlusion");
 
 class ClEnvironmentPanel(bpy.types.Panel):
@@ -254,7 +261,8 @@ class ClEnvironmentPanel(bpy.types.Panel):
 def NodeGroupSelection(self, context):
 	#ml = sorted(context.scene.timeline_markers,key = lambda m: m.frame,reverse=True);
 	#return [(m.name, m.name, m.name, x) for x, m in enumerate(ml)];
-	return [(m.name,m.name,m.name,"NODETREE",x) for x, m in enumerate(bpy.data.node_groups)];
+	#return [(m.name,m.name,m.name,"NODETREE",x) for x, m in enumerate(bpy.data.node_groups)];
+	return list(filter(lambda t: bpy.data.node_groups[t[0]].bl_idname == "ClNodeTree",[(m.name,m.name,m.name,"NODETREE",x) for x, m in enumerate(bpy.data.node_groups)]));
 
 class ClObjectProperties(bpy.types.PropertyGroup):
 	holdout = BoolProperty(name="Holdout Mesh",default=False,description="Tell Droplet that this is a holdout mesh. Holdouts will occlude rays and create shadowing among clouds. This is also required when compositing with results from other render engines. Available only if \"occlusion geometry\" option is enabled and Droplet was built with Intel Embree support.");
