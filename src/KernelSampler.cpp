@@ -585,7 +585,7 @@ sfloat4 HGPhase::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2)
 	return b1*st*cph+b2*st*sph+iv*ct;
 }
 
-HGPhase HGPhase::ghg(0.35f); //also panel.py description
+HGPhase HGPhase::ghg(0.75f);
 
 MiePhase::MiePhase(){
 	//

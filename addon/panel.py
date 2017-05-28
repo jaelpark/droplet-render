@@ -54,7 +54,7 @@ class ClSamplingProperties(bpy.types.PropertyGroup):
 	phasef = EnumProperty(name="Phase function",default="M",items=(
 		("H","Henyey-Greenstein","Henyey-Greenstein phase function. A fast approximation with plausible results."),
 		("M","Mie","Precomputed RGB Mie phase function for typical cloud droplets. Being the most accurate this is also the most inefficient due to partly unvectorized table lookups. Note that spectral rendering is required to correctly sample for different wavelengths, although in case of Mie the dispersion is small enough to be approximated without separating the RGB channels.")));
-	#phasea = FloatProperty(name="Anisotropy",default=0.35,description="Anisotropy parameter 'g' for the Henyey-Greenstein phase function.");
+	phasea = FloatProperty(name="Anisotropy",default=0.75,description="Anisotropy parameter 'g' for the Henyey-Greenstein phase function.");
 
 	def draw(self, context, layout):
 		s = layout.split();
@@ -71,9 +71,9 @@ class ClSamplingProperties(bpy.types.PropertyGroup):
 		c.row().prop(self,"scatterevs");
 
 		c.row().label("Phase function:");
-		#c.row().prop(self,"phasef");
-		#if self.phasef == "H":
-			#c.row().prop(self,"phasea");
+		c.row().prop(self,"phasef");
+		if self.phasef == "H":
+			c.row().prop(self,"phasea");
 
 class ClSamplingPanel(bpy.types.Panel):
 	bl_idname = "ClSamplingPanel";

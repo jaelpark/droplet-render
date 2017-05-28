@@ -20,9 +20,8 @@ public:
 	sfloat1 Evaluate(const sfloat1 &) const;
 	sfloat4 EvaluateRGB(const sfloat1 &) const;
 	sfloat4 Sample(const sfloat4 &, const sfloat1 &, const sfloat1 &) const;
-	static HGPhase ghg;
-private:
 	float g1; //anisotropy parameter
+	static HGPhase ghg;
 };
 
 class MiePhase : public PhaseFunction{

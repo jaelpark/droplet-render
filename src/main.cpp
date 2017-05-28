@@ -516,6 +516,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	switch(pypfs[0]){
 	case 'H':
 		ppf = &KernelSampler::HGPhase::ghg;
+		KernelSampler::HGPhase::ghg.g1 = PyGetFloat(pysampling,"phasea");
 		DebugPrintf("Using Henyey-Greenstein phase.\n");
 		break;
 	case 'M':
