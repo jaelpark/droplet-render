@@ -641,7 +641,7 @@ static PyObject * DRE_Shadow(PyObject *pself, PyObject *pargs){
 
 	gstate = ENGINE_STATE_PROCESSING;
 	std::thread async([=]()->void{
-		gpkernel->Shadow(x0,y0,tilex,tiley,samples);
+		gpkernel->Shadow(x0,y0,tilex,tiley,samples,0);
 		gstate = ENGINE_STATE_READY;
 	});
 	async.detach();

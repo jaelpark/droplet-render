@@ -4,7 +4,10 @@
 #include "kernel.h"
 #include "KernelOctree.h"
 #include "KernelSampler.h"
+
+#ifdef USE_ARHOSEK_SKYMODEL
 #include "ArHosekSkyModel.h"
+#endif
 
 #include <random>
 //#include <fenv.h>
@@ -453,9 +456,10 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 	return ctt;
 }
 
-static void K_Render(dmatrix44 *pviewi, dmatrix44 *pproji, RenderKernel *pkernel, uint x0, uint y0, uint rx, uint ry, uint w, uint h, uint samples, dfloat4 *pout[RenderKernel::BUFFER_COUNT]){
-	//feenableexcept(FE_ALL_EXCEPT&~FE_INEXACT);
-	tbb::enumerable_thread_specific<KernelOctree::OctreeFullTraverser> traversers; //share the full traverser object among pixels to save list allocations
+static void K_ParallelRender(RenderKernel *pkernel, uint x0, uint y0, uint rx, uint ry, std::function<void (const sfloat4 &, const sfloat4 &, const sfloat1 &, uint, uint, sint4 &)> func){
+		matrix44 viewi = matrix44::load(&pkernel->viewi);
+		matrix44 proji = matrix44::load(&pkernel->proji);
+		//
 #define BLCLOUD_MT
 #ifdef BLCLOUD_MT
 	tbb::parallel_for(tbb::blocked_range2d<size_t>(y0,y0+ry/BLCLOUD_VY,x0,x0+rx/BLCLOUD_VX),[&](const tbb::blocked_range2d<size_t> &nr){
@@ -467,57 +471,31 @@ static void K_Render(dmatrix44 *pviewi, dmatrix44 *pproji, RenderKernel *pkernel
 			for(uint x = x0; x < x0+rx/BLCLOUD_VX; ++x){
 #endif
 				sfloat4 posh;
-				posh.v[0] = -(2.0f*(sfloat1((float)(BLCLOUD_VX*(x-x0)+x0)+0.5f)+sfloat1(0,1,0,1))/sfloat1((float)w)-sfloat1::one());
-				posh.v[1] = -(2.0f*(sfloat1((float)(BLCLOUD_VY*(y-y0)+y0)+0.5f)+sfloat1(0,0,1,1))/sfloat1((float)h)-sfloat1::one());
+				posh.v[0] = -(2.0f*(sfloat1((float)(BLCLOUD_VX*(x-x0)+x0)+0.5f)+sfloat1(0,1,0,1))/sfloat1((float)pkernel->w)-sfloat1::one());
+				posh.v[1] = -(2.0f*(sfloat1((float)(BLCLOUD_VY*(y-y0)+y0)+0.5f)+sfloat1(0,0,1,1))/sfloat1((float)pkernel->h)-sfloat1::one());
 				posh.v[2] = sfloat1::zero();
 				posh.v[3] = sfloat1::one();
-
-				matrix44 viewi = matrix44::load(pviewi);
-				matrix44 proji = matrix44::load(pproji);
 
 				sfloat4 ro = sfloat4(viewi.r[3]);
 				sfloat4 rv = mul(posh,proji);
 				sfloat4 rd = mul(rv.xyz0(),viewi).xyz0();
 				rd = sfloat4::normalize3(rd);
 
-				sint4 rngs;
-				RNG_Init(&rngs);
-
 				sfloat1 gm = sfloat1::And(
 					sfloat1::And(sfloat1::Greater(posh.v[0],-sfloat1::one()),sfloat1::Less(posh.v[0],sfloat1::one())),
 					sfloat1::And(sfloat1::Greater(posh.v[1],-sfloat1::one()),sfloat1::Less(posh.v[1],sfloat1::one())));
 
-				KernelOctree::OctreeFullTraverser &traverser = traversers.local();
+				sint4 rngs;
+				RNG_Init(&rngs);
 
-				std::tuple<sfloat4,sfloat4> ctt = SampleVolume(ro,rd,gm,pkernel,&traverser,&rngs,0,samples);
-				sfloat4 &cl = std::get<0>(ctt);
-				sfloat4 &cs = std::get<1>(ctt);
-
-				dintN wmask = dintN(gm);
-				if(wmask.v[0] != 0){
-					float4::store(&pout[0][(BLCLOUD_VY*(y-y0)+0)*rx+BLCLOUD_VX*(x-x0)+0],cl.get(0));
-					float4::store(&pout[1][(BLCLOUD_VY*(y-y0)+0)*rx+BLCLOUD_VX*(x-x0)+0],cs.get(0));
-				}
-				if(wmask.v[1] != 0){
-					float4::store(&pout[0][(BLCLOUD_VY*(y-y0)+0)*rx+BLCLOUD_VX*(x-x0)+1],cl.get(1));
-					float4::store(&pout[1][(BLCLOUD_VY*(y-y0)+0)*rx+BLCLOUD_VX*(x-x0)+1],cs.get(1));
-				}
-				if(wmask.v[2] != 0){
-					float4::store(&pout[0][(BLCLOUD_VY*(y-y0)+1)*rx+BLCLOUD_VX*(x-x0)+0],cl.get(2));
-					float4::store(&pout[1][(BLCLOUD_VY*(y-y0)+1)*rx+BLCLOUD_VX*(x-x0)+0],cs.get(2));
-				}
-				if(wmask.v[3] != 0){
-					float4::store(&pout[0][(BLCLOUD_VY*(y-y0)+1)*rx+BLCLOUD_VX*(x-x0)+1],cl.get(3));
-					float4::store(&pout[1][(BLCLOUD_VY*(y-y0)+1)*rx+BLCLOUD_VX*(x-x0)+1],cs.get(3));
-				}
+				func(ro,rd,gm,x,y,rngs);
 			}
 		}
 #ifdef BLCLOUD_MT
 	},tbb::auto_partitioner());
 #else
-	}
+}
 #endif
-	//fedisableexcept(FE_ALL_EXCEPT&~FE_INEXACT);
 }
 
 RenderKernel::RenderKernel(){
@@ -552,11 +530,13 @@ bool RenderKernel::Initialize(const Scene *pscene, const SceneOcclusion *psceneo
 	this->ppf = ppf;
 	this->penv = penv;
 
+#ifdef USE_ARHOSEK_SKYMODEL
 	float th = acosf(skydir.z);
 	float se = XM_PIDIV2-th; //solar elevation
 
 	//pskyms = arhosek_rgb_skymodelstate_alloc_init(2.2,0.6,se);
 	pskyms = arhosek_rgb_skymodelstate_alloc_init(7.0,0.15,se);
+#endif
 
 	if(KernelSampler::BaseLight::lights.size() != 1)
 		DebugPrintf("Warning: only one directional light is currently properly supported.\n");
@@ -567,19 +547,59 @@ bool RenderKernel::Initialize(const Scene *pscene, const SceneOcclusion *psceneo
 }
 
 void RenderKernel::Render(uint x0, uint y0, uint tilex, uint tiley, uint samples){
+	//feenableexcept(FE_ALL_EXCEPT&~FE_INEXACT);
+	tbb::enumerable_thread_specific<KernelOctree::OctreeFullTraverser> traversers; //share the full traverser object among pixels to save list
+	//
 	tilew = tilex;
 	tileh = tiley;
-	K_Render(&viewi,&proji,this,x0,y0,tilex,tiley,w,h,samples,phb);
+	//
+	K_ParallelRender(this,x0,y0,tilex,tiley,[&](const sfloat4 &ro, const sfloat4 &rd, const sfloat1 &gm, uint x, uint y, sint4 &rngs)->void{
+		KernelOctree::OctreeFullTraverser &traverser = traversers.local();
+
+		std::tuple<sfloat4,sfloat4> ctt = SampleVolume(ro,rd,gm,this,&traverser,&rngs,0,samples);
+		sfloat4 &cl = std::get<0>(ctt);
+		sfloat4 &cs = std::get<1>(ctt);
+
+		dintN wmask = dintN(gm);
+		if(wmask.v[0] != 0){
+			float4::store(&phb[0][(BLCLOUD_VY*(y-y0)+0)*tilex+BLCLOUD_VX*(x-x0)+0],cl.get(0));
+			float4::store(&phb[1][(BLCLOUD_VY*(y-y0)+0)*tilex+BLCLOUD_VX*(x-x0)+0],cs.get(0));
+		}
+		if(wmask.v[1] != 0){
+			float4::store(&phb[0][(BLCLOUD_VY*(y-y0)+0)*tilex+BLCLOUD_VX*(x-x0)+1],cl.get(1));
+			float4::store(&phb[1][(BLCLOUD_VY*(y-y0)+0)*tilex+BLCLOUD_VX*(x-x0)+1],cs.get(1));
+		}
+		if(wmask.v[2] != 0){
+			float4::store(&phb[0][(BLCLOUD_VY*(y-y0)+1)*tilex+BLCLOUD_VX*(x-x0)+0],cl.get(2));
+			float4::store(&phb[1][(BLCLOUD_VY*(y-y0)+1)*tilex+BLCLOUD_VX*(x-x0)+0],cs.get(2));
+		}
+		if(wmask.v[3] != 0){
+			float4::store(&phb[0][(BLCLOUD_VY*(y-y0)+1)*tilex+BLCLOUD_VX*(x-x0)+1],cl.get(3));
+			float4::store(&phb[1][(BLCLOUD_VY*(y-y0)+1)*tilex+BLCLOUD_VX*(x-x0)+1],cs.get(3));
+		}
+	});
+	//fedisableexcept(FE_ALL_EXCEPT&~FE_INEXACT);
 }
 
-void RenderKernel::Shadow(uint x0, uint y0, uint tilex, uint tiley, uint samples){
+void RenderKernel::Shadow(uint x0, uint y0, uint tilex, uint tiley, uint samples, float *pdepth){
+	//feenableexcept(FE_ALL_EXCEPT&~FE_INEXACT);
 	tilew = tilex;
 	tileh = tiley;
-	//K_Render(&viewi,&proji,this,x0,y0,tilex,tiley,w,h,samples,phb);
+	//
+	K_ParallelRender(this,x0,y0,tilex,tiley,[&](const sfloat4 &ro, const sfloat4 &rd, const sfloat1 &gm, uint x, uint y, sint4 &rngs)->void{
+		float z = pdepth[y*w+x];
+		//posw = ro+rd*z;
+		//TODO: test copy phb <- z
+		//dintN wmask = dintN(gm);
+	});
+
+	//fedisableexcept(FE_ALL_EXCEPT&~FE_INEXACT);
 }
 
 void RenderKernel::Destroy(){
+#ifdef USE_ARHOSEK_SKYMODEL
 	arhosekskymodelstate_free(pskyms);
+#endif
 	for(uint i = 0; i < BUFFER_COUNT; ++i)
 		_mm_free(phb[i]);
 }

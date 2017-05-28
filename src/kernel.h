@@ -14,7 +14,7 @@ public:
 	~RenderKernel();
 	bool Initialize(const class Scene *, const class SceneOcclusion *, const dmatrix44 *, const dmatrix44 *, KernelSampler::PhaseFunction *, KernelSampler::BaseEnv *, uint, float, float, uint, uint, uint, uint, uint);
 	void Render(uint, uint, uint, uint, uint);
-	void Shadow(uint, uint, uint, uint, uint);
+	void Shadow(uint, uint, uint, uint, uint, float *);
 	void Destroy();
 	//
 	enum BUFFER{
@@ -26,9 +26,15 @@ public:
 	dfloat4 *phb[BUFFER_COUNT]; //host buffer
 	const class Scene *pscene;
 	const class SceneOcclusion *psceneocc;
+
+
+#ifdef USE_ARHOSEK_SKYMODEL
 	struct ArHosekSkyModelState *pskyms;
+#endif
+
 	KernelSampler::PhaseFunction *ppf;
 	KernelSampler::BaseEnv *penv;
+
 	dmatrix44 viewi;
 	dmatrix44 proji;
 	//
@@ -40,7 +46,7 @@ public:
 	//
 	uint w;
 	uint h;
-	//tile size
+	//tile size (from last Render())
 	uint tilew;
 	uint tileh;
 	//
