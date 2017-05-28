@@ -48,23 +48,6 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 	bl_use_preview = False;
 	bl_use_exclude_layers = True;
 
-	def update(self, data, scene):
-		self.samples_ext = scene.blcloudsampling.samples;
-		self.samples_int = scene.blcloudperf.samples;
-		self.width = scene.render.resolution_x;
-		self.height = scene.render.resolution_y;
-		self.tilew = scene.blcloudperf.tilex;
-		self.tileh = scene.blcloudperf.tiley;
-		self.layer = [x for x, m in enumerate(scene.render.layers) if scene.render.layers.active == m][0];
-		self.smask = 0;
-		for i,sclayer in enumerate(scene.layers):
-			self.smask |= int(sclayer and scene.render.layers.active.layers[i])<<i;
-
-		self.update_stats("Droplet","Initializing");
-		libdroplet.BeginRender(scene,data,self.tilew,self.tileh,self.width,self.height,self.smask);
-		while libdroplet.QueryStatus() != 0:
-			pass; #TODO: query progress/memory usage etc
-
 	def update_render_passes(self, scene, srl):
 		#intern/cycles/blender/addon/__init__.py
 		#intern/cycles/blender/addon/engine.py
@@ -78,17 +61,7 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 		if srl.use_pass_shadow:
 			self.register_pass(scene,srl,"Shadow",3,"RGB","COLOR");
 
-	# def DrawBorder(self, result, tilew1, tileh1):
-	# 	bcolor = [0.9,0.5,0.0,1.0];
-	# 	for x in range(0,tilew1):
-	# 		result.layers[0].passes[0].rect[x] = bcolor;
-	# 		result.layers[0].passes[0].rect[(tileh1-1)*tilew1+x] = bcolor;
-	# 	for y in range(0,tileh1):
-	# 		result.layers[0].passes[0].rect[y*tilew1] = bcolor;
-	# 		result.layers[0].passes[0].rect[y*tilew1+(tilew1-1)] = bcolor;
-
-	def render(self, scene):
-		sc = int(ceil(self.samples_ext/self.samples_int)); #external sample count
+	def RenderTiles(self, f):
 		nx = int(ceil(self.width/self.tilew));
 		ny = int(ceil(self.height/self.tileh));
 
@@ -106,74 +79,96 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 			tiles.remove(tile1);
 
 			#crop the tile frame on edges
-			tilew1 = self.tilew;
+			tilew = self.tilew;
 			if tile1[0]+self.tilew > self.width:
-				tilew1 += int(self.width-(tile1[0]+self.tilew));
-			tileh1 = self.tileh;
+				tilew += int(self.width-(tile1[0]+self.tilew));
+			tileh = self.tileh;
 			if tile1[1]+self.tileh > self.height:
-				tileh1 += int(self.height-(tile1[1]+self.tileh));
+				tileh += int(self.height-(tile1[1]+self.tileh));
 
-			tilew1 += int(min(tile1[0],0));
-			tileh1 += int(min(tile1[1],0));
+			tilew += int(min(tile1[0],0));
+			tileh += int(min(tile1[1],0));
 
 			tile1 = ((int(max(tile1[0],0)),int(max(tile1[1],0))));
 
-			result = self.begin_result(tile1[0],tile1[1],tilew1,tileh1);
-			cl = np.zeros((tilew1*tileh1,4)); #light sources
-			cs = cl.copy(); #environment
+			if not f((tile1[0],tile1[1],tilew,tileh),nx*ny-len(tiles),nx*ny):
+				break;
 
-			#self.DrawBorder(result,tilew1,tileh1);
-			#self.update_result(result);
+	def update(self, data, scene):
+		self.samples_ext = scene.blcloudsampling.samples;
+		self.samples_int = scene.blcloudperf.samples;
+		self.width = scene.render.resolution_x;
+		self.height = scene.render.resolution_y;
+		self.tilew = scene.blcloudperf.tilex;
+		self.tileh = scene.blcloudperf.tiley;
+		self.layer = [x for x, m in enumerate(scene.render.layers) if scene.render.layers.active == m][0];
+		self.smask = 0;
+		for i,sclayer in enumerate(scene.layers):
+			self.smask |= int(sclayer and scene.render.layers.active.layers[i])<<i;
 
-			dd = 0; #total accumulated sample count
-			for i in range(0,sc):
-				if self.test_break():
-					self.end_result(result);
-					break;
+		self.update_stats("Droplet","Initializing");
+		libdroplet.BeginRender(scene,data,self.tilew,self.tileh,self.width,self.height,self.smask);
+		while libdroplet.QueryStatus() != 0:
+			pass; #TODO: query progress/memory usage etc
 
-				self.update_stats("Path tracing tile ("+str(nx*ny-len(tiles))+"/"+str(nx*ny)+")",str(dd)+"/"+str(self.samples_ext)+" samples");
-				d1 = min(self.samples_ext-i*self.samples_int,self.samples_int);
+	def RenderScene(self, tile, index, total):
+		sc = int(ceil(self.samples_ext/self.samples_int)); #external sample count
 
-				libdroplet.Render(tile1[0],tile1[1],tilew1,tileh1,d1);
+		result = self.begin_result(tile[0],tile[1],tile[2],tile[3]);
+		cl = np.zeros((tile[2]*tile[3],4)); #light sources
+		cs = cl.copy(); #environment
 
-				while True:
-					qr = libdroplet.QueryResult(0);
-					if qr is not None:
-						break;
-				dd += d1;
-				cl += qr;
-				cs += libdroplet.QueryResult(1);
-
-				fd = 1.0/float(dd);
-
-				rpass = result.layers[self.layer].passes.find_by_type("COMBINED",result.views[0].name);
-				#rpass = result.layers[self.layer].passes.find_by_name("Combined",result.views[0].name);
-				if rpass is not None:
-				 	rpass.rect = (cl+cs)*np.array([fd,fd,fd,0.5*fd]);
-				rpass = result.layers[self.layer].passes.find_by_type("TRANSMISSION_DIRECT",result.views[0].name);
-				#rpass = result.layers[self.layer].passes.find_by_name("Directional",result.views[0].name);
-				if rpass is not None:
-					rpass.rect = np.delete(cl,3,1)*fd;
-				rpass = result.layers[self.layer].passes.find_by_type("TRANSMISSION_INDIRECT",result.views[0].name);
-				#rpass = result.layers[self.layer].passes.find_by_name("Environment",result.views[0].name);
-				if rpass is not None:
-					rpass.rect = np.delete(cs,3,1)*fd;
-
-				#if i < sc-1:
-					#self.DrawBorder(result,tilew1,tileh1);
-
-				self.update_result(result);
-				self.update_progress(1.0-len(tiles)/(nx*ny)+i/(sc*nx*ny));
-			else:
+		dd = 0; #total accumulated sample count
+		for i in range(0,sc):
+			if self.test_break():
 				self.end_result(result);
-				continue;
-			break;
+				return False;
 
-			#self.end_result(result);
-			#self.update_progress((y*nx+x+1)/(ny*nx));
-			#https://www.blender.org/api/blender_python_api_2_76_release/bpy.types.RenderEngine.html
-			#self.update_memory_stats
+			self.update_stats("Path tracing tile ("+str(index)+"/"+str(total)+")",str(dd)+"/"+str(self.samples_ext)+" samples");
+			d1 = min(self.samples_ext-i*self.samples_int,self.samples_int);
 
+			libdroplet.Render(tile[0],tile[1],tile[2],tile[3],d1);
+
+			while True:
+				qr = libdroplet.QueryResult(0);
+				if qr is not None:
+					break;
+			dd += d1;
+			cl += qr;
+			cs += libdroplet.QueryResult(1);
+
+			fd = 1.0/float(dd);
+
+			rpass = result.layers[self.layer].passes.find_by_type("COMBINED",result.views[0].name);
+			#rpass = result.layers[self.layer].passes.find_by_name("Combined",result.views[0].name);
+			if rpass is not None:
+				rpass.rect = (cl+cs)*np.array([fd,fd,fd,0.5*fd]);
+			rpass = result.layers[self.layer].passes.find_by_type("TRANSMISSION_DIRECT",result.views[0].name);
+			#rpass = result.layers[self.layer].passes.find_by_name("Directional",result.views[0].name);
+			if rpass is not None:
+				rpass.rect = np.delete(cl,3,1)*fd;
+			rpass = result.layers[self.layer].passes.find_by_type("TRANSMISSION_INDIRECT",result.views[0].name);
+			#rpass = result.layers[self.layer].passes.find_by_name("Environment",result.views[0].name);
+			if rpass is not None:
+				rpass.rect = np.delete(cs,3,1)*fd;
+
+			self.update_result(result);
+			self.update_progress(1.0-(total-index)/(total)+i/(sc*total));
+
+		self.end_result(result);
+		return True;
+
+	def RenderShadow(self, tile, index, total):
+		#self.update_stats("Path tracing tile ("+str(index)+"/"+str(total)+")",str(dd)+"/"+str(self.samples_ext)+" samples");
+		self.update_stats("Calculating shadowing");
+
+		for i in range(0,1):
+			rpass = result.layers[self.layer].passes.find_by_type("SHADOW",result.views[0].name);
+
+			#libdroplet.Shadow()
+
+	def render(self, scene):
+		self.RenderTiles(self.RenderScene);
 		libdroplet.EndRender();
 
 def register():
