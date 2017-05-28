@@ -46,6 +46,7 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 	bl_idname = config.dre_engineid;
 	bl_label = "Droplet Render";
 	bl_use_preview = False;
+	bl_use_exclude_layers = True;
 
 	def update(self, data, scene):
 		self.samples_ext = scene.blcloudsampling.samples;
@@ -63,6 +64,17 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 		libdroplet.BeginRender(scene,data,self.tilew,self.tileh,self.width,self.height,self.smask);
 		while libdroplet.QueryStatus() != 0:
 			pass; #TODO: query progress/memory usage etc
+
+	def update_render_passes(self, scene, srl):
+		#intern/cycles/blender/addon/__init__.py
+		#intern/cycles/blender/addon/engine.py
+		self.register_pass(scene,srl,"Combined",4,"RGBA","COLOR");
+		#self.register_pass(scene,srl,"Directional",3,"RGB","COLOR");
+		#self.register_pass(scene,srl,"Environment",3,"RGB","COLOR");
+		if srl.use_pass_transmission_direct:
+			self.register_pass(scene,srl,"TransDir",3,"RGB","COLOR");
+		if srl.use_pass_transmission_indirect:
+			self.register_pass(scene,srl,"TransInd",3,"RGB","COLOR");
 
 	# def DrawBorder(self, result, tilew, tileh, tilew1, tileh1):
 	# 	bcolor = [0.9,0.5,0.0,1.0];
@@ -116,7 +128,8 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 				if self.test_break():
 					self.end_result(result);
 					break;
-				self.update_stats("Path tracing tile ("+str((nx*ny)-len(tiles))+"/"+str(nx*ny)+")",str(dd)+"/"+str(self.samples_ext)+" samples");
+
+				self.update_stats("Path tracing tile ("+str(nx*ny-len(tiles))+"/"+str(nx*ny)+")",str(dd)+"/"+str(self.samples_ext)+" samples");
 				d1 = min(self.samples_ext-i*self.samples_int,self.samples_int);
 
 				libdroplet.Render(tile1[0],tile1[1],tilew1,tileh1,d1);
@@ -131,13 +144,16 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 
 				fd = 1.0/float(dd);
 
-				rpass = next((x for x in result.layers[self.layer].passes if x.type == 'COMBINED'),None);
+				rpass = result.layers[self.layer].passes.find_by_type("COMBINED",result.views[0].name);
+				#rpass = result.layers[self.layer].passes.find_by_name("Combined",result.views[0].name);
 				if rpass is not None:
-					rpass.rect = (cl+cs)*np.array([fd,fd,fd,0.5*fd]);
-				rpass = next((x for x in result.layers[self.layer].passes if x.type == 'DIFFUSE'),None);
+				 	rpass.rect = (cl+cs)*np.array([fd,fd,fd,0.5*fd]);
+				rpass = result.layers[self.layer].passes.find_by_type("TRANSMISSION_DIRECT",result.views[0].name);
+				#rpass = result.layers[self.layer].passes.find_by_name("Directional",result.views[0].name);
 				if rpass is not None:
 					rpass.rect = np.delete(cl,3,1)*fd;
-				rpass = next((x for x in result.layers[self.layer].passes if x.type == 'ENVIRONMENT'),None);
+				rpass = result.layers[self.layer].passes.find_by_type("TRANSMISSION_INDIRECT",result.views[0].name);
+				#rpass = result.layers[self.layer].passes.find_by_name("Environment",result.views[0].name);
 				if rpass is not None:
 					rpass.rect = np.delete(cs,3,1)*fd;
 
@@ -197,6 +213,7 @@ def register():
 	bpy.types.Scene.blcloudsampling = PointerProperty(type=panel.ClSamplingProperties);
 	bpy.types.Scene.blcloudgrid = PointerProperty(type=panel.ClGridProperties);
 	bpy.types.Scene.blcloudperf = PointerProperty(type=panel.ClPerformanceProperties);
+	#bpy.types.Scene.blcloudpasses = PointerProperty(type=panel.ClPassProperties);
 	bpy.types.World.droplet = PointerProperty(type=panel.ClEnvironmentProperties);
 
 	bpy.types.Object.droplet = PointerProperty(type=panel.ClObjectProperties);

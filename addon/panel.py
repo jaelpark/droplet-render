@@ -177,6 +177,33 @@ class ClLayerPanel(bpy.types.Panel):
 		s.column().prop(context.scene,"layers",text="Scene");
 		s.column().prop(context.scene.render.layers.active,"layers",text="Layer");
 
+# #proxy to enable render results outputs and rename them
+# def EnableDirectional(self, context):
+# 	context.scene.render.layers.active.use_pass_transmission_direct = context.scene.blcloudpasses.dirlight;
+# 	for i in context.scene.node_tree.nodes:
+# 		if i.type != "R_LAYERS":
+# 			continue;
+# 		n = i.outputs.find("TransDir");
+# 		#i.outputs[n].name = "Directional";
+# 		i.outputs[n].enabled = context.scene.blcloudpasses.dirlight;
+#
+# def EnableEnvironment(self, context):
+# 	context.scene.render.layers.active.use_pass_transmission_indirect = context.scene.blcloudpasses.envlight;
+# 	for i in context.scene.node_tree.nodes:
+# 		if i.type != "R_LAYERS":
+# 			continue;
+# 		n = i.outputs.find("TransInd");
+# 		#i.outputs[n].name = "Environment";
+# 		i.outputs[n].enabled = context.scene.blcloudpasses.envlight;
+#
+# class ClPassProperties(bpy.types.PropertyGroup):
+# 	dirlight = BoolProperty(name="Directional",default=False,update=EnableDirectional);
+# 	envlight = BoolProperty(name="Environment",default=False,update=EnableEnvironment);
+#
+# 	def draw(self, context, layout):
+# 		layout.row().prop(self,"dirlight");
+# 		layout.row().prop(self,"envlight");
+
 class ClPassPanel(bpy.types.Panel):
 	bl_idname = "ClPassPanel";
 	bl_label = "Passes";
@@ -190,8 +217,9 @@ class ClPassPanel(bpy.types.Panel):
 
 	def draw(self, context):
 		self.layout.row().prop(context.scene.render.layers.active,"use_pass_combined");
-		self.layout.row().prop(context.scene.render.layers.active,"use_pass_diffuse");
-		self.layout.row().prop(context.scene.render.layers.active,"use_pass_environment");
+		#context.scene.blcloudpasses.draw(context,self.layout);
+		self.layout.row().prop(context.scene.render.layers.active,"use_pass_transmission_direct");
+		self.layout.row().prop(context.scene.render.layers.active,"use_pass_transmission_indirect");
 
 def TextureSelection(self, context):
 	return [("(droplet.nan)","( Not Used )","Map disabled","X",0)]\
