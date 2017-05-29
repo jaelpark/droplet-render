@@ -182,6 +182,7 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 			cl += qr;
 			fd = 1.0/float(dd);
 
+			#TODO: restore color buffers
 			rpass = result.layers[self.layer].passes.find_by_type("SHADOW",result.views[0].name);
 			if rpass is not None:
 				rpass.rect = np.delete(cl,3,1)*fd;

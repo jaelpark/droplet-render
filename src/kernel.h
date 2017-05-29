@@ -52,6 +52,8 @@ public:
 	uint tileh;
 	//
 	uint flags;
+	//
+	static dint3 vpattern[BLCLOUD_VSIZE];
 };
 
 #endif

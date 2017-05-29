@@ -558,24 +558,13 @@ void RenderKernel::Render(uint x0, uint y0, uint tilex, uint tiley, uint samples
 		std::tuple<sfloat4,sfloat4> ctt = SampleVolume(ro,rd,gm,this,&traverser,&rngs,0,samples);
 		sfloat4 &cl = std::get<0>(ctt);
 		sfloat4 &cs = std::get<1>(ctt);
-
+		
 		dintN wmask = dintN(gm);
-		if(wmask.v[0] != 0){
-			float4::store(&phb[0][(BLCLOUD_VY*(y-y0)+0)*tilex+BLCLOUD_VX*(x-x0)+0],cl.get(0));
-			float4::store(&phb[1][(BLCLOUD_VY*(y-y0)+0)*tilex+BLCLOUD_VX*(x-x0)+0],cs.get(0));
-		}
-		if(wmask.v[1] != 0){
-			float4::store(&phb[0][(BLCLOUD_VY*(y-y0)+0)*tilex+BLCLOUD_VX*(x-x0)+1],cl.get(1));
-			float4::store(&phb[1][(BLCLOUD_VY*(y-y0)+0)*tilex+BLCLOUD_VX*(x-x0)+1],cs.get(1));
-		}
-		if(wmask.v[2] != 0){
-			float4::store(&phb[0][(BLCLOUD_VY*(y-y0)+1)*tilex+BLCLOUD_VX*(x-x0)+0],cl.get(2));
-			float4::store(&phb[1][(BLCLOUD_VY*(y-y0)+1)*tilex+BLCLOUD_VX*(x-x0)+0],cs.get(2));
-		}
-		if(wmask.v[3] != 0){
-			float4::store(&phb[0][(BLCLOUD_VY*(y-y0)+1)*tilex+BLCLOUD_VX*(x-x0)+1],cl.get(3));
-			float4::store(&phb[1][(BLCLOUD_VY*(y-y0)+1)*tilex+BLCLOUD_VX*(x-x0)+1],cs.get(3));
-		}
+		for(uint i = 0; i < BLCLOUD_VSIZE; ++i)
+			if(wmask.v[i] != 0){
+				float4::store(&phb[0][(BLCLOUD_VY*(y-y0)+vpattern[i].x)*tilex+BLCLOUD_VX*(x-x0)+vpattern[i].y],cl.get(i));
+				float4::store(&phb[1][(BLCLOUD_VY*(y-y0)+vpattern[i].x)*tilex+BLCLOUD_VX*(x-x0)+vpattern[i].y],cs.get(i));
+			}
 	});
 	//fedisableexcept(FE_ALL_EXCEPT&~FE_INEXACT);
 }
@@ -585,27 +574,21 @@ void RenderKernel::Shadow(uint x0, uint y0, uint tilex, uint tiley, uint samples
 	tilew = tilex;
 	tileh = tiley;
 	//
-	K_ParallelRender(this,x0,y0,tilex,tiley,[&](const sfloat4 &ro, const sfloat4 &rd, const sfloat1 &gm, uint x, uint y, sint4 &rngs)->void{
-		//posw = ro+rd*z;
-		//if z > clip_end, skip
+	sfloat4 zfar = mul(float4(0,0,1,1),matrix44::load(&proji)).get(0);
+	sfloat1 clip_end = -zfar.v[2]/zfar.v[3];
 
+	K_ParallelRender(this,x0,y0,tilex,tiley,[&](const sfloat4 &ro, const sfloat4 &rd, const sfloat1 &gm, uint x, uint y, sint4 &rngs)->void{
 		dintN wmask = dintN(gm);
-		if(wmask.v[0] != 0){
-			float z = pdepth[(BLCLOUD_VY*(y-y0)+y0+0)*w+BLCLOUD_VX*(x-x0)+x0+0];
-			new(&phb[0][(BLCLOUD_VY*(y-y0)+0)*tilex+BLCLOUD_VX*(x-x0)+0]) dfloat4(100.0f*z,0,0,0);
-		}
-		if(wmask.v[1] != 0){
-			float z = pdepth[(BLCLOUD_VY*(y-y0)+y0+0)*w+BLCLOUD_VX*(x-x0)+x0+1];
-			new(&phb[0][(BLCLOUD_VY*(y-y0)+0)*tilex+BLCLOUD_VX*(x-x0)+1]) dfloat4(100.0f*z,0,0,0);
-		}
-		if(wmask.v[2] != 0){
-			float z = pdepth[(BLCLOUD_VY*(y-y0)+y0+1)*w+BLCLOUD_VX*(x-x0)+x0+0];
-			new(&phb[0][(BLCLOUD_VY*(y-y0)+1)*tilex+BLCLOUD_VX*(x-x0)+0]) dfloat4(100.0f*z,0,0,0);
-		}
-		if(wmask.v[3] != 0){
-			float z = pdepth[(BLCLOUD_VY*(y-y0)+y0+1)*w+BLCLOUD_VX*(x-x0)+x0+1];
-			new(&phb[0][(BLCLOUD_VY*(y-y0)+1)*tilex+BLCLOUD_VX*(x-x0)+1]) dfloat4(100.0f*z,0,0,0);
-		}
+		dfloatN Depth;
+		for(uint i = 0; i < BLCLOUD_VSIZE; ++i)
+			if(wmask.v[i] != 0)
+				Depth.v[i] = pdepth[(BLCLOUD_VY*(y-y0)+y0+vpattern[i].x)*w+BLCLOUD_VX*(x-x0)+x0+vpattern[i].y];
+
+		sfloat1 depth = sfloat1::load(&Depth);
+		sfloat1 gm1 = sfloat1::And(gm,sfloat1::Less(depth,clip_end));
+
+		sfloat4 ro1 = ro+rd*depth;
+		//std::tuple<sfloat4,sfloat4> ctt = SampleVolume(ro,rd,gm1,this,&traverser,&rngs,0,samples);
 	});
 	//fedisableexcept(FE_ALL_EXCEPT&~FE_INEXACT);
 }
@@ -617,3 +600,10 @@ void RenderKernel::Destroy(){
 	for(uint i = 0; i < BUFFER_COUNT; ++i)
 		_mm_free(phb[i]);
 }
+
+dint3 RenderKernel::vpattern[BLCLOUD_VSIZE] = {
+	dint3(0,0,0),
+	dint3(0,1,0),
+	dint3(1,0,0),
+	dint3(1,1,0),
+};
