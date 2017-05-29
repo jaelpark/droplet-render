@@ -12,9 +12,9 @@ class RenderKernel{
 public:
 	RenderKernel();
 	~RenderKernel();
-	bool Initialize(const class Scene *, const class SceneOcclusion *, const dmatrix44 *, const dmatrix44 *, KernelSampler::PhaseFunction *, KernelSampler::BaseEnv *, uint, float, float, uint, uint, uint, uint, uint);
+	bool Initialize(const class Scene *, const class SceneOcclusion *, const dmatrix44 *, const dmatrix44 *, KernelSampler::PhaseFunction *, KernelSampler::BaseEnv *, float *, uint, float, float, uint, uint, uint, uint, uint);
 	void Render(uint, uint, uint, uint, uint);
-	void Shadow(uint, uint, uint, uint, uint, float *);
+	void Shadow(uint, uint, uint, uint, uint);
 	void Destroy();
 	//
 	enum BUFFER{
@@ -24,9 +24,10 @@ public:
 	};
 
 	dfloat4 *phb[BUFFER_COUNT]; //host buffer
+	float *pdepth; //source depth for compositing shadow calculations
+
 	const class Scene *pscene;
 	const class SceneOcclusion *psceneocc;
-
 
 #ifdef USE_ARHOSEK_SKYMODEL
 	struct ArHosekSkyModelState *pskyms;

@@ -89,8 +89,10 @@ public:
 public:
 #define ENV_SHN 12
 	dfloat3 c[ENV_SHN*ENV_SHN];*/
+private:
 	dfloat4 *ptex;
 	uint w, h;
+public:
 	static MapEnv genv;
 };
 

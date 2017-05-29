@@ -230,7 +230,7 @@ def TextureSelectionRGB(self, context):
 
 def TextureSelectionR(self, context):
 	return [("(droplet.nan)","( Not Used )","Map disabled","X",0)]\
-		+list(filter(lambda t: bpy.data.images[t[0]].channels == 1 and t[0] != "Render Result" and t[0] != "Viewer Node",[(m.name,m.name,m.name,"TEXTURE",x+1) for x, m in enumerate(bpy.data.images)]));
+		+list(filter(lambda t: bpy.data.images[t[0]].channels == 4 and t[0] != "Render Result" and t[0] != "Viewer Node",[(m.name,m.name,m.name,"TEXTURE",x+1) for x, m in enumerate(bpy.data.images)]));
 
 class ClEnvironmentProperties(bpy.types.PropertyGroup):
 	envtex = EnumProperty(name="Environment Map",items=TextureSelectionRGB,description="Equirectangularly mapped environment texture to be used (sky and groud). The image should be low-frequency and should not include the sun.");

@@ -539,12 +539,13 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	bool occlusion = PyObject_IsTrue(pyocclusion);
 	Py_DECREF(pyocclusion);
 
+	PyObject *pyimages = PyObject_GetAttrString(pdata,"images");
+
 	PyObject *pyenvtex = PyObject_GetAttrString(pywsettings,"envtex");
 	const char *penvtex = PyUnicode_AsUTF8(pyenvtex);
 	KernelSampler::BaseEnv *penv = &KernelSampler::NullEnv::nenv;
 
 	if(strcmp(penvtex,"(droplet.nan)") != 0){
-		PyObject *pyimages = PyObject_GetAttrString(pdata,"images");
 		PyObject *pytex = PyObject_GetItem(pyimages,pyenvtex);
 		if(pytex){
 			PyObject *pysize = PyObject_GetAttrString(pytex,"size");
@@ -575,12 +576,36 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 		}
 
 		Py_DECREF(pytex);
-		Py_DECREF(pyimages);
 
 	}
-
 	Py_DECREF(pyenvtex);
 
+	PyObject *pydepthtex = PyObject_GetAttrString(pywsettings,"depthtex");
+	const char *pdepthtex = PyUnicode_AsUTF8(pydepthtex);
+
+	float *pdepth = 0; //source depth texture, assume to be of render resolution
+	if(strcmp(pdepthtex,"(droplet.nan)") != 0){
+		PyObject *pytex = PyObject_GetItem(pyimages,pydepthtex);
+		if(pytex){
+			pdepth = new float[w*h];
+			DebugPrintf("Using depth texture %s (%u x %u texels)\n",pdepthtex,w,h);
+
+			PyObject *ppixels = PyObject_GetAttrString(pytex,"pixels");
+			PyObject *ppi = PyObject_GetIter(ppixels);
+			//
+			uint px = 0;
+			for(PyObject *pni = PyIter_Next(ppi); pni; Py_DecRef(pni), pni = PyIter_Next(ppi), ++px)
+				if(px%4 == 0)
+					pdepth[px/4] = PyFloat_AsDouble(pni);
+			Py_DECREF(ppi);
+			Py_DECREF(ppixels);
+		}
+
+		Py_DECREF(pytex);
+	}
+	Py_DECREF(pydepthtex);
+
+	Py_DECREF(pyimages);
 	Py_DECREF(pywsettings);
 	Py_DECREF(pyworld);
 
@@ -596,7 +621,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 		gpscene->Initialize(dsize,maxd,qband,smask,cache,cachedir);
 
 		gpkernel = new RenderKernel();
-		gpkernel->Initialize(gpscene,gpsceneocc,&sviewi,&sproji,ppf,penv,scattevs,msigmas,msigmaa,tilex,tiley,w,h,0);
+		gpkernel->Initialize(gpscene,gpsceneocc,&sviewi,&sproji,ppf,penv,pdepth,scattevs,msigmas,msigmaa,tilex,tiley,w,h,0);
 
 		SceneData::SmokeCache::DeleteAll();
 		SceneData::ParticleSystem::DeleteAll();
@@ -641,7 +666,7 @@ static PyObject * DRE_Shadow(PyObject *pself, PyObject *pargs){
 
 	gstate = ENGINE_STATE_PROCESSING;
 	std::thread async([=]()->void{
-		gpkernel->Shadow(x0,y0,tilex,tiley,samples,0);
+		gpkernel->Shadow(x0,y0,tilex,tiley,samples);
 		gstate = ENGINE_STATE_READY;
 	});
 	async.detach();
@@ -655,6 +680,9 @@ static PyObject * DRE_EndRender(PyObject *pself, PyObject *pargs){
 	KernelSampler::MapEnv *penv = dynamic_cast<KernelSampler::MapEnv*>(gpkernel->penv);
 	if(penv)
 		penv->Destroy();
+
+	if(gpkernel->pdepth)
+		delete[] gpkernel->pdepth;
 
 	gpkernel->Destroy();
 	delete gpkernel;

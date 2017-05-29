@@ -179,14 +179,15 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 					break;
 
 			dd += d1;
+			cl += qr;
 			fd = 1.0/float(dd);
 
 			rpass = result.layers[self.layer].passes.find_by_type("SHADOW",result.views[0].name);
 			if rpass is not None:
-				rpass.rect = qr*np.array([fd,fd,fd,0.5*fd]); #TODO: channels?
+				rpass.rect = np.delete(cl,3,1)*fd;
 
 			self.update_result(result);
-			self.update_progress(1.0-(total-index)/(total)+i/(sc*total));
+			#self.update_progress(1.0-(total-index)/(total)+i/(sc*total));
 
 		self.end_result(result);
 		return True;

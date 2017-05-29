@@ -507,11 +507,12 @@ RenderKernel::~RenderKernel(){
 }
 
 bool RenderKernel::Initialize(const Scene *pscene, const SceneOcclusion *psceneocc, const dmatrix44 *pviewi, const dmatrix44 *pproji,
-	 KernelSampler::PhaseFunction *ppf, KernelSampler::BaseEnv *penv,
+	 KernelSampler::PhaseFunction *ppf, KernelSampler::BaseEnv *penv, float *pdepth,
 	 uint scattevs, float msigmas, float msigmaa, uint tilex, uint tiley, uint w, uint h, uint flags){
 	for(uint i = 0; i < BUFFER_COUNT; ++i)
 		if(!(phb[i] = (dfloat4*)_mm_malloc(tilex*tiley*16,16)))
 			return false;
+	this->pdepth = pdepth;
 
 	this->pscene = pscene;
 	this->psceneocc = psceneocc;
@@ -533,8 +534,6 @@ bool RenderKernel::Initialize(const Scene *pscene, const SceneOcclusion *psceneo
 #ifdef USE_ARHOSEK_SKYMODEL
 	float th = acosf(skydir.z);
 	float se = XM_PIDIV2-th; //solar elevation
-
-	//pskyms = arhosek_rgb_skymodelstate_alloc_init(2.2,0.6,se);
 	pskyms = arhosek_rgb_skymodelstate_alloc_init(7.0,0.15,se);
 #endif
 
@@ -581,18 +580,33 @@ void RenderKernel::Render(uint x0, uint y0, uint tilex, uint tiley, uint samples
 	//fedisableexcept(FE_ALL_EXCEPT&~FE_INEXACT);
 }
 
-void RenderKernel::Shadow(uint x0, uint y0, uint tilex, uint tiley, uint samples, float *pdepth){
+void RenderKernel::Shadow(uint x0, uint y0, uint tilex, uint tiley, uint samples){
 	//feenableexcept(FE_ALL_EXCEPT&~FE_INEXACT);
 	tilew = tilex;
 	tileh = tiley;
 	//
 	K_ParallelRender(this,x0,y0,tilex,tiley,[&](const sfloat4 &ro, const sfloat4 &rd, const sfloat1 &gm, uint x, uint y, sint4 &rngs)->void{
-		float z = pdepth[y*w+x];
 		//posw = ro+rd*z;
-		//TODO: test copy phb <- z
-		//dintN wmask = dintN(gm);
-	});
+		//if z > clip_end, skip
 
+		dintN wmask = dintN(gm);
+		if(wmask.v[0] != 0){
+			float z = pdepth[(BLCLOUD_VY*(y-y0)+y0+0)*w+BLCLOUD_VX*(x-x0)+x0+0];
+			new(&phb[0][(BLCLOUD_VY*(y-y0)+0)*tilex+BLCLOUD_VX*(x-x0)+0]) dfloat4(100.0f*z,0,0,0);
+		}
+		if(wmask.v[1] != 0){
+			float z = pdepth[(BLCLOUD_VY*(y-y0)+y0+0)*w+BLCLOUD_VX*(x-x0)+x0+1];
+			new(&phb[0][(BLCLOUD_VY*(y-y0)+0)*tilex+BLCLOUD_VX*(x-x0)+1]) dfloat4(100.0f*z,0,0,0);
+		}
+		if(wmask.v[2] != 0){
+			float z = pdepth[(BLCLOUD_VY*(y-y0)+y0+1)*w+BLCLOUD_VX*(x-x0)+x0+0];
+			new(&phb[0][(BLCLOUD_VY*(y-y0)+1)*tilex+BLCLOUD_VX*(x-x0)+0]) dfloat4(100.0f*z,0,0,0);
+		}
+		if(wmask.v[3] != 0){
+			float z = pdepth[(BLCLOUD_VY*(y-y0)+y0+1)*w+BLCLOUD_VX*(x-x0)+x0+1];
+			new(&phb[0][(BLCLOUD_VY*(y-y0)+1)*tilex+BLCLOUD_VX*(x-x0)+1]) dfloat4(100.0f*z,0,0,0);
+		}
+	});
 	//fedisableexcept(FE_ALL_EXCEPT&~FE_INEXACT);
 }
 
