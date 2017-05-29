@@ -42,46 +42,14 @@ bl_info = {
 	"category":"Render"
 }
 
+class BreakException(Exception):
+	pass;
+
 class CloudRenderEngine(bpy.types.RenderEngine):
 	bl_idname = config.dre_engineid;
 	bl_label = "Droplet Render";
 	bl_use_preview = False;
 	bl_use_exclude_layers = True;
-
-	def RenderTiles(self, f):
-		nx = int(ceil(self.width/self.tilew));
-		ny = int(ceil(self.height/self.tileh));
-
-		tiles = [];
-		for y in range(0,ny):
-			for x in range(0,nx):
-				tilex = x*self.tilew-0.5*(nx*self.tilew-self.width);
-				tiley = y*self.tileh-0.5*(ny*self.tileh-self.height);
-
-				#crop the tile frame on edges
-				tilew = self.tilew;
-				if tilex+self.tilew > self.width:
-					tilew += int(self.width-(tilex+self.tilew));
-				tileh = self.tileh;
-				if tiley+self.tileh > self.height:
-					tileh += int(self.height-(tiley+self.tileh));
-
-				tilew += int(min(tilex,0));
-				tileh += int(min(tiley,0));
-
-				tilex = int(max(tilex,0));
-				tiley = int(max(tiley,0));
-
-				tiles.append((tilex,tiley,tilew,tileh));
-
-		while len(tiles) > 0:
-			tile1 = min(tiles,key=lambda tileq: Vector((
-				tileq[0]+0.5*self.tilew-0.5*self.width,
-				tileq[1]+0.5*self.tileh-0.5*self.height)).length);
-			tiles.remove(tile1);
-
-			if not f((tile1[0],tile1[1],tile1[2],tile1[3]),nx*ny-len(tiles),nx*ny):
-				break;
 
 	def update_render_passes(self, scene, srl):
 		#intern/cycles/blender/addon/__init__.py
@@ -117,17 +85,16 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 			pass; #TODO: query progress/memory usage etc
 
 	def RenderScene(self, tile, index, total):
-		sc = int(ceil(self.samples_ext/self.samples_int)); #external sample count
-
-		result = self.begin_result(tile[0],tile[1],tile[2],tile[3]);
+		result = tile[4];
 		cl = np.zeros((tile[2]*tile[3],4)); #light sources
 		cs = cl.copy(); #environment
+
+		sc = int(ceil(self.samples_ext/self.samples_int)); #external sample count
 
 		dd = 0; #total accumulated sample count
 		for i in range(0,sc):
 			if self.test_break():
-				self.end_result(result);
-				return False;
+				raise BreakException("Render aborted by user.");
 
 			self.update_stats("Path tracing tile ("+str(index)+"/"+str(total)+")",str(dd)+"/"+str(self.samples_ext)+" samples");
 			d1 = min(self.samples_ext-i*self.samples_int,self.samples_int);
@@ -143,7 +110,7 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 			cs += libdroplet.QueryResult(1);
 			fd = 1.0/float(dd);
 
-			rpass = result.layers[self.layer].passes.find_by_type("COMBINED",result.views[0].name); #find_by_name("Combined",result.views[0].name);
+			rpass = result.layers[self.layer].passes.find_by_type("COMBINED",result.views[0].name);
 			if rpass is not None:
 				rpass.rect = (cl+cs)*np.array([fd,fd,fd,0.5*fd]);
 			rpass = result.layers[self.layer].passes.find_by_type("TRANSMISSION_DIRECT",result.views[0].name);
@@ -156,20 +123,15 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 			self.update_result(result);
 			self.update_progress(1.0-(total-index)/(total)+i/(sc*total));
 
-		self.end_result(result);
-		return True;
-
 	def RenderShadow(self, tile, index, total):
-		#
-		result = self.begin_result(tile[0],tile[1],tile[2],tile[3]);
+		result = tile[4];
 		cl = np.zeros((tile[2]*tile[3],4)); #light sources
 		cs = cl.copy(); #environment
 
 		dd = 0;
 		for i in range(0,1):
 			if self.test_break():
-				self.end_result(result);
-				return False;
+				raise BreakException("Render aborted by user.");
 
 			self.update_stats("Shadowing tile ("+str(index)+"/"+str(total)+")","0/100 samples");
 			d1 = 100;
@@ -184,7 +146,6 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 			cl += qr;
 			fd = 1.0/float(dd);
 
-			#TODO: restore color buffers
 			rpass = result.layers[self.layer].passes.find_by_type("SHADOW",result.views[0].name);
 			if rpass is not None:
 				rpass.rect = np.delete(cl,3,1)*fd;
@@ -192,14 +153,57 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 			self.update_result(result);
 			#self.update_progress(1.0-(total-index)/(total)+i/(sc*total));
 
-		self.end_result(result);
-		return True;
+	def RenderTiles(self, tiles, f):
+		nx = int(ceil(self.width/self.tilew));
+		ny = int(ceil(self.height/self.tileh));
+
+		while len(tiles) > 0:
+			tile1 = min(tiles,key=lambda tileq: Vector((
+				tileq[0]+0.5*self.tilew-0.5*self.width,
+				tileq[1]+0.5*self.tileh-0.5*self.height)).length);
+			tiles.remove(tile1);
+
+			f(tile1,nx*ny-len(tiles),nx*ny);
 
 	def render(self, scene):
-		if self.primary:
-			self.RenderTiles(self.RenderScene);
-		if self.shadow:
-			self.RenderTiles(self.RenderShadow);
+		nx = int(ceil(self.width/self.tilew));
+		ny = int(ceil(self.height/self.tileh));
+
+		tiles = [];
+		for y in range(0,ny):
+			for x in range(0,nx):
+				tilex = x*self.tilew-0.5*(nx*self.tilew-self.width);
+				tiley = y*self.tileh-0.5*(ny*self.tileh-self.height);
+
+				#crop the tile frame on the edges
+				tilew = self.tilew;
+				if tilex+self.tilew > self.width:
+					tilew += int(self.width-(tilex+self.tilew));
+				tileh = self.tileh;
+				if tiley+self.tileh > self.height:
+					tileh += int(self.height-(tiley+self.tileh));
+
+				tilew += int(min(tilex,0));
+				tileh += int(min(tiley,0));
+
+				tilex = int(max(tilex,0));
+				tiley = int(max(tiley,0));
+
+				result = self.begin_result(tilex,tiley,tilew,tileh);
+				tiles.append((tilex,tiley,tilew,tileh,result));
+
+		try:
+			if self.primary:
+				self.RenderTiles(tiles.copy(),self.RenderScene);
+			if self.shadow:
+				self.RenderTiles(tiles.copy(),self.RenderShadow);
+		except BreakException as err:
+			print(err.args[0]);
+
+		for i in tiles:
+			result = i[4];
+			self.end_result(result);
+
 		libdroplet.EndRender();
 
 def register():

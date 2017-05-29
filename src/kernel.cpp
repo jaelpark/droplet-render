@@ -558,7 +558,7 @@ void RenderKernel::Render(uint x0, uint y0, uint tilex, uint tiley, uint samples
 		std::tuple<sfloat4,sfloat4> ctt = SampleVolume(ro,rd,gm,this,&traverser,&rngs,0,samples);
 		sfloat4 &cl = std::get<0>(ctt);
 		sfloat4 &cs = std::get<1>(ctt);
-		
+
 		dintN wmask = dintN(gm);
 		for(uint i = 0; i < BLCLOUD_VSIZE; ++i)
 			if(wmask.v[i] != 0){
@@ -588,6 +588,12 @@ void RenderKernel::Shadow(uint x0, uint y0, uint tilex, uint tiley, uint samples
 		sfloat1 gm1 = sfloat1::And(gm,sfloat1::Less(depth,clip_end));
 
 		sfloat4 ro1 = ro+rd*depth;
+		for(uint i = 0; i < 4; ++i)
+			ro1.v[i] = sfloat1::And(gm1,ro1.v[i]);
+
+		for(uint i = 0; i < BLCLOUD_VSIZE; ++i)
+			if(wmask.v[i] != 0)
+				float4::store(&phb[0][(BLCLOUD_VY*(y-y0)+vpattern[i].x)*tilex+BLCLOUD_VX*(x-x0)+vpattern[i].y],ro1.get(i)); //test
 		//std::tuple<sfloat4,sfloat4> ctt = SampleVolume(ro,rd,gm1,this,&traverser,&rngs,0,samples);
 	});
 	//fedisableexcept(FE_ALL_EXCEPT&~FE_INEXACT);
