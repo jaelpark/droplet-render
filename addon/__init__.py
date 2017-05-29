@@ -55,9 +55,24 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 		tiles = [];
 		for y in range(0,ny):
 			for x in range(0,nx):
-				xadj = x*self.tilew-0.5*(nx*self.tilew-self.width);
-				yadj = y*self.tileh-0.5*(ny*self.tileh-self.height);
-				tiles.append((xadj,yadj));
+				tilex = x*self.tilew-0.5*(nx*self.tilew-self.width);
+				tiley = y*self.tileh-0.5*(ny*self.tileh-self.height);
+
+				#crop the tile frame on edges
+				tilew = self.tilew;
+				if tilex+self.tilew > self.width:
+					tilew += int(self.width-(tilex+self.tilew));
+				tileh = self.tileh;
+				if tiley+self.tileh > self.height:
+					tileh += int(self.height-(tiley+self.tileh));
+
+				tilew += int(min(tilex,0));
+				tileh += int(min(tiley,0));
+
+				tilex = int(max(tilex,0));
+				tiley = int(max(tiley,0));
+
+				tiles.append((tilex,tiley,tilew,tileh));
 
 		while len(tiles) > 0:
 			tile1 = min(tiles,key=lambda tileq: Vector((
@@ -65,20 +80,7 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 				tileq[1]+0.5*self.tileh-0.5*self.height)).length);
 			tiles.remove(tile1);
 
-			#crop the tile frame on edges
-			tilew = self.tilew;
-			if tile1[0]+self.tilew > self.width:
-				tilew += int(self.width-(tile1[0]+self.tilew));
-			tileh = self.tileh;
-			if tile1[1]+self.tileh > self.height:
-				tileh += int(self.height-(tile1[1]+self.tileh));
-
-			tilew += int(min(tile1[0],0));
-			tileh += int(min(tile1[1],0));
-
-			tile1 = ((int(max(tile1[0],0)),int(max(tile1[1],0))));
-
-			if not f((tile1[0],tile1[1],tilew,tileh),nx*ny-len(tiles),nx*ny):
+			if not f((tile1[0],tile1[1],tile1[2],tile1[3]),nx*ny-len(tiles),nx*ny):
 				break;
 
 	def update_render_passes(self, scene, srl):
