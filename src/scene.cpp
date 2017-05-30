@@ -15,6 +15,8 @@
 #include <tbb/parallel_for.h>
 #include <tbb/scalable_allocator.h>
 
+#include <cfloat>
+
 namespace Node{
 
 ValueNodeParams::ValueNodeParams(const dfloat3 *_pvoxw, const dfloat3 *_pcptw, float _s, float _p, const dfloat3 *_pvoxwa, float _advdensity, float _advdist, const InputNodeParams *pnp) : pvoxw(_pvoxw), pcptw(_pcptw), distance(_s), density(_p), pvoxwa(_pvoxwa), advdensity(_advdensity), advdist(_advdist), pnodeparams(pnp){
