@@ -39,7 +39,9 @@ public:
 	dmatrix44 viewi;
 	dmatrix44 proji;
 	//
+#ifdef USE_ARHOSEK_SKYMODEL
 	dfloat3 skydir;
+#endif
 	//uint samples;
 	uint scattevs; //max number of scattering events
 	float msigmas; //macroscopic scattering cross section
@@ -53,7 +55,7 @@ public:
 	//
 	uint flags;
 	//
-	static dint3 vpattern[BLCLOUD_VSIZE];
+	static dint3 vpattern[BLCLOUD_VSIZE]; //vectorized pixel pattern
 };
 
 #endif

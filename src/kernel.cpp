@@ -526,12 +526,12 @@ bool RenderKernel::Initialize(const Scene *pscene, const SceneOcclusion *psceneo
 	this->flags = flags;
 	viewi = *pviewi;
 	proji = *pproji;
-	skydir = dynamic_cast<KernelSampler::SunLight*>(KernelSampler::BaseLight::lights[0])->direction;
 
 	this->ppf = ppf;
 	this->penv = penv;
 
 #ifdef USE_ARHOSEK_SKYMODEL
+	skydir = dynamic_cast<KernelSampler::SunLight*>(KernelSampler::BaseLight::lights[0])->direction;
 	float th = acosf(skydir.z);
 	float se = XM_PIDIV2-th; //solar elevation
 	pskyms = arhosek_rgb_skymodelstate_alloc_init(7.0,0.15,se);
@@ -591,10 +591,18 @@ void RenderKernel::Shadow(uint x0, uint y0, uint tilex, uint tiley, uint samples
 		for(uint i = 0; i < 4; ++i)
 			ro1.v[i] = sfloat1::And(gm1,ro1.v[i]);
 
+		sfloat4 cs = sfloat4::zero();
+		for(uint i = 0; i < samples; ++i){
+			sfloat1 u3 = RNG_Sample(&rngs), u4 = RNG_Sample(&rngs);
+			sfloat4 lrd = KernelSampler::BaseLight::lights[0]->Sample(rd,u3,u4);
+
+			std::tuple<sfloat4,sfloat4> S2 = SampleVolume(ro1,lrd,gm1,this,0,&rngs,scattevs,1);
+			cs += std::get<0>(S2)/float4::load(&dynamic_cast<KernelSampler::SunLight*>(KernelSampler::BaseLight::lights[0])->color); //normalize by the intensity
+		}
+
 		for(uint i = 0; i < BLCLOUD_VSIZE; ++i)
 			if(wmask.v[i] != 0)
-				float4::store(&phb[0][(BLCLOUD_VY*(y-y0)+vpattern[i].x)*tilex+BLCLOUD_VX*(x-x0)+vpattern[i].y],ro1.get(i)); //test
-		//std::tuple<sfloat4,sfloat4> ctt = SampleVolume(ro,rd,gm1,this,&traverser,&rngs,0,samples);
+				float4::store(&phb[0][(BLCLOUD_VY*(y-y0)+vpattern[i].x)*tilex+BLCLOUD_VX*(x-x0)+vpattern[i].y],cs.get(i)); //test
 	});
 	//fedisableexcept(FE_ALL_EXCEPT&~FE_INEXACT);
 }
