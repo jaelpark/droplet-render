@@ -67,8 +67,8 @@ class CloudRenderEngine(bpy.types.RenderEngine):
 	def update(self, data, scene):
 		self.samples_ext = scene.blcloudsampling.samples;
 		self.samples_int = scene.blcloudperf.samples;
-		self.width = scene.render.resolution_x;
-		self.height = scene.render.resolution_y;
+		self.width = max(int(scene.render.resolution_percentage/100*scene.render.resolution_x),1);
+		self.height = max(int(scene.render.resolution_percentage/100*scene.render.resolution_y),1);
 		self.tilew = scene.blcloudperf.tilex;
 		self.tileh = scene.blcloudperf.tiley;
 		self.layer = [x for x, m in enumerate(scene.render.layers) if scene.render.layers.active == m][0];
@@ -241,7 +241,7 @@ def register():
 	properties_physics_smoke.PHYSICS_PT_smoke_cache.COMPAT_ENGINES.add(config.dre_engineid);
 	properties_physics_smoke.PHYSICS_PT_smoke_field_weights.COMPAT_ENGINES.add(config.dre_engineid);
 
-	bpy.types.Scene.blcloudrender = PointerProperty(type=panel.ClRenderProperties);
+	#bpy.types.Scene.blcloudrender = PointerProperty(type=panel.ClRenderProperties);
 	bpy.types.Scene.blcloudsampling = PointerProperty(type=panel.ClSamplingProperties);
 	bpy.types.Scene.blcloudgrid = PointerProperty(type=panel.ClGridProperties);
 	bpy.types.Scene.blcloudperf = PointerProperty(type=panel.ClPerformanceProperties);

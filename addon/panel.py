@@ -5,32 +5,28 @@ from bpy.props import BoolProperty,IntProperty,FloatProperty,EnumProperty,Pointe
 
 from . import config
 
-def SetResolution(self, context):
-	self.width = max(int(context.scene.blcloudrender.res_p*context.scene.blcloudrender.res_x),1);
-	self.height = max(int(context.scene.blcloudrender.res_p*context.scene.blcloudrender.res_y),1);
-	context.scene.render.resolution_x = self.width;
-	context.scene.render.resolution_y = self.height;
-	context.scene.render.resolution_percentage = 100;
+# def SetResolution(self, context):
+# 	self.width = max(int(context.scene.blcloudrender.res_p*context.scene.blcloudrender.res_x),1);
+# 	self.height = max(int(context.scene.blcloudrender.res_p*context.scene.blcloudrender.res_y),1);
+# 	context.scene.render.resolution_x = self.width;
+# 	context.scene.render.resolution_y = self.height;
+# 	context.scene.render.resolution_percentage = 100;
 
-#def LayerSelection(self, context):
-	#return [(m.name,m.name,m.name,"RENDERLAYERS",x) for x, m in enumerate(context.scene.render.layers)];
-
-class ClRenderProperties(bpy.types.PropertyGroup):
-	res_x = IntProperty(name="Res.X",default=1920,min=1,description="Image width in pixels",update=SetResolution);
-	res_y = IntProperty(name="Res.Y",default=1080,min=1,description="Image height in pixels",update=SetResolution);
-	res_p = FloatProperty(name="Res.%",default=0.5,min=0.01,max=1,description="Resolution percentage",update=SetResolution);
-	#transparent = BoolProperty(name="Transparent",default=False,description="Enable alpha channel and ignore background for 0th order scattering.");
-
-	def draw(self, context, layout):
-		layout.row().label("Dimensions:");
-
-		s = layout.split();
-		c = s.column();
-		c.row().prop(self,"res_x");
-		c.row().prop(self,"res_y");
-
-		c = s.column();
-		c.row().prop(self,"res_p");
+# class ClRenderProperties(bpy.types.PropertyGroup):
+# 	res_x = IntProperty(name="Res.X",default=1920,min=1,description="Image width in pixels",update=SetResolution);
+# 	res_y = IntProperty(name="Res.Y",default=1080,min=1,description="Image height in pixels",update=SetResolution);
+# 	res_p = FloatProperty(name="Res.%",default=0.5,min=0.01,max=1,description="Resolution percentage",update=SetResolution);
+#
+# 	def draw(self, context, layout):
+# 		layout.row().label("Dimensions:");
+#
+# 		s = layout.split();
+# 		c = s.column();
+# 		c.row().prop(context.scene.render,"resolution_x");
+# 		c.row().prop(context.scene.render,"resolution_y");
+#
+# 		c = s.column();
+# 		c.row().prop(context.scene.render,"resolution_percentage");
 
 class ClRenderPanel(bpy.types.Panel):
 	bl_idname = "ClRenderPanel";
@@ -44,10 +40,19 @@ class ClRenderPanel(bpy.types.Panel):
 		return context.scene.render.engine == config.dre_engineid;
 
 	def draw(self, context):
-		context.scene.blcloudrender.draw(context,self.layout);
+		#context.scene.blcloudrender.draw(context,self.layout);
+		self.layout.row().label("Dimensions:");
+
+		s = self.layout.split();
+		c = s.column();
+		c.row().prop(context.scene.render,"resolution_x");
+		c.row().prop(context.scene.render,"resolution_y");
+
+		c = s.column();
+		c.row().prop(context.scene.render,"resolution_percentage");
 
 class ClSamplingProperties(bpy.types.PropertyGroup):
-	samples = IntProperty(name="Render",default=1000,min=1,description="Number of samples to be taken");
+	samples = IntProperty(name="Render",default=1000,min=1,description="Number of samples to be taken for each pixel.");
 	scatterevs = IntProperty(name="Scattering",default=20,min=0,max=32,description="Maximum volume scattering events.");
 	msigmas = FloatProperty(name="Sigma.S",default=18.0,min=0.001,description="Macroscopic scattering cross section for maximum density.");
 	msigmaa = FloatProperty(name="Sigma.A",default=0.001,min=0.001,description="Macroscopic absorption cross section for maximum density.");
