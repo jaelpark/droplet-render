@@ -233,7 +233,7 @@ def TextureSelectionR(self, context):
 		+list(filter(lambda t: bpy.data.images[t[0]].channels == 4 and t[0] != "Render Result" and t[0] != "Viewer Node",[(m.name,m.name,m.name,"TEXTURE",x+1) for x, m in enumerate(bpy.data.images)]));
 
 class ClEnvironmentProperties(bpy.types.PropertyGroup):
-	envtex = EnumProperty(name="Environment Map",items=TextureSelectionRGB,description="Equirectangularly mapped environment texture to be used (sky and groud). The image should be low-frequency and should not include the sun.");
+	envtex = EnumProperty(name="Environment Map",items=TextureSelectionRGB,description="Equirectangularly mapped environment texture to be used (sky and groud). The image should be low-frequency and should not include the sun. Droplet ignores the zeroth order environment lighting, so that custom background may be used.");
 	depthtex = EnumProperty(name="Depth Map",items=TextureSelectionR,description="The optionial depth texture from the primary render engine. This can be used to calculate local shadowing for the reconstructed locations (shadow pass). The camera properties should match the primary render (view, projection) and the map should be unnormalized and linear. Cycles depth output is readily usable, assuming that the camera is shared between the two renders.");
 	occlusion = BoolProperty(name="Occlusion Geometry",default=False,description="Enable holdout geometry occlusion testing. Every object marked as holdout will occlude rays creating shadows and lightshafts. Having occlusion geometry also enables compositing with other render engines. Holdout object itself is not visible. This feature may have a significant performance impact, and requires Droplet to be built with Intel Embree.");
 
