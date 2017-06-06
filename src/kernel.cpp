@@ -10,6 +10,7 @@
 #endif
 
 #include <random>
+#include <cfloat>
 //#include <fenv.h>
 
 #include <tbb/parallel_for.h>
@@ -124,7 +125,7 @@ inline float SampleVoxelSpace(const float4 &p, float *pvol, const float4 &ce, ui
 	return w.get<0>();
 }
 
-static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, RenderKernel *pkernel, KernelOctree::BaseOctreeTraverser *ptrv, sint4 *prs, uint r, uint samples){
+static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, const sfloat1 &gm, RenderKernel *pkernel, KernelOctree::BaseOctreeTraverser *ptrv, sint4 *prs, uint r, uint samples, const sfloat1 &depth){
 	KernelOctree::BaseOctreeTraverser *ptrv1;
 	KernelOctree::OctreeStepTraverser steptrv;
 	if(ptrv){ //using preallocated caching full traverser (first primary ray for which the path is always identical)
@@ -212,8 +213,10 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 
 #ifdef USE_EMBREE
 			mm = sfloat1::Less(td,maxd);
-			qm = sfloat1::And(qm,mm);
 #endif
+			mm = sfloat1::Less(td,depth);
+			qm = sfloat1::And(qm,mm);
+			
 			qm = sfloat1::And(qm,rm);
 			qm = sfloat1::And(qm,lm);
 			if(qm.AllFalse())
@@ -316,7 +319,6 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 		//sample E(rc)/T here
 		//T should be the value at rc; T(rc)
 
-		//sfloat4 ll; //total lighting (directional+sky)
 		sfloat4 lc = sfloat4::zero();
 		sfloat4 le = sfloat4::zero();
 		//skip (sky)lighting calculations if all the incident rays scatter (don't reach sun or sky)
@@ -373,14 +375,14 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 #ifdef USE_EMBREE
 		sfloat1 mr = sfloat1::And(rm,mo);
 		for(uint i = 0; i < 4; ++i){
-			lc.v[i] = sfloat1::AndNot(mr,lc.v[i]);
-			lc.v[i] = sfloat1::And(lc.v[i],mm);
+			lc.v[i] = sfloat1::AndNot(mr,lc.v[i]); //zero the light if occluded (occlusion distance not reached) and scattering
+			lc.v[i] = sfloat1::And(mm,lc.v[i]); //zero the light if occluded (occlusion distance surpassed) (scattering undetermined)
 
 			le.v[i] = sfloat1::AndNot(mr,le.v[i]);
-			le.v[i] = sfloat1::And(le.v[i],mm);
+			le.v[i] = sfloat1::And(mm,le.v[i]);
 		}
-		rm = sfloat1::Or(rm,sfloat1::AndNot(mm,sint1::trueI())); //ensure that no scattering occurs if occluded
 #endif
+		rm = sfloat1::Or(rm,sfloat1::AndNot(mm,sint1::trueI())); //ensure that no scattering occurs if occluded
 
 		if(r < pkernel->scattevs && rm.AnyFalse()){
 #define BLCLOUD_MULTIPLE_IMPORTANCE
@@ -403,8 +405,8 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 			sfloat4 rc = ro+rd*td;
 
 			//estimator S(1)*f1*w1/p1+S(2)*f2*w2/p2 /= woodcock pdf
-			std::tuple<sfloat4,sfloat4> S1 = SampleVolume(rc,srd,gm1,pkernel,0,prs,r+1,1);
-			std::tuple<sfloat4,sfloat4> S2 = SampleVolume(rc,lrd,gm1,pkernel,0,prs,pkernel->scattevs,1);
+			std::tuple<sfloat4,sfloat4> S1 = SampleVolume(rc,srd,gm1,pkernel,0,prs,r+1,1,FLT_MAX);
+			std::tuple<sfloat4,sfloat4> S2 = SampleVolume(rc,lrd,gm1,pkernel,0,prs,pkernel->scattevs,1,FLT_MAX);
 			sfloat4 &dif1 = std::get<0>(S1), &sky1 = std::get<1>(S1);
 			sfloat4 &dif2 = std::get<0>(S2), sky2 = sfloat4(0.0f);//&sky2 = std::get<1>(S2);
 
@@ -555,11 +557,20 @@ void RenderKernel::Render(uint x0, uint y0, uint tilex, uint tiley, uint samples
 	K_ParallelRender(this,x0,y0,tilex,tiley,[&](const sfloat4 &ro, const sfloat4 &rd, const sfloat1 &gm, uint x, uint y, sint4 &rngs)->void{
 		KernelOctree::OctreeFullTraverser &traverser = traversers.local();
 
-		std::tuple<sfloat4,sfloat4> ctt = SampleVolume(ro,rd,gm,this,&traverser,&rngs,0,samples);
+		dintN wmask = dintN(gm);
+		dfloatN Depth;
+		if(pdepth && flags & KERNEL_DEPTHCOMP){
+			for(uint i = 0; i < BLCLOUD_VSIZE; ++i)
+				if(wmask.v[i] != 0)
+					Depth.v[i] = pdepth[(BLCLOUD_VY*(y-y0)+y0+vpattern[i].x)*w+BLCLOUD_VX*(x-x0)+x0+vpattern[i].y];
+		}else Depth = dfloatN(FLT_MAX);
+
+		sfloat1 depth = sfloat1::load(&Depth);
+
+		std::tuple<sfloat4,sfloat4> ctt = SampleVolume(ro,rd,gm,this,&traverser,&rngs,0,samples,depth);
 		sfloat4 &cl = std::get<0>(ctt);
 		sfloat4 &cs = std::get<1>(ctt);
 
-		dintN wmask = dintN(gm);
 		for(uint i = 0; i < BLCLOUD_VSIZE; ++i)
 			if(wmask.v[i] != 0){
 				float4::store(&phb[0][(BLCLOUD_VY*(y-y0)+vpattern[i].x)*tilex+BLCLOUD_VX*(x-x0)+vpattern[i].y],cl.get(i));
@@ -580,9 +591,11 @@ void RenderKernel::Shadow(uint x0, uint y0, uint tilex, uint tiley, uint samples
 	K_ParallelRender(this,x0,y0,tilex,tiley,[&](const sfloat4 &ro, const sfloat4 &rd, const sfloat1 &gm, uint x, uint y, sint4 &rngs)->void{
 		dintN wmask = dintN(gm);
 		dfloatN Depth;
-		for(uint i = 0; i < BLCLOUD_VSIZE; ++i)
-			if(wmask.v[i] != 0)
-				Depth.v[i] = pdepth[(BLCLOUD_VY*(y-y0)+y0+vpattern[i].x)*w+BLCLOUD_VX*(x-x0)+x0+vpattern[i].y];
+		if(pdepth){
+			for(uint i = 0; i < BLCLOUD_VSIZE; ++i)
+				if(wmask.v[i] != 0)
+					Depth.v[i] = pdepth[(BLCLOUD_VY*(y-y0)+y0+vpattern[i].x)*w+BLCLOUD_VX*(x-x0)+x0+vpattern[i].y];
+		}else Depth = dfloatN(FLT_MAX);
 
 		sfloat1 depth = sfloat1::load(&Depth);
 		sfloat1 gm1 = sfloat1::And(gm,sfloat1::Less(depth,clip_end));
@@ -596,7 +609,7 @@ void RenderKernel::Shadow(uint x0, uint y0, uint tilex, uint tiley, uint samples
 			sfloat1 u3 = RNG_Sample(&rngs), u4 = RNG_Sample(&rngs);
 			sfloat4 lrd = KernelSampler::BaseLight::lights[0]->Sample(rd,u3,u4);
 
-			std::tuple<sfloat4,sfloat4> S2 = SampleVolume(ro1,lrd,gm1,this,0,&rngs,scattevs,1);
+			std::tuple<sfloat4,sfloat4> S2 = SampleVolume(ro1,lrd,gm1,this,0,&rngs,scattevs,1,FLT_MAX);
 			cs += std::get<0>(S2)/float4::load(&dynamic_cast<KernelSampler::SunLight*>(KernelSampler::BaseLight::lights[0])->color); //normalize by the intensity
 		}
 

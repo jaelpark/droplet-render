@@ -1,7 +1,7 @@
 #ifndef KERNEL_H
 #define KERNEL_H
 
-//#define RENDER_TRANSPARENT 0x1
+#define KERNEL_DEPTHCOMP 0x1
 
 namespace KernelSampler{
 class PhaseFunction;

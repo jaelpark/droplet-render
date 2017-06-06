@@ -54,6 +54,13 @@ inline uint PyGetUint(PyObject *pb, const char *pn){
 	return r;
 }
 
+inline bool PyGetBool(PyObject *pb, const char *pn){
+	PyObject *pa = PyObject_GetAttrString(pb,pn);
+	bool r = PyObject_IsTrue(pa);
+	Py_DECREF(pa);
+	return r;
+}
+
 static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 	PyObject *pscene, *pdata;
 	uint tilex, tiley, w, h, smask;
@@ -252,16 +259,14 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 
 	//caching
 	PyObject *pyperf = PyObject_GetAttrString(pscene,"blcloudperf");
-	PyObject *pycache = PyObject_GetAttrString(pyperf,"cache");
 	PyObject *pycachedir = PyObject_GetAttrString(pyperf,"cachedir");
 
-	bool cache = PyObject_IsTrue(pycache);
+	bool cache = PyGetBool(pyperf,"cache");
 	uint clayer = PyGetUint(pyperf,"cachelayer");
 	static char cachedir[256];
 	strncpy(cachedir,PyUnicode_AsUTF8(pycachedir),sizeof(cachedir));
 
 	Py_DECREF(pycachedir);
-	Py_DECREF(pycache);
 	Py_DECREF(pyperf);
 	/////
 
@@ -394,9 +399,8 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 		else if(strcasecmp(ptype1,"MESH") == 0){
 			PyObject *psd = PyObject_GetAttrString(pobj,"droplet");
 			PyObject *ppn = PyObject_GetAttrString(psd,"nodetree");
-			PyObject *pyholdout = PyObject_GetAttrString(psd,"holdout");
 			const char *pnodename = PyUnicode_AsUTF8(ppn);
-			bool holdout = PyObject_IsTrue(pyholdout);
+			bool holdout = PyGetBool(psd,"holdout");
 
 			std::unordered_map<Py_hash_t, Node::NodeTree *>::const_iterator m = std::find_if(ntm.begin(),ntm.end(),[=](const std::unordered_map<Py_hash_t, Node::NodeTree *>::value_type &t)->bool{
 				return strcmp(t.second->name,pnodename) == 0;
@@ -423,7 +427,6 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 				}
 			}
 
-			Py_DECREF(pyholdout);
 			Py_DECREF(ppn);
 			Py_DECREF(psd);
 
@@ -535,9 +538,8 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 
 	PyObject *pyworld = PyObject_GetAttrString(pscene,"world");
 	PyObject *pywsettings = PyObject_GetAttrString(pyworld,"droplet");
-	PyObject *pyocclusion = PyObject_GetAttrString(pywsettings,"occlusion");
-	bool occlusion = PyObject_IsTrue(pyocclusion);
-	Py_DECREF(pyocclusion);
+	bool depthcomp = PyGetBool(pywsettings,"depthcomp");
+	bool occlusion = PyGetBool(pywsettings,"occlusion");
 
 	PyObject *pyimages = PyObject_GetAttrString(pdata,"images");
 
@@ -621,7 +623,9 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 		gpscene->Initialize(dsize,maxd,qband,smask,cache,cachedir);
 
 		gpkernel = new RenderKernel();
-		gpkernel->Initialize(gpscene,gpsceneocc,&sviewi,&sproji,ppf,penv,pdepth,scattevs,msigmas,msigmaa,tilex,tiley,w,h,0);
+		gpkernel->Initialize(gpscene,gpsceneocc,
+			&sviewi,&sproji,ppf,penv,pdepth,scattevs,msigmas,msigmaa,tilex,tiley,w,h,
+			depthcomp?KERNEL_DEPTHCOMP:0);
 
 		SceneData::SmokeCache::DeleteAll();
 		SceneData::ParticleSystem::DeleteAll();
