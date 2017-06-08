@@ -108,6 +108,9 @@ void ScalarMath::Evaluate(const void *pp){
 	case 's': r = sinf(a); break;
 	case 'c': r = cosf(a); break;
 	case 't': r = tanf(a); break;
+	case 'S': r = asinf(a); break;
+	case 'C': r = acosf(a); break;
+	case 'T': r = atan2f(a,b); break;
 	case 'G': r = (float)(a > b); break;
 	case 'g': r = (float)(a >= b); break;
 	case 'L': r = (float)(a < b); break;

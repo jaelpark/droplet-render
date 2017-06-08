@@ -227,13 +227,13 @@ class ClNodeScalarMath(bpy.types.Node):
 		("s","Sin",""),
 		("c","Cos",""),
 		("t","Tan",""),
+		("S","arcsin",""),
+		("C","arccos",""),
+		("T","arctan2",""),
 		("G","IsGreater",""),
 		("g","IsGreaterOrEqual",""),
 		("L","IsLess",""),
 		("l","IsLessOrEqual","")));
-		# ("S","arcsin",""),
-		# ("C","arccos",""),
-		# ("T","arctan","")));
 
 	def init(self, context):
 		self.inputs.new("ClNodeFloatSocket","a");
