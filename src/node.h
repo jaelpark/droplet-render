@@ -384,7 +384,7 @@ public:
 
 class OutputNode : public BaseNode{
 public:
-	OutputNode(NodeTree *, char);
+	OutputNode(NodeTree *, char, bool);
 	~OutputNode();
 	void Evaluate(const void *);
 	enum INPUT{
@@ -395,6 +395,7 @@ public:
 		INPUT_COUNT,
 	};
 	char opch; //fog post processor blend operation
+	bool qonly; //construct only query field
 };
 
 class NodeTree{

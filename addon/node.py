@@ -335,6 +335,7 @@ class ClNodeSurfaceOutput(bpy.types.Node):
 		("*","Mul",""),
 		#("/","Div",""),
 		("=","Replace","")));
+	bq = BoolProperty(name="Query Only",description="Construct only the query field (when required).",default=False);
 
 	def init(self, context):
 		self.inputs.new("ClNodeFogSocket","Fog");
@@ -345,6 +346,7 @@ class ClNodeSurfaceOutput(bpy.types.Node):
 	def draw_buttons(self, context, layout):
 		if len(self.inputs["Fog.Post"].links) > 0:
 			layout.prop(self,"op");
+			layout.prop(self,"bq");
 
 		#self.color = (0.7,0.7,0.8);
 		#self.use_custom_color = True;

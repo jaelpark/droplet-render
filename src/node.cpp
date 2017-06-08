@@ -421,7 +421,7 @@ IDisplacement::~IDisplacement(){
 	//
 }
 
-OutputNode::OutputNode(NodeTree *pnt, char _opch) : BaseNode(0,pnt), opch(_opch){
+OutputNode::OutputNode(NodeTree *pnt, char _opch, bool _qonly) : BaseNode(0,pnt), opch(_opch), qonly(_qonly){
 	//printf("OutputNode()\n");
 	pnt->nodes1.push_back(this);
 }
@@ -568,11 +568,14 @@ BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, No
 		return IDisplacement::Create(level,pnt,resf);
 	}else if(strcmp(pname,"ClNodeSurfaceOutput") == 0){
 		PyObject *pop = PyObject_GetAttrString((PyObject*)pnode,"op");
-		const char *pops = PyUnicode_AsUTF8(pop);
-		const char opch = pops[0];
+		const char opch = PyUnicode_AsUTF8(pop)[0];
 		Py_DECREF(pop);
 
-		return new OutputNode(pnt,opch);
+		PyObject *pbq = PyObject_GetAttrString((PyObject*)pnode,"bq");
+		bool qonly = PyObject_IsTrue(pbq);
+		Py_DECREF(pbq);
+
+		return new OutputNode(pnt,opch,qonly);
 	}
 	return 0;
 }
