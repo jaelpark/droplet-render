@@ -55,16 +55,17 @@ namespace SceneData{
 
 class BaseObject{
 public:
-	BaseObject(Node::NodeTree *, const char *, uint);
+	BaseObject(Node::NodeTree *, const char *, const dfloat3 *, uint);
 	virtual ~BaseObject();
-	class Node::NodeTree *pnt;
+	Node::NodeTree *pnt;
 	const char *pname;
+	dfloat3 location;
 	uint flags;
 };
 
 class ParticleSystem : public BaseObject{
 public:
-	ParticleSystem(Node::NodeTree *, const char *, uint);
+	ParticleSystem(Node::NodeTree *, const char *, const dfloat3 *, uint);
 	~ParticleSystem();
 	static void DeleteAll();
 	std::vector<dfloat3> pl; //position
@@ -74,7 +75,7 @@ public:
 
 class SmokeCache : public BaseObject{
 public:
-	SmokeCache(Node::NodeTree *, const char *, uint, const char *, const char *, const char *);
+	SmokeCache(Node::NodeTree *, const char *, const dfloat3 *, uint, const char *, const char *, const char *);
 	~SmokeCache();
 	static void DeleteAll();
 	const char *pvdb, *prho, *pvel;
@@ -83,7 +84,7 @@ public:
 
 class Surface : public BaseObject{
 public:
-	Surface(Node::NodeTree *, const char *, uint);
+	Surface(Node::NodeTree *, const char *, const dfloat3 *, uint);
 	~Surface();
 	static void DeleteAll();
 	std::vector<dfloat3> vl;
@@ -114,6 +115,7 @@ class ValueNodeParams : public IValueNodeParams{
 public:
 	ValueNodeParams(const dfloat3 *, const dfloat3 *, float, float, const dfloat3 *, float, float, const InputNodeParams *);
 	~ValueNodeParams();
+	const dfloat3 * GetObjectPosW() const;
 	const dfloat3 * GetVoxPosW() const;
 	const dfloat3 * GetCptPosW() const;
 	float GetLocalDistance() const;

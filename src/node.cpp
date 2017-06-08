@@ -310,6 +310,21 @@ void AdvectionInfo::Evaluate(const void *pp){
 	rs.value[OUTPUT_FLOAT_DENSITY] = pd->GetAdvectionDensity();
 }
 
+ObjectInfo::ObjectInfo(uint _level, NodeTree *pnt) : BaseValueNode<dfloat3>(_level,pnt), BaseNode(_level,pnt){
+	//
+}
+
+ObjectInfo::~ObjectInfo(){
+	//
+}
+
+void ObjectInfo::Evaluate(const void *pp){
+	IValueNodeParams *pd = (IValueNodeParams*)pp;
+
+	BaseValueResult<dfloat3> &rv = this->BaseValueNode<dfloat3>::result.local();
+	rv.value[OUTPUT_VECTOR_LOCATION] = *pd->GetObjectPosW();
+}
+
 SceneInfo::SceneInfo(uint _level, NodeTree *pnt) : BaseValueNode<float>(_level,pnt), BaseValueNode<dfloat3>(_level,pnt), BaseNode(_level,pnt){
 	//
 }
@@ -511,6 +526,8 @@ BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, No
 		return new VoxelInfo(level,pnt);
 	}else if(strcmp(pname,"ClNodeAdvectionInfo") == 0){
 		return new AdvectionInfo(level,pnt);
+	}else if(strcmp(pname,"ClNodeObjectInfo") == 0){
+		return new ObjectInfo(level,pnt);
 	}else if(strcmp(pname,"ClNodeSceneInfo") == 0){
 		return new SceneInfo(level,pnt);
 	}else if(strcmp(pname,"ClNodeSurfaceInput") == 0){

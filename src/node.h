@@ -7,6 +7,7 @@ class IValueNodeParams{
 public:
 	IValueNodeParams();
 	~IValueNodeParams();
+	virtual const dfloat3 * GetObjectPosW() const = 0;
 	virtual const dfloat3 * GetVoxPosW() const = 0;
 	virtual const dfloat3 * GetCptPosW() const = 0;
 	virtual float GetLocalDistance() const = 0;
@@ -221,6 +222,21 @@ public:
 		OUTPUT_FLOAT_ADVDISTANCE,
 		OUTPUT_FLOAT_DENSITY,
 		OUTPUT_FLOAT_COUNT
+	};
+};
+
+/*struct ObjectInfoData{
+	dfloat3 location;
+};*/
+
+class ObjectInfo : public BaseValueNode<dfloat3>{
+public:
+	ObjectInfo(uint, NodeTree *);
+	~ObjectInfo();
+	void Evaluate(const void *);
+	enum OUTPUT_VECTOR{
+		OUTPUT_VECTOR_LOCATION,
+		OUTPUT_VECTOR_COUNT
 	};
 };
 

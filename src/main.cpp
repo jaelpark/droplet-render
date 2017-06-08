@@ -296,6 +296,13 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 
 		uint flags = (((1<<clayer)&omask) != 0)?SCENEOBJ_CACHED:0;
 
+		PyObject *ploc = PyObject_GetAttrString(pobj,"location"); //get the object location for the object info node
+		dfloat3 location = dfloat3(
+			PyGetFloat(ploc,"x"),
+			PyGetFloat(ploc,"y"),
+			PyGetFloat(ploc,"z"));
+		Py_DECREF(ploc);
+
 		//get particle systems
 		PyObject *ppro = PyObject_GetAttrString(pobj,"particle_systems");
 		PyObject *ppsl = PyObject_CallMethod(ppro,"values","");
@@ -319,7 +326,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 				DebugPrintf("Warning: invalid node tree %s. Skipping particle system (index=%u,%u).\n",pnodename,i,j);
 				continue;
 			}
-			SceneData::ParticleSystem *pprs = new SceneData::ParticleSystem(m->second,name,flags); //TODO: reserve() the particle vector size
+			SceneData::ParticleSystem *pprs = new SceneData::ParticleSystem(m->second,name,&location,flags); //TODO: reserve() the particle vector size
 
 			Py_DECREF(pyname1);
 			Py_DECREF(ppn);
@@ -409,7 +416,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 				DebugPrintf("Warning: invalid node tree %s. Skipping surface (index=%u).\n",pnodename,i);
 				continue;
 			}
-			SceneData::Surface *psobj = new SceneData::Surface(m->second,pname,flags|(holdout?SCENEOBJ_HOLDOUT:0));
+			SceneData::Surface *psobj = new SceneData::Surface(m->second,pname,&location,flags|(holdout?SCENEOBJ_HOLDOUT:0));
 
 			//check if SmokeCache node was used
 			for(uint j = 0; j < m->second->nodes1.size(); ++j){
@@ -418,7 +425,7 @@ static PyObject * DRE_BeginRender(PyObject *pself, PyObject *pargs){
 					PyObject *pyvdb = PyObject_GetAttrString(psd,"vdbcache");
 					PyObject *pyrho = PyObject_GetAttrString(psd,"vdbrho");
 					PyObject *pyvel = PyObject_GetAttrString(psd,"vdbvel");
-					SceneData::SmokeCache *pprs = new SceneData::SmokeCache(m->second,pname,flags,
+					SceneData::SmokeCache *pprs = new SceneData::SmokeCache(m->second,pname,&location,flags,
 						PyUnicode_AsUTF8(pyvdb),PyUnicode_AsUTF8(pyrho),PyUnicode_AsUTF8(pyvel));
 					Py_DECREF(pyvdb);
 					Py_DECREF(pyrho);

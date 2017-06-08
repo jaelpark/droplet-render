@@ -137,6 +137,13 @@ class ClNodeAdvectionInfo(bpy.types.Node):
 		self.outputs.new("ClNodeFloatSocket","Advection.%");
 		self.outputs.new("ClNodeFloatSocket","Density");
 
+class ClNodeObjectInfo(bpy.types.Node):
+	bl_idname = "ClNodeObjectInfo";
+	bl_label = "Object Info";
+
+	def init(self, context):
+		self.outputs.new("ClNodeVectorSocket","Obj.world");
+
 class ClNodeSceneInfo(bpy.types.Node):
 	bl_idname = "ClNodeSceneInfo";
 	bl_label = "Scene Info";
@@ -405,6 +412,7 @@ categories = [
 		NodeItem("ClNodeVectorInput"),
 		NodeItem("ClNodeVoxelInfo"),
 		NodeItem("ClNodeAdvectionInfo"),
+		NodeItem("ClNodeObjectInfo"),
 		NodeItem("ClNodeSceneInfo"),
 	]),
 	ClNodeCategory("OUTPUT_CATEGORY","Output",items = [

@@ -27,6 +27,10 @@ ValueNodeParams::~ValueNodeParams(){
 	//
 }
 
+const dfloat3 * ValueNodeParams::GetObjectPosW() const{
+	return &std::get<INP_OBJECT>(*pnodeparams)->location;
+}
+
 const dfloat3 * ValueNodeParams::GetVoxPosW() const{
 	return pvoxw;
 }
@@ -733,7 +737,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 namespace SceneData{
 #define STRDUP(s) strcpy(new char[strlen(s)+1],s)
 
-BaseObject::BaseObject(Node::NodeTree *_pnt, const char *_pname, uint _flags) : pnt(_pnt), flags(_flags){
+BaseObject::BaseObject(Node::NodeTree *_pnt, const char *_pname, const dfloat3 *ploc, uint _flags) : pnt(_pnt), location(*ploc), flags(_flags){
 	pname = STRDUP(_pname);
 }
 
@@ -741,7 +745,7 @@ BaseObject::~BaseObject(){
 	delete []pname;
 }
 
-ParticleSystem::ParticleSystem(Node::NodeTree *_pnt, const char *pname, uint flags) : BaseObject(_pnt,pname,flags){
+ParticleSystem::ParticleSystem(Node::NodeTree *_pnt, const char *pname, const dfloat3 *ploc, uint flags) : BaseObject(_pnt,pname,ploc,flags){
 	ParticleSystem::prss.push_back(this);
 }
 
@@ -757,7 +761,7 @@ void ParticleSystem::DeleteAll(){
 
 std::vector<ParticleSystem *> ParticleSystem::prss;
 
-SmokeCache::SmokeCache(Node::NodeTree *_pnt, const char *pname, uint flags, const char *_pvdb, const char *_prho, const char *_pvel) : BaseObject(_pnt,pname,flags){
+SmokeCache::SmokeCache(Node::NodeTree *_pnt, const char *pname, const dfloat3 *ploc, uint flags, const char *_pvdb, const char *_prho, const char *_pvel) : BaseObject(_pnt,pname,ploc,flags){
 	SmokeCache::objs.push_back(this);
 	pvdb = STRDUP(_pvdb);
 	prho = STRDUP(_prho);
@@ -778,7 +782,7 @@ void SmokeCache::DeleteAll(){
 
 std::vector<SmokeCache *> SmokeCache::objs;
 
-Surface::Surface(Node::NodeTree *_pnt, const char *pname, uint flags) : BaseObject(_pnt,pname,flags){
+Surface::Surface(Node::NodeTree *_pnt, const char *pname, const dfloat3 *ploc, uint flags) : BaseObject(_pnt,pname,ploc,flags){
 	Surface::objs.push_back(this);
 }
 
