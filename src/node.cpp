@@ -154,6 +154,9 @@ void VectorMath::Evaluate(const void *pp){
 	case '/': r = a/b; break;
 	case 'X': r = float4::cross(a,b); break;
 	case 'n': r = float4::normalize3(a); break;
+	case '|':
+		r = float4::dot3(a,b);
+		break;
 	default:
 		r = float4::zero();
 	}

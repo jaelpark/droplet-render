@@ -263,7 +263,8 @@ class ClNodeVectorMath(bpy.types.Node):
 		("*","Multiply",""),
 		("/","Divide",""),
 		("X","Cross",""),
-		("n","Normalize","")));
+		("n","Normalize",""),
+		("|","Dot","")));
 
 	def init(self, context):
 		self.inputs.new("ClNodeVectorSocket","a");
