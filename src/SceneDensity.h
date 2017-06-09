@@ -69,6 +69,14 @@ public:
 	void Evaluate(const void *);
 };
 
+class Combine : public BaseFogNode1, public ICombine{
+public:
+	Combine(uint, NodeTree *, char);
+	~Combine();
+	void Evaluate(const void *);
+	char opch;
+};
+
 class Advection : public BaseFogNode1, public IAdvection{
 public:
 	Advection(uint, NodeTree *, uint);

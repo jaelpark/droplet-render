@@ -405,6 +405,14 @@ IComposite::~IComposite(){
 	//
 }
 
+ICombine::ICombine(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseNode(_level,pnt){
+	//
+}
+
+ICombine::~ICombine(){
+	//
+}
+
 IAdvection::IAdvection(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseNode(_level,pnt){
 	//
 }
@@ -501,16 +509,14 @@ void NodeTree::DeleteAll(){
 BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, NodeTree *pnt){
 	if(strcmp(pname,"ClNodeScalarMath") == 0){
 		PyObject *pop = PyObject_GetAttrString((PyObject*)pnode,"op");
-		const char *pops = PyUnicode_AsUTF8(pop);
-		const char opch = pops[0];
+		const char opch = PyUnicode_AsUTF8(pop)[0];
 		Py_DECREF(pop);
 
 		return new ScalarMath(level,pnt,opch);
 
 	}else if(strcmp(pname,"ClNodeVectorMath") == 0){
 		PyObject *pop = PyObject_GetAttrString((PyObject*)pnode,"op");
-		const char *pops = PyUnicode_AsUTF8(pop);
-		const char opch = pops[0];
+		const char opch = PyUnicode_AsUTF8(pop)[0];
 		Py_DECREF(pop);
 
 		return new VectorMath(level,pnt,opch);
@@ -548,6 +554,13 @@ BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, No
 		return IFogPostInput::Create(level,pnt);
 	}else if(strcmp(pname,"ClNodeComposite") == 0){
 		return IComposite::Create(level,pnt);
+
+	}else if(strcmp(pname,"ClNodeCombine") == 0){
+		PyObject *pop = PyObject_GetAttrString((PyObject*)pnode,"op");
+		const char opch = PyUnicode_AsUTF8(pop)[0];
+		Py_DECREF(pop);
+
+		return ICombine::Create(level,pnt,opch);
 	}else if(strcmp(pname,"ClNodeAdvection") == 0){
 		uint flags = 0;
 

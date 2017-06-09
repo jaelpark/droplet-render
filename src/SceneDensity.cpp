@@ -405,6 +405,49 @@ IComposite * IComposite::Create(uint level, NodeTree *pnt){
 	return new Composite(level,pnt);
 }
 
+Combine::Combine(uint _level, NodeTree *pnt, char _opch) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), BaseNode(_level,pnt), ICombine(_level,pnt), opch(_opch){
+	//
+}
+
+Combine::~Combine(){
+	//
+}
+
+void Combine::Evaluate(const void *pp){
+	InputNodeParams *pd = (InputNodeParams*)pp;
+
+	BaseFogNode1 *pnode1 = dynamic_cast<BaseFogNode1*>(pnodes[ICombine::INPUT_FOGA]);
+	BaseFogNode1 *pnode2 = dynamic_cast<BaseFogNode1*>(pnodes[ICombine::INPUT_FOGB]);
+
+	pdgrid = pnode1->pdgrid->deepCopy();
+	openvdb::FloatGrid::Ptr ptgrid = pnode2->pdgrid->deepCopy(); //TODO: check if node2 has more than one active output link
+
+	DebugPrintf("> Compositing (combine|%c) fog volume...\n",opch);
+
+	switch(opch){
+	default:
+	case 'M':
+		openvdb::tools::compMax(*pdgrid,*ptgrid);
+		break;
+	case 'm':
+		openvdb::tools::compMin(*pdgrid,*ptgrid);
+		break;
+	case '+':
+		openvdb::tools::compSum(*pdgrid,*ptgrid);
+		break;
+	case '*':
+		openvdb::tools::compMul(*pdgrid,*ptgrid);
+		break;
+	case '=':
+		openvdb::tools::compReplace(*pdgrid,*ptgrid);
+		break;
+	}
+}
+
+ICombine * ICombine::Create(uint level, NodeTree *pnt, char opch){
+	return new Combine(level,pnt,opch);
+}
+
 Advection::Advection(uint _level, NodeTree *pnt, uint _flags) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), BaseNode(_level,pnt), IAdvection(_level,pnt), flags(_flags){
 	//
 }

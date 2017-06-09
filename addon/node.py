@@ -360,6 +360,27 @@ class ClNodeComposite(bpy.types.Node):
 		self.inputs.new("ClNodeFogSocket","Fog");
 		self.outputs.new("ClNodeFogSocket","Fog");
 
+class ClNodeCombine(bpy.types.Node):
+	bl_idname = "ClNodeCombine";
+	bl_label = "Combination";
+
+	op = EnumProperty(name="Blend",description="Combination blend operator",default="M",items=(
+		("M","Max",""),
+		("m","Min",""),
+		("+","Add",""),
+		#("-","Sub",""), #compSub not available
+		("*","Mul",""),
+		#("/","Div",""),
+		("=","Replace","")));
+
+	def init(self, context):
+		self.inputs.new("ClNodeFogSocket","a");
+		self.inputs.new("ClNodeFogSocket","b");
+		self.outputs.new("ClNodeFogSocket","Fog");
+
+	def draw_buttons(self, context, layout):
+		layout.prop(self,"op");
+
 class ClNodeAdvection(bpy.types.Node):
 	bl_idname = "ClNodeAdvection";
 	bl_label = "Advection";
@@ -433,6 +454,7 @@ categories = [
 	]),
 	ClNodeCategory("DENSITY_CATEGORY","Fog",items = [
 		NodeItem("ClNodeComposite"),
+		NodeItem("ClNodeCombine"),
 		NodeItem("ClNodeAdvection"),
 	]),
 	ClNodeCategory("SURFACE_CATEGORY","Surface",items = [

@@ -344,6 +344,20 @@ public:
 	};
 };
 
+class ICombine : public virtual BaseFogNode{
+protected:
+	ICombine(uint, NodeTree *);
+	~ICombine();
+public:
+	virtual void Evaluate(const void *) = 0;
+	static ICombine * Create(uint, NodeTree *, char);
+	enum INPUT{
+		INPUT_FOGA,
+		INPUT_FOGB,
+		INPUT_COUNT
+	};
+};
+
 class IAdvection : public virtual BaseFogNode{
 protected:
 	IAdvection(uint, NodeTree *);
