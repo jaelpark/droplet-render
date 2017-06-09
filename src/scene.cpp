@@ -455,6 +455,8 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 
 			if(cache){
 				openvdb::GridCPtrVec gvec;
+				if(vdbc.isOpen())
+					vdbc.close();
 				if(!qonly){
 					ptgrid->setName("surface");
 					gvec.push_back(ptgrid);
@@ -506,6 +508,8 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 				fogppl.push_back(PostFogParams(SceneData::SmokeCache::objs[i],pdgrid->deepCopy(),0));
 
 			if(cache){
+				if(vdbc.isOpen())
+					vdbc.close();
 				pdgrid->setName("fog");
 				openvdb::GridCPtrVec gvec{pdgrid};
 				vdbc.write(gvec);
@@ -549,6 +553,8 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 				fogppl.push_back(PostFogParams(SceneData::ParticleSystem::prss[i],pdgrid->deepCopy(),0));
 
 			if(cache){
+				if(vdbc.isOpen())
+					vdbc.close();
 				pdgrid->setName("fog");
 				pvgrid->setName("vel");
 				openvdb::GridCPtrVec gvec{pdgrid,pvgrid};
