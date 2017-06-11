@@ -595,7 +595,8 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 				VectorGridBoxSampler *pgsampler = new VectorGridBoxSampler(*pgrad);
 				FloatGridBoxSampler *pdsampler = new FloatGridBoxSampler(*pgrid[VOLUME_BUFFER_SDF]);
 
-				SceneData::PostFog fobj(std::get<PFP_OBJECT>(fogppl[i])->pnt,std::get<PFP_INPUTGRID>(fogppl[i]),std::get<PFP_FLAGS>(fogppl[i]));
+				SceneData::PostFog fobj(std::get<PFP_OBJECT>(fogppl[i])->pnt,std::get<PFP_INPUTGRID>(fogppl[i]),
+					&std::get<PFP_OBJECT>(fogppl[i])->location,std::get<PFP_FLAGS>(fogppl[i]));
 				Node::InputNodeParams snp(&fobj,pgridtr,pdsampler,pqsampler,ppsampler,pvsampler,pgsampler);
 				fobj.pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_FOGPOST);
 
