@@ -95,7 +95,7 @@ class ClSamplingPanel(bpy.types.Panel):
 		context.scene.blcloudsampling.draw(context,self.layout);
 
 class ClGridProperties(bpy.types.PropertyGroup):
-	detailsize = FloatProperty(name="Detail size",default=0.02,min=0.0001,precision=4,description="Smallest detail size in blender units.");
+	detailsize = FloatProperty(name="Detail size",default=0.01,min=0.0001,precision=4,description="Smallest detail size during scene costruction in blender units.");
 	maxdepth = IntProperty(name="Max Depth",default=12,min=1,description="Maximum octree depth. Limiting depth to smaller values increases render performance, but at the cost of less sparse data and higher memory requirements.");
 	qfbandw = FloatProperty(name="Band",default=1.0,min=0.01,precision=2,description="Outer narrow-band width of the low-resolution distance query field. This field is only constructed when the 'distance' output of the SceneInfo-node is used. A separate low-resolution field is created to allow approximate distance evaluation in larger global domains, as opposed to tight and local surface-surrounding field of the high-resolution field.");
 
