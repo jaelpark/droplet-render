@@ -260,26 +260,21 @@ Octree::Octree(uint _x) : x(_x){//, lock(ATOMIC_FLAG_INIT){
 	memset(pch,0,sizeof(pch));
 }
 
-/*Octree::Octree(){
-	//memset(pch,0,sizeof(pch));
-}*/
-
 Octree::~Octree(){
 	//
 }
 
-//Some template setup to combine BoundingBox/Triangle cases?
 void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &c1, const float4 &e1, uint level, uint mlevel, std::atomic<uint> *pindex, std::atomic<uint> *pleafx, tbb::concurrent_vector<Octree> *proot, tbb::concurrent_vector<OctreeStructure> *pob, VOLUME_BUFFER bx){
-	m.lock();
+	//m.lock();
 	float4::store(&(*pob)[x].ce,float4::select(c,e,float4::selectctrl(0,0,0,1)));
 	memset((*pob)[x].qval,0,sizeof((*pob)[x].qval)); //these are set during the resampling phase
-	m.unlock();
+	//m.unlock();
 
 	if(level >= mlevel-1){
-		m.lock();//for(; lock.test_and_set(std::memory_order_acquire););
+		//m.lock();//for(; lock.test_and_set(std::memory_order_acquire););
 		if((*pob)[x].volx[bx] == ~0u)
 			(*pob)[x].volx[bx] = pleafx->fetch_add(1);
-		m.unlock();//lock.clear(std::memory_order_release);
+		//m.unlock();//lock.clear(std::memory_order_release);
 		return;
 	}//else (*pob)[x].volx = ~0;
 
@@ -293,7 +288,7 @@ void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &c1, const
 
 		//aabb.Intersects
 		if(aabb.Intersects(aabb1)){
-			m.lock();//for(; lock.test_and_set(std::memory_order_acquire););
+			//m.lock();//for(; lock.test_and_set(std::memory_order_acquire););
 			if(!pch[i]){
 				uint index = pindex->fetch_add(1)+1;
 				pob->grow_to_at_least(index+1);
@@ -302,24 +297,24 @@ void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &c1, const
 				pch[i] = new(scalable_malloc(sizeof(Octree))) Octree(index);//new(&(*proot)[index]) Octree(index);
 				(*pob)[x].chn[i] = index;
 			}
-			m.unlock();//lock.clear(std::memory_order_release);
+			//m.unlock();//lock.clear(std::memory_order_release);
 
 			pch[i]->BuildPath(cc,ee,c1,e1,level+1,mlevel,pindex,pleafx,proot,pob,bx);
 		}
 	}
 }
 
-void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &v0, const float4 &v1, const float4 &v2, uint level, uint mlevel, std::atomic<uint> *pindex, std::atomic<uint> *pleafx, tbb::concurrent_vector<Octree> *proot, tbb::concurrent_vector<OctreeStructure> *pob, VOLUME_BUFFER bx){
-	m.lock();
+/*void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &v0, const float4 &v1, const float4 &v2, uint level, uint mlevel, std::atomic<uint> *pindex, std::atomic<uint> *pleafx, tbb::concurrent_vector<Octree> *proot, tbb::concurrent_vector<OctreeStructure> *pob, VOLUME_BUFFER bx){
+	//m.lock();
 	float4::store(&(*pob)[x].ce,float4::select(c,e,float4::selectctrl(0,0,0,1)));
 	memset((*pob)[x].qval,0,sizeof((*pob)[x].qval)); //these are set during the resampling phase
-	m.unlock();
+	//m.unlock();
 
 	if(level >= mlevel-1){
-		m.lock();//for(; lock.test_and_set(std::memory_order_acquire););
+		//m.lock();//for(; lock.test_and_set(std::memory_order_acquire););
 		if((*pob)[x].volx[bx] == ~0u)
 			(*pob)[x].volx[bx] = pleafx->fetch_add(1);
-		m.unlock();//lock.clear(std::memory_order_release);
+		//m.unlock();//lock.clear(std::memory_order_release);
 		return;
 	}//else (*pob)[x].volx = ~0;
 
@@ -330,7 +325,7 @@ void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &v0, const
 		BoundingBox aabb(cc,ee);
 
 		if(aabb.Intersects(v0,v1,v2)){
-			m.lock();//for(; lock.test_and_set(std::memory_order_acquire););
+			//m.lock();//for(; lock.test_and_set(std::memory_order_acquire););
 			if(!pch[i]){
 				uint index = pindex->fetch_add(1)+1;
 				pob->grow_to_at_least(index+1);
@@ -338,12 +333,12 @@ void Octree::BuildPath(const float4 &c, const float4 &e, const float4 &v0, const
 				pch[i] = new(scalable_malloc(sizeof(Octree))) Octree(index);//pch[i] = new(&(*proot)[index]) Octree(index);
 				(*pob)[x].chn[i] = index;
 			}
-			m.unlock();//lock.clear(std::memory_order_release);
+			//m.unlock();//lock.clear(std::memory_order_release);
 
 			pch[i]->BuildPath(cc,ee,v0,v1,v2,level+1,mlevel,pindex,pleafx,proot,pob,bx);
 		}
 	}
-}
+}*/
 
 void Octree::FreeRecursive(){
 	for(uint i = 0; i < 8; ++i)
@@ -413,9 +408,11 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 	std::vector<BoundingBox,tbb::cache_aligned_allocator<BoundingBox>> gridbvs[VOLUME_BUFFER_COUNT];
 	std::vector<PostFogParams,tbb::cache_aligned_allocator<PostFogParams>> fogppl; //input grids to be post-processed
 
-	for(uint i = 0; i < SceneData::Surface::objs.size(); ++i){
+	for(uint i = 0, n = SceneData::Surface::objs.size(); i < n; ++i){
 		if(SceneData::Surface::objs[i]->flags & SCENEOBJ_HOLDOUT)
 			continue;
+
+		DebugPrintf("Processing surface %s (%u/%u)\n",SceneData::Surface::objs[i]->pname,i+1,n);
 
 		openvdb::FloatGrid::Ptr ptgrid, phgrid;
 		bool qonly = dynamic_cast<Node::OutputNode*>(SceneData::Surface::objs[i]->pnt->GetRoot())->qonly;
@@ -432,7 +429,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 				phgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(S_ReadGridExcept(vdbc,"surface.query"));
 			if(!qonly){
 				ptgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(S_ReadGridExcept(vdbc,"surface"));
-				DebugPrintf("Read cached surface (%s) (%u/%u), VDB %f MB\n",SceneData::Surface::objs[i]->pname,i+1,SceneData::Surface::objs.size(),(float)ptgrid->memUsage()/1e6f);
+				DebugPrintf("Read cached surface (VDB %f MB)\n",(float)ptgrid->memUsage()/1e6f);
 			}
 
 			vdbc.close();
@@ -450,7 +447,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 				phgrid = pdsn->ComputeLevelSet(pqsdftr,bvc,bvc);
 			if(!qonly){
 				ptgrid = pdsn->ComputeLevelSet(pgridtr,bvc,bvc);
-				DebugPrintf("Completed surface calculations (%s) (%u/%u), VDB %f MB\n",SceneData::Surface::objs[i]->pname,i+1,SceneData::Surface::objs.size(),(float)ptgrid->memUsage()/1e6f);
+				DebugPrintf("Completed surface calculations (VDB %f MB)\n",(float)ptgrid->memUsage()/1e6f);
 			}
 
 			if(cache){
@@ -480,8 +477,10 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 	ptvel->setTransform(pgridtr);
 	ptvel->setGridClass(openvdb::GRID_FOG_VOLUME);
 
-	for(uint i = 0; i < SceneData::SmokeCache::objs.size(); ++i){
+	for(uint i = 0, n = SceneData::SmokeCache::objs.size(); i < n; ++i){
 		openvdb::FloatGrid::Ptr pdgrid;
+
+		DebugPrintf("Processing smoke cache %s (%u/%u)\n",SceneData::SmokeCache::objs[i]->pname,i+1,n);
 
 		char fn[256];
 		snprintf(fn,sizeof(fn),"%s/droplet-smoke-cache-%s.vdb",pcachedir,SceneData::SmokeCache::objs[i]->pname);
@@ -495,7 +494,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 			if(SceneData::SmokeCache::objs[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST)
 				fogppl.push_back(PostFogParams(SceneData::SmokeCache::objs[i],pdgrid->deepCopy(),SceneData::SmokeCache::objs[i]->flags));
 
-			DebugPrintf("Read cached fog (smoke cache) (%s) (%u/%u), VDB %f MB\n",SceneData::SmokeCache::objs[i]->pname,i+1,SceneData::SmokeCache::objs.size(),(float)pdgrid->memUsage()/1e6f);
+			DebugPrintf("Read cached smoke cache (VDB %f MB)\n",(float)pdgrid->memUsage()/1e6f);
 
 			vdbc.close();
 
@@ -516,15 +515,17 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 				vdbc.close();
 			}
 
-			DebugPrintf("Completed fog (smoke cache) calculations (%s) (%u/%u), VDB %f MB\n",SceneData::SmokeCache::objs[i]->pname,i+1,SceneData::SmokeCache::objs.size(),(float)pdgrid->memUsage()/1e6f);
+			DebugPrintf("Completed smoke cache calculations (VDB %f MB)\n",(float)pdgrid->memUsage()/1e6f);
 		}
 
 		openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdgrid);
 	}
 
-	for(uint i = 0; i < SceneData::ParticleSystem::prss.size(); ++i){
+	for(uint i = 0, n = SceneData::ParticleSystem::prss.size(); i < n; ++i){
 		openvdb::FloatGrid::Ptr pdgrid;
 		openvdb::Vec3SGrid::Ptr pvgrid;
+
+		DebugPrintf("Processing particle fog %s (%u/%u)\n",SceneData::ParticleSystem::prss[i]->pname,i+1,n);
 
 		char fn[256];
 		snprintf(fn,sizeof(fn),"%s/droplet-fog-cache-%s.vdb",pcachedir,SceneData::ParticleSystem::prss[i]->pname);
@@ -539,7 +540,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 			if(SceneData::ParticleSystem::prss[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST)
 				fogppl.push_back(PostFogParams(SceneData::ParticleSystem::prss[i],pdgrid->deepCopy(),SceneData::ParticleSystem::prss[i]->flags));
 
-			DebugPrintf("Read cached fog (particles) (%s) (%u/%u), VDB %f MB\n",SceneData::ParticleSystem::prss[i]->pname,i+1,SceneData::ParticleSystem::prss.size(),(float)pdgrid->memUsage()/1e6f);
+			DebugPrintf("Read cached particle fog (VDB %f MB)\n",(float)pdgrid->memUsage()/1e6f);
 
 			vdbc.close();
 
@@ -562,7 +563,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 				vdbc.close();
 			}
 
-			DebugPrintf("Completed fog (particles) calculations (%s) (%u/%u), VDB %f MB\n",SceneData::ParticleSystem::prss[i]->pname,i+1,SceneData::ParticleSystem::prss.size(),(float)pdgrid->memUsage()/1e6f);
+			DebugPrintf("Completed particle fog calculations (VDB %f MB)\n",(float)pdgrid->memUsage()/1e6f);
 		}
 
 		openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdgrid);
@@ -574,7 +575,9 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 		openvdb::Vec3SGrid::Ptr pgrad = openvdb::tools::gradient(*pqsdf);
 		openvdb::FloatGrid::Ptr pdgrid;
 
-		for(uint i = 0; i < fogppl.size(); ++i){
+		for(uint i = 0, n = fogppl.size(); i < n; ++i){
+			DebugPrintf("Post processing fog %s (%u/%u)\n",std::get<PFP_OBJECT>(fogppl[i])->pname,i+1,n);
+
 			char fn[256];
 			snprintf(fn,sizeof(fn),"%s/droplet-post-cache-%s.vdb",pcachedir,std::get<PFP_OBJECT>(fogppl[i])->pname);
 			openvdb::io::File vdbc(fn);
@@ -584,7 +587,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 				vdbc.open(false);
 
 				pdgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(S_ReadGridExcept(vdbc,"fog"));
-				DebugPrintf("Read post processing results (%s) (%u/%u), VDB %f MB\n",std::get<PFP_OBJECT>(fogppl[i])->pname,i+1,fogppl.size(),(float)pdgrid->memUsage()/1e6f);
+				DebugPrintf("Read post processing results (VDB %f MB)\n",(float)pdgrid->memUsage()/1e6f);
 
 				vdbc.close();
 
@@ -615,7 +618,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 					vdbc.close();
 				}
 
-				DebugPrintf("Completed post processing step (%s) (%u/%u), VDB %f MB\n",std::get<PFP_OBJECT>(fogppl[i])->pname,i+1,fogppl.size(),(float)pdgrid->memUsage()/1e6f);
+				DebugPrintf("Completed post processing step (VDB %f MB)\n",(float)pdgrid->memUsage()/1e6f);
 			}
 
 			switch(dynamic_cast<Node::OutputNode*>(std::get<PFP_OBJECT>(fogppl[i])->pnt->GetRoot())->opch){
@@ -836,10 +839,14 @@ void Scene::Initialize(float s, uint maxd, float qb, uint smask, bool cache, con
 
 	DebugPrintf("> Resampling volume data...\n");
 
-	lvoxc3 = lvoxc*lvoxc*lvoxc;
-	for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i){
-		psampler[i] = new FloatGridBoxSampler(*pgrid[i]); //non-cached, thread safe version
-		pvol[i] = new float[lvoxc3*leafx[i]];
+	try{
+		lvoxc3 = lvoxc*lvoxc*lvoxc;
+		for(uint i = 0; i < VOLUME_BUFFER_COUNT; ++i){
+			psampler[i] = new FloatGridBoxSampler(*pgrid[i]); //non-cached, thread safe version
+			pvol[i] = new float[lvoxc3*leafx[i]];
+		}
+	}catch(std::bad_alloc &ba){
+		DebugPrintf("FATAL: bad allocation: %s\n",ba.what());
 	}
 
 	const uint uN = lvoxc;//BLCLOUD_uN;

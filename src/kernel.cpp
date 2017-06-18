@@ -216,7 +216,7 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 #endif
 			mm = sfloat1::Less(td,depth);
 			qm = sfloat1::And(qm,mm);
-			
+
 			qm = sfloat1::And(qm,rm);
 			qm = sfloat1::And(qm,lm);
 			if(qm.AllFalse())
@@ -425,12 +425,6 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 			sfloat4 srd = pkernel->ppf->Sample(rd,u1,u2);
 			sfloat4 cm = SampleVolume(rc,srd,sfloat1::AndNot(rm,sint1::trueI()),pkernel,prs,ls,r+1,1)*msigmas/msigmae;
 			//phase/pdf(=phase)=1
-
-			//light sampling, obviously won't alone result in any sky lighting or proper multiple scattering
-			/*sfloat1 la = sfloat1(pkernel->plights[0].angle);
-			sfloat4 lrd = L_Sample(sfloat1(float4::load(&pkernel->plights[0].direction)),la,prs);
-			sfloat4 cm = SampleVolume(rc,lrd,sfloat1::AndNot(rm,sint1::trueI()),pkernel,prs,ls,r+1,1)*HG_Phase(sfloat4::dot3(lrd,rd))*msigmas
-				/(msigmae*L_Pdf(lrd,la));*/
 #endif
 			cl.v[0] += sfloat1::Or(sfloat1::And(rm,lc.v[0]),sfloat1::AndNot(rm,cl1.v[0]));
 			cl.v[1] += sfloat1::Or(sfloat1::And(rm,lc.v[1]),sfloat1::AndNot(rm,cl1.v[1]));
@@ -496,7 +490,7 @@ static void K_ParallelRender(RenderKernel *pkernel, uint x0, uint y0, uint rx, u
 #ifdef BLCLOUD_MT
 	},tbb::auto_partitioner());
 #else
-}
+	}
 #endif
 }
 
@@ -632,5 +626,5 @@ dint3 RenderKernel::vpattern[BLCLOUD_VSIZE] = {
 	dint3(0,0,0),
 	dint3(0,1,0),
 	dint3(1,0,0),
-	dint3(1,1,0),
+	dint3(1,1,0)
 };

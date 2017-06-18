@@ -36,12 +36,12 @@ public:
 	Octree();
 	~Octree();
 	void BuildPath(const float4 &, const float4 &, const float4 &, const float4 &, uint, uint, std::atomic<uint> *, std::atomic<uint> *, tbb::concurrent_vector<Octree> *, tbb::concurrent_vector<OctreeStructure> *, VOLUME_BUFFER);
-	void BuildPath(const float4 &, const float4 &, const float4 &, const float4 &, const float4 &, uint, uint, std::atomic<uint> *, std::atomic<uint> *, tbb::concurrent_vector<Octree> *, tbb::concurrent_vector<OctreeStructure> *, VOLUME_BUFFER);
+	//void BuildPath(const float4 &, const float4 &, const float4 &, const float4 &, const float4 &, uint, uint, std::atomic<uint> *, std::atomic<uint> *, tbb::concurrent_vector<Octree> *, tbb::concurrent_vector<OctreeStructure> *, VOLUME_BUFFER);
 	void FreeRecursive();
 	Octree *pch[8];
 	uint x; //node index
 	//std::atomic_flag lock; //MT node write-access
-	tbb::spin_mutex m;
+	//tbb::spin_mutex m;
 };
 
 namespace Node{

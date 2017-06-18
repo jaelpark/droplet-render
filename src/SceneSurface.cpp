@@ -108,7 +108,7 @@ void Displacement::Evaluate(const void *pp){
 
 	openvdb::FloatGrid::Ptr psgrid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,pnode->vl,pnode->tl,pnode->ql,ceilf(amp/pgridtr->voxelSize().x()+bvc),bvc);
 
-	DebugPrintf("Displacement narrow band = %f+%f (%u voxels)\n",amp,pgridtr->voxelSize().x()*bvc,(uint)ceilf(amp/pgridtr->voxelSize().x()+bvc));
+	DebugPrintf("Disp. narrow band = %f+%f (%u voxels)\n",amp,pgridtr->voxelSize().x()*bvc,(uint)ceilf(amp/pgridtr->voxelSize().x()+bvc));
 	DebugPrintf("> Displacing SDF...\n");
 
 	typedef std::tuple<openvdb::FloatGrid::Ptr, openvdb::FloatGrid::Accessor, openvdb::FloatGrid::ConstAccessor> FloatGridT;

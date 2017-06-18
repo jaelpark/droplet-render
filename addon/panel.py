@@ -238,7 +238,7 @@ def TextureSelectionR(self, context):
 		+list(filter(lambda t: bpy.data.images[t[0]].channels == 4 and t[0] != "Render Result" and t[0] != "Viewer Node",[(m.name,m.name,m.name,"TEXTURE",x+1) for x, m in enumerate(bpy.data.images)]));
 
 class ClEnvironmentProperties(bpy.types.PropertyGroup):
-	envtex = EnumProperty(name="Environment Map",items=TextureSelectionRGB,description="Equirectangularly mapped environment texture to be used (sky and groud). The image should be low-frequency and should not include the sun. Droplet ignores the zeroth order environment lighting, so that custom background may be used.");
+	envtex = EnumProperty(name="Environment Map",items=TextureSelectionRGB,description="Equirectangularly mapped environment texture to be used (sky and groud). The image should be low-frequency and should not include the sun. Droplet ignores the zeroth order environment lighting, so that optionally different background may be used for alpha compositing.");
 	depthtex = EnumProperty(name="Depth Map",items=TextureSelectionR,description="The optionial depth texture from the primary render engine. This can be used to calculate local shadowing for the reconstructed locations (shadow pass). The camera properties should match the primary render (view, projection) and the map should be unnormalized and linear. Cycles depth output is readily usable, assuming that the camera is shared between the two renders. Filtering may also have to be disabled (Gaussian, width = ~0) for correct results.");
 	depthcomp = BoolProperty(name="Depth Composition",default=False,description="Enable depth map occlusion testing. Use the depth map to limit the camera ray traversal.");
 	occlusion = BoolProperty(name="Occlusion Geometry",default=False,description="Enable holdout geometry occlusion testing. Every object marked as holdout will occlude rays creating shadows and lightshafts. Holdout object itself is not visible. This feature may have a significant performance impact, and requires Droplet to be built with Intel Embree.");
@@ -265,6 +265,7 @@ class ClEnvironmentPanel(bpy.types.Panel):
 	def draw(self, context):
 		context.scene.world.droplet.draw(context,self.layout);
 
+#https://wiki.blender.org/index.php/Linking_Custom_Node_Tree_to_DataBlock
 def NodeGroupSelection(self, context):
 	#ml = sorted(context.scene.timeline_markers,key = lambda m: m.frame,reverse=True);
 	#return [(m.name, m.name, m.name, x) for x, m in enumerate(ml)];
