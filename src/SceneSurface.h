@@ -31,6 +31,14 @@ public:
 	float resf;
 };
 
+class CSG : public BaseSurfaceNode1, public ICSG{
+public:
+	CSG(uint _level, NodeTree *pnt, float);
+	~CSG();
+	void Evaluate(const void *);
+	char opch;
+};
+
 }
 
 #endif

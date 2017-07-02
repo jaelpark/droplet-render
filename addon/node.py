@@ -420,6 +420,23 @@ class ClNodeDisplacement(bpy.types.Node):
 	def draw_buttons(self, context, layout):
 		layout.prop(self,"resf");
 
+class ClNodeCSG(bpy.types.Node):
+	bl_idname = "ClNodeCSG";
+	bl_label = "CSG Operation";
+
+	op = EnumProperty(name="Operation",description="CSG operator",default="D",items=(
+		("D","Difference",""),
+		("I","Intersection",""),
+		("U","Union","")));
+
+	def init(self, context):
+		self.inputs.new("ClNodeSurfaceSocket","a");
+		self.inputs.new("ClNodeSurfaceSocket","b");
+		self.outputs.new("ClNodeSurfaceSocket","Surface");
+
+	def draw_buttons(self, context, layout):
+		layout.prop(self,"op");
+
 class ClNodeCategory(NodeCategory):
 	@classmethod
 	def poll(cls, context):
@@ -459,5 +476,6 @@ categories = [
 	]),
 	ClNodeCategory("SURFACE_CATEGORY","Surface",items = [
 		NodeItem("ClNodeDisplacement"),
+		NodeItem("ClNodeCSG"),
 	]),
 ];

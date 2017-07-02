@@ -396,6 +396,20 @@ public:
 	};
 };
 
+class ICSG : public virtual BaseSurfaceNode{
+protected:
+	ICSG(uint, NodeTree *);
+	~ICSG();
+public:
+	virtual void Evaluate(const void *) = 0;
+	static ICSG * Create(uint, NodeTree *, char);
+	enum INPUT{
+		INPUT_SURFACEA,
+		INPUT_SURFACEB,
+		INPUT_COUNT
+	};
+};
+
 class OutputNode : public BaseNode{
 public:
 	OutputNode(NodeTree *, char, bool);

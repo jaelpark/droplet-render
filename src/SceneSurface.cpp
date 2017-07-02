@@ -5,6 +5,7 @@
 #include <openvdb/tools/MeshToVolume.h>
 #include <openvdb/tools/VolumeToMesh.h> //sdf rebuilding
 #include <openvdb/tools/Interpolation.h>
+#include <openvdb/tools/Composite.h> //csg operations
 
 #include "scene.h"
 #include "SceneSurface.h"
@@ -86,7 +87,6 @@ Displacement::~Displacement(){
 
 void Displacement::Evaluate(const void *pp){
 	InputNodeParams *pd = (InputNodeParams*)pp;
-
 	const float bvc = 4.0f;
 
 	BaseValueNode<float> *pnoisen = dynamic_cast<BaseValueNode<float>*>(pnodes[INPUT_DISTANCE]);
@@ -169,6 +169,50 @@ void Displacement::Evaluate(const void *pp){
 
 Node::IDisplacement * IDisplacement::Create(uint level, NodeTree *pnt, float resf){
 	return new Displacement(level,pnt,resf);
+}
+
+CSG::CSG(uint _level, NodeTree *pnt, float _opch) : BaseSurfaceNode(_level,pnt), BaseSurfaceNode1(_level,pnt), BaseNode(_level,pnt), ICSG(_level,pnt), opch(_opch){
+	//
+}
+
+CSG::~CSG(){
+	//
+}
+
+void CSG::Evaluate(const void *pp){
+	InputNodeParams *pd = (InputNodeParams*)pp;
+	const float bvc = 4.0f;
+
+	BaseSurfaceNode1 *pnode1 = dynamic_cast<BaseSurfaceNode1*>(pnodes[INPUT_SURFACEA]);
+	BaseSurfaceNode1 *pnode2 = dynamic_cast<BaseSurfaceNode1*>(pnodes[INPUT_SURFACEB]);
+
+	DebugPrintf("> CSG operating|%c surface...\n",opch);
+
+	openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
+	pbgrid->setTransform(pgridtr);
+
+	openvdb::FloatGrid::Ptr pgrid1 = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,pnode1->vl,pnode1->tl,pnode1->ql,bvc,bvc);
+	openvdb::FloatGrid::Ptr pgrid2 = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,pnode2->vl,pnode2->tl,pnode2->ql,bvc,bvc);
+
+	switch(opch){
+	case 'D':
+		openvdb::tools::csgDifference(*pgrid1,*pgrid2);
+		break;
+	case 'I':
+		openvdb::tools::csgIntersection(*pgrid1,*pgrid2);
+		break;
+	case 'U':
+		openvdb::tools::csgUnion(*pgrid1,*pgrid2);
+		break;
+	}
+
+	DebugPrintf("> Rebuilding...\n");
+
+	openvdb::tools::volumeToMesh<openvdb::FloatGrid>(*pgrid1,vl,tl,ql,0.0);
+}
+
+Node::ICSG * ICSG::Create(uint level, NodeTree *pnt, char opch){
+	return new CSG(level,pnt,opch);
 }
 
 }
