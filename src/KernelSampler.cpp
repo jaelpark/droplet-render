@@ -701,17 +701,17 @@ sfloat4 SunLight::Evaluate(const sfloat4 &rd) const{
 	sfloat1 lt = sfloat1::Greater(sfloat4::dot3(rd,sfloat4(float4::load(&direction))),ctm);
 
 	float4 c = float4::load(&color);
-	lc.v[0] = sfloat1::Or(sfloat1::And(lt,c.splatN<0>()),sfloat1::AndNot(lt,lc.v[0]));
-	lc.v[1] = sfloat1::Or(sfloat1::And(lt,c.splatN<1>()),sfloat1::AndNot(lt,lc.v[1]));
-	lc.v[2] = sfloat1::Or(sfloat1::And(lt,c.splatN<2>()),sfloat1::AndNot(lt,lc.v[2]));
+	lc.v[0] = sfloat1::And(lt,c.splatN<0>());
+	lc.v[1] = sfloat1::And(lt,c.splatN<1>());
+	lc.v[2] = sfloat1::And(lt,c.splatN<2>());
 
 	return lc;
 }
 
 sfloat1 SunLight::Pdf(const sfloat4 &iv) const{
-	//sfloat1 ctm = cosAngle;
-	//return sfloat1(1.0f/(2.0f*SM_PI*(1.0f-ctm*ctm)));
-	return sfloat1(1.0f/(2.0f*SM_PI)); //the above pdf is correct, but this looks better - for now at least
+	sfloat1 ctm = cosAngle;
+	sfloat1 lt = sfloat1::Greater(sfloat4::dot3(iv,sfloat4(float4::load(&direction))),ctm);
+	return sfloat1::And(lt,sfloat1(1.0f/(2.0f*SM_PI*(1.0f-ctm*ctm))));
 }
 
 sfloat4 SunLight::Sample(const sfloat4 &iv, const sfloat1 &u1, const sfloat1 &u2) const{

@@ -33,6 +33,32 @@ static uint OctreeFirstNode(const dfloat3 &t0, const dfloat3 &tm){
 	return a;
 }
 
+/*static sint4 OctreeFirstNode(const sfloat4 &t0, const sfloat4 &tm){
+	sint1 a = sint1(0);
+	sfloat1 ma, mb;
+	sfloat1 m1 = sfloat1::Greater(t0.v[0],t0.v[1]);
+
+	sfloat1 m2 = sfloat1::And(m1,sfloat1::Greater(t0.v[0],t0.v[2]));
+	ma = sfloat1::And(m2,sfloat1::Less(tm.v[1],t0.v[0]));
+	mb = sfloat1::And(m2,sfloat1::Less(tm.v[2],t0.v[0]));
+	a = sfloat1::Or(sfloat1::And(ma,sfloat1::Or(a,sint1(2))),sfloat1::AndNot(ma,a));
+	a = sfloat1::Or(sfloat1::And(mb,sfloat1::Or(a,sint1(1))),sfloat1::AndNot(mb,a));
+
+	sfloat1 m3 = sfloat1::Greater(t0.v[1],t0.v[2]);
+	ma = sfloat1::AndNot(m2,sfloat1::Less(tm.v[0],t0.v[1]));
+	mb = sfloat1::AndNot(m2,sfloat1::Less(tm.v[2],t0.v[1]));
+	a = sfloat1::Or(sfloat1::And(ma,sfloat1::Or(a,sint1(4))),sfloat1::AndNot(ma,a));
+	a = sfloat1::Or(sfloat1::And(mb,sfloat1::Or(a,sint1(1))),sfloat1::AndNot(mb,a));
+
+	sfloat1 mc = sfloat1::Or(m2,m3);
+	ma = sfloat1::AndNot(mc,sfloat1::Less(tm.v[0],t0.v[2]));
+	mb = sfloat1::AndNot(mc,sfloat1::Less(tm.v[1],t0.v[2]));
+	a = sfloat1::Or(sfloat1::And(ma,sfloat1::Or(a,sint1(4))),sfloat1::AndNot(ma,a));
+	a = sfloat1::Or(sfloat1::And(mb,sfloat1::Or(a,sint1(2))),sfloat1::AndNot(mb,a));
+
+	return a;
+}*/
+
 static uint OctreeNextNode(const dfloat3 &tm, const duint3 &xyz){
 	if(tm.x < tm.y){
 		if(tm.x < tm.z)
@@ -43,6 +69,11 @@ static uint OctreeNextNode(const dfloat3 &tm, const duint3 &xyz){
 	}
 	return xyz.z;
 }
+
+/*static sint4 OctreeNextNode(const sfloat4 &tm, const duint3 &xyz){
+	//todo: use std::set to limit the cases to be run in subnode branches
+	//should be okay with coherent rays
+}*/
 
 static void OctreeInitialize(const float4 &ro, const float4 &rd, const tbb::concurrent_vector<OctreeStructure> *pob, dfloat3 &t0s, dfloat3 &t1s, uint &a){
 	float4 ce = float4::load(&(*pob)[0].ce);

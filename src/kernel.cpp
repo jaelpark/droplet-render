@@ -385,9 +385,7 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 		rm = sfloat1::Or(rm,sfloat1::AndNot(mm,sint1::trueI())); //ensure that no scattering occurs if occluded
 
 		if(r < pkernel->scattevs && rm.AnyFalse()){
-#define BLCLOUD_MULTIPLE_IMPORTANCE
-#ifdef BLCLOUD_MULTIPLE_IMPORTANCE
-			//Sample the phase function and lights
+			//multiple importance sampling: sample the phase function and lights
 			//TODO: choose randomly one the lights. Multiply the final estimate (s2) with the total number of lights (ref776).
 			sfloat1 u1 = RNG_Sample(prs), u2 = RNG_Sample(prs);
 			sfloat4 srd = pkernel->ppf->Sample(rd,u1,u2);//HG_Sample(rd,prs);
@@ -419,13 +417,7 @@ static std::tuple<sfloat4,sfloat4> SampleVolume(sfloat4 ro, const sfloat4 &rd, c
 
 			sfloat4 cl1 = (dif1*w1+dif2*w2)*msigmas/msigmae;//s1*p1/(p1+L_Pdf(srd,la))+s2*p3/(p3+p2);
 			sfloat4 cs1 = (sky1*w1+sky2*w2)*msigmas/msigmae;
-#else
-			//phase function sampling
-			sfloat1 u1 = RNG_Sample(prs), u2 = RNG_Sample(prs);
-			sfloat4 srd = pkernel->ppf->Sample(rd,u1,u2);
-			sfloat4 cm = SampleVolume(rc,srd,sfloat1::AndNot(rm,sint1::trueI()),pkernel,prs,ls,r+1,1)*msigmas/msigmae;
-			//phase/pdf(=phase)=1
-#endif
+
 			cl.v[0] += sfloat1::Or(sfloat1::And(rm,lc.v[0]),sfloat1::AndNot(rm,cl1.v[0]));
 			cl.v[1] += sfloat1::Or(sfloat1::And(rm,lc.v[1]),sfloat1::AndNot(rm,cl1.v[1]));
 			cl.v[2] += sfloat1::Or(sfloat1::And(rm,lc.v[2]),sfloat1::AndNot(rm,cl1.v[2]));
