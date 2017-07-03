@@ -10,6 +10,7 @@
 #include <openvdb/tools/Composite.h>
 
 #include "scene.h"
+#include "SceneSurface.h" //BaseSurfaceNode1 for the SurfaceToFog node
 #include "SceneDensity.h"
 
 namespace SceneData{
@@ -40,6 +41,10 @@ void BaseFogNode1::Clear(){
 	//default BaseFog clear()
 	//Classes inheriting both fog and vector field will have to implement this separately.
 	pdgrid->clear();
+}
+
+void BaseFogNode1::ConvertLevelSet(){
+	openvdb::tools::sdfToFogVolume(*pdgrid);
 }
 
 BaseFogNode * BaseFogNode::Create(uint level, NodeTree *pnt){
@@ -138,7 +143,7 @@ void ParticleInput::Evaluate(const void *pp){
 		DebugPrintf("Warning: Particle size either to big or small for sphere rasterizer."); //TODO: check this earlier somewhere
 
 	DebugPrintf("> Converting fog volume...\n");
-	openvdb::tools::sdfToFogVolume(*pdgrid);
+	ConvertLevelSet();
 
 	pdgrid->tree().voxelizeActiveTiles(true); //voxelize the interior so that futher processing works
 }
@@ -537,6 +542,35 @@ void Advection::Evaluate(const void *pp){
 
 IAdvection * IAdvection::Create(uint level, NodeTree *pnt, uint flags){
 	return new Advection(level,pnt,flags);
+}
+
+SurfaceToFog::SurfaceToFog(uint _level, NodeTree *pnt, float _coff) : BaseFogNode(_level,pnt), BaseFogNode1(_level,pnt), BaseNode(_level,pnt), ISurfaceToFog(_level,pnt), coff(_coff){
+	//
+}
+
+SurfaceToFog::~SurfaceToFog(){
+	//
+}
+
+void SurfaceToFog::Evaluate(const void *pp){
+	InputNodeParams *pd = (InputNodeParams*)pp;
+	const float bvc = 4.0f;
+
+	BaseSurfaceNode1 *pnode = dynamic_cast<BaseSurfaceNode1*>(pnodes[INPUT_SURFACE]);
+
+	openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
+	
+	float nvc = ceilf(coff/pgridtr->voxelSize().x()+bvc);
+	pdgrid = pnode->ComputeLevelSet(pgridtr,bvc,nvc);
+
+	DebugPrintf("> Converting fog volume...\n");
+	ConvertLevelSet();
+
+	pdgrid->tree().voxelizeActiveTiles(true);
+}
+
+ISurfaceToFog * ISurfaceToFog::Create(uint level, NodeTree *pnt, float coff){
+	return new SurfaceToFog(level,pnt,coff);
 }
 
 }

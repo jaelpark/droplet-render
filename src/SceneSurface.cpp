@@ -106,9 +106,11 @@ void Displacement::Evaluate(const void *pp){
 	}
 	pbgrid->setTransform(pgridtr);
 
-	openvdb::FloatGrid::Ptr psgrid = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,pnode->vl,pnode->tl,pnode->ql,ceilf(amp/pgridtr->voxelSize().x()+bvc),bvc);
+	float nvc = ceilf(amp/pgridtr->voxelSize().x()+bvc);
+	openvdb::FloatGrid::Ptr psgrid = pnode->ComputeLevelSet(pgridtr,nvc,bvc);
+	//openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,pnode->vl,pnode->tl,pnode->ql,ceilf(amp/pgridtr->voxelSize().x()+bvc),bvc);
 
-	DebugPrintf("Disp. narrow band = %f+%f (%u voxels)\n",amp,pgridtr->voxelSize().x()*bvc,(uint)ceilf(amp/pgridtr->voxelSize().x()+bvc));
+	DebugPrintf("Disp. narrow band = %f+%f (%u voxels)\n",amp,pgridtr->voxelSize().x()*bvc,(uint)nvc);
 	DebugPrintf("> Displacing SDF...\n");
 
 	typedef std::tuple<openvdb::FloatGrid::Ptr, openvdb::FloatGrid::Accessor, openvdb::FloatGrid::ConstAccessor> FloatGridT;
@@ -189,10 +191,8 @@ void CSG::Evaluate(const void *pp){
 	DebugPrintf("> CSG operating|%c surface...\n",opch);
 
 	openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
-	pbgrid->setTransform(pgridtr);
-
-	openvdb::FloatGrid::Ptr pgrid1 = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,pnode1->vl,pnode1->tl,pnode1->ql,bvc,bvc);
-	openvdb::FloatGrid::Ptr pgrid2 = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,pnode2->vl,pnode2->tl,pnode2->ql,bvc,bvc);
+	openvdb::FloatGrid::Ptr pgrid1 = pnode1->ComputeLevelSet(pgridtr,bvc,bvc);
+	openvdb::FloatGrid::Ptr pgrid2 = pnode2->ComputeLevelSet(pgridtr,bvc,bvc);
 
 	switch(opch){
 	case 'D':

@@ -421,6 +421,14 @@ IAdvection::~IAdvection(){
 	//
 }
 
+ISurfaceToFog::ISurfaceToFog(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseNode(_level,pnt){
+	//
+}
+
+ISurfaceToFog::~ISurfaceToFog(){
+	//
+}
+
 IDisplacement::IDisplacement(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt), BaseNode(_level,pnt){
 	//
 }
@@ -581,6 +589,12 @@ BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, No
 		Py_DECREF(psl);
 
 		return IAdvection::Create(level,pnt,flags);
+	}else if(strcmp(pname,"ClNodeSurfaceToFog") == 0){
+		PyObject *pcoff = PyObject_GetAttrString((PyObject*)pnode,"cutoff");
+		float coff = (float)PyFloat_AsDouble(pcoff);
+		Py_DECREF(pcoff);
+
+		return ISurfaceToFog::Create(level,pnt,coff);
 	}else if(strcmp(pname,"ClNodeDisplacement") == 0){
 		PyObject *presf = PyObject_GetAttrString((PyObject*)pnode,"resf");
 		float resf = (float)PyFloat_AsDouble(presf);

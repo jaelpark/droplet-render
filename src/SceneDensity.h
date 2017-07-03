@@ -20,6 +20,7 @@ public:
 	BaseFogNode1(uint, NodeTree *);
 	~BaseFogNode1();
 	virtual void Clear();
+	void ConvertLevelSet();
 	openvdb::FloatGrid::Ptr pdgrid;
 };
 
@@ -82,6 +83,14 @@ public:
 	~Advection();
 	void Evaluate(const void *);
 	uint flags;
+};
+
+class SurfaceToFog : public BaseFogNode1, public ISurfaceToFog{
+public:
+	SurfaceToFog(uint, NodeTree *, float);
+	~SurfaceToFog();
+	void Evaluate(const void *);
+	float coff; //cutoff
 };
 
 }

@@ -380,6 +380,19 @@ public:
 	};
 };
 
+class ISurfaceToFog : public virtual BaseFogNode{
+protected:
+	ISurfaceToFog(uint, NodeTree *);
+	~ISurfaceToFog();
+public:
+	virtual void Evaluate(const void *) = 0;
+	static ISurfaceToFog * Create(uint, NodeTree *, float);
+	enum INPUT{
+		INPUT_SURFACE,
+		INPUT_COUNT
+	};
+};
+
 class IDisplacement : public virtual BaseSurfaceNode{
 protected:
 	IDisplacement(uint, NodeTree *);

@@ -404,6 +404,19 @@ class ClNodeAdvection(bpy.types.Node):
 		layout.prop(self,"break_iter");
 		layout.prop(self,"sample_local");
 
+class ClNodeSurfaceToFog(bpy.types.Node):
+	bl_idname = "ClNodeSurfaceToFog";
+	bl_label = "Convert Surface";
+
+	cutoff = FloatProperty(name="Cutoff",default=1.0,min=0.0,description="The length of the density gradient, for which the density will smoothly increase from zero at the original surface to the maximum at the cutoff distance");
+
+	def init(self, context):
+		self.inputs.new("ClNodeSurfaceSocket","Surface");
+		self.outputs.new("ClNodeFogSocket","Fog");
+
+	def draw_buttons(self, context, layout):
+		layout.prop(self,"cutoff");
+
 class ClNodeDisplacement(bpy.types.Node):
 	bl_idname = "ClNodeDisplacement";
 	bl_label = "Displacement";
@@ -473,6 +486,7 @@ categories = [
 		NodeItem("ClNodeComposite"),
 		NodeItem("ClNodeCombine"),
 		NodeItem("ClNodeAdvection"),
+		NodeItem("ClNodeSurfaceToFog"),
 	]),
 	ClNodeCategory("SURFACE_CATEGORY","Surface",items = [
 		NodeItem("ClNodeDisplacement"),

@@ -414,7 +414,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 
 		DebugPrintf("Processing surface %s (%u/%u)\n",SceneData::Surface::objs[i]->pname,i+1,n);
 
-		openvdb::FloatGrid::Ptr ptgrid, phgrid;
+		openvdb::FloatGrid::Ptr ptgrid = 0, phgrid = 0, pdgrid;
 		bool qonly = dynamic_cast<Node::OutputNode*>(SceneData::Surface::objs[i]->pnt->GetRoot())->qonly;
 
 		char fn[256];
@@ -425,52 +425,61 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 				throw(0);
 			vdbc.open(false);
 
+			if(!qonly)
+				ptgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(S_ReadGridExcept(vdbc,"surface"));
 			if(qfield)
 				phgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(S_ReadGridExcept(vdbc,"surface.query"));
-			if(!qonly){
-				ptgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(S_ReadGridExcept(vdbc,"surface"));
-				DebugPrintf("Read cached surface (VDB %f MB)\n",(float)ptgrid->memUsage()/1e6f);
-			}
+			//
+			pdgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(S_ReadGridExcept(vdbc,"surface.density"));
+
+			//DebugPrintf("Read cached surface (VDB %f MB)\n",(float)ptgrid->memUsage()/1e6f);
+			DebugPrintf("Read cached surface\n");
 
 			vdbc.close();
 
 		}catch(...){
 			Node::InputNodeParams snp(SceneData::Surface::objs[i],pgridtr,0,0,0,0,0);
-			SceneData::Surface::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_SURFACE);
+			SceneData::Surface::objs[i]->pnt->EvaluateNodes1(&snp,0,1<<Node::OutputNode::INPUT_SURFACE|1<<Node::OutputNode::INPUT_FOG);
 
 			Node::BaseSurfaceNode1 *pdsn = dynamic_cast<Node::BaseSurfaceNode1*>(SceneData::Surface::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_SURFACE]);
 
-			if(pdsn->vl.size() == 0)
-				continue;
-
+			if(!qonly)
+				ptgrid = pdsn->ComputeLevelSet(pgridtr,bvc,bvc);
 			if(qfield)
 				phgrid = pdsn->ComputeLevelSet(pqsdftr,bvc,bvc);
-			if(!qonly){
-				ptgrid = pdsn->ComputeLevelSet(pgridtr,bvc,bvc);
-				DebugPrintf("Completed surface calculations (VDB %f MB)\n",(float)ptgrid->memUsage()/1e6f);
-			}
+
+			pdgrid = dynamic_cast<Node::BaseFogNode1*>(SceneData::Surface::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOG])->pdgrid;
+			if(SceneData::Surface::objs[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST)
+				fogppl.push_back(PostFogParams(SceneData::Surface::objs[i],pdgrid->deepCopy(),0));
 
 			if(cache){
-				openvdb::GridCPtrVec gvec;
 				if(vdbc.isOpen())
 					vdbc.close();
-				if(!qonly){
+				openvdb::GridCPtrVec gvec;
+				if(ptgrid){
 					ptgrid->setName("surface");
 					gvec.push_back(ptgrid);
 				}
-				if(qfield){
+				if(phgrid){
 					phgrid->setName("surface.query");
 					gvec.push_back(phgrid);
 				}
+				pdgrid->setName("surface.density");
+				gvec.push_back(pdgrid);
 				vdbc.write(gvec);
 				vdbc.close();
 			}
+
+			//DebugPrintf("Completed surface calculations (VDB %f MB)\n",(float)ptgrid->memUsage()/1e6f);
+			DebugPrintf("Completed surface calculations\n");
 		}
 
-		if(!qonly)
+		if(ptgrid)
 			openvdb::tools::csgUnion(*pgrid[VOLUME_BUFFER_SDF],*ptgrid);
-		if(qfield)
+		if(phgrid)
 			openvdb::tools::csgUnion(*pqsdf,*phgrid);
+
+		openvdb::tools::compMax(*pgrid[VOLUME_BUFFER_FOG],*pdgrid);
 	}
 
 	openvdb::Vec3SGrid::Ptr ptvel = openvdb::Vec3SGrid::create();
