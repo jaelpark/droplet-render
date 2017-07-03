@@ -445,6 +445,14 @@ ICSG::~ICSG(){
 	//
 }
 
+ITransform::ITransform(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt), BaseNode(_level,pnt){
+	//
+}
+
+ITransform::~ITransform(){
+	//
+}
+
 OutputNode::OutputNode(NodeTree *pnt, char _opch, bool _qonly) : BaseNode(0,pnt), opch(_opch), qonly(_qonly){
 	//printf("OutputNode()\n");
 	pnt->nodes1.push_back(this);
@@ -601,6 +609,9 @@ BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, No
 		Py_DECREF(presf);
 
 		return IDisplacement::Create(level,pnt,resf);
+	}else if(strcmp(pname,"ClNodeTransform") == 0){
+		return ITransform::Create(level,pnt);
+		
 	}else if(strcmp(pname,"ClNodeCSG") == 0){
 		PyObject *pop = PyObject_GetAttrString((PyObject*)pnode,"op");
 		const char opch = PyUnicode_AsUTF8(pop)[0];

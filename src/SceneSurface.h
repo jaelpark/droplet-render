@@ -31,6 +31,13 @@ public:
 	float resf;
 };
 
+class Transform : public BaseSurfaceNode1, public ITransform{
+public:
+	Transform(uint _level, NodeTree *pnt);
+	~Transform();
+	void Evaluate(const void *);
+};
+
 class CSG : public BaseSurfaceNode1, public ICSG{
 public:
 	CSG(uint _level, NodeTree *pnt, float);

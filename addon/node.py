@@ -433,11 +433,22 @@ class ClNodeDisplacement(bpy.types.Node):
 	def draw_buttons(self, context, layout):
 		layout.prop(self,"resf");
 
+class ClNodeTransform(bpy.types.Node):
+	bl_idname = "ClNodeTransform";
+	bl_label = "Transform";
+
+	def init(self, context):
+		self.inputs.new("ClNodeVectorSocket","Scale");
+		self.inputs.new("ClNodeVectorSocket","Rotate");
+		self.inputs.new("ClNodeVectorSocket","Translate");
+		self.inputs.new("ClNodeSurfaceSocket","Surface");
+		self.outputs.new("ClNodeSurfaceSocket","Out");
+
 class ClNodeCSG(bpy.types.Node):
 	bl_idname = "ClNodeCSG";
 	bl_label = "CSG Operation";
 
-	op = EnumProperty(name="Operation",description="CSG operator",default="D",items=(
+	op = EnumProperty(name="Operation",description="CSG operator",default="U",items=(
 		("D","Difference",""),
 		("I","Intersection",""),
 		("U","Union","")));
@@ -490,6 +501,7 @@ categories = [
 	]),
 	ClNodeCategory("SURFACE_CATEGORY","Surface",items = [
 		NodeItem("ClNodeDisplacement"),
+		NodeItem("ClNodeTransform"),
 		NodeItem("ClNodeCSG"),
 	]),
 ];

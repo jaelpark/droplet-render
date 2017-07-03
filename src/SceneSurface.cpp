@@ -173,6 +173,22 @@ Node::IDisplacement * IDisplacement::Create(uint level, NodeTree *pnt, float res
 	return new Displacement(level,pnt,resf);
 }
 
+Transform::Transform(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt), BaseSurfaceNode1(_level,pnt), BaseNode(_level,pnt), ITransform(_level,pnt){
+	//
+}
+
+Transform::~Transform(){
+	//
+}
+
+void Transform::Evaluate(const void *pp){
+	//TODO: transform the vertices
+}
+
+Node::ITransform * ITransform::Create(uint level, NodeTree *pnt){
+	return new Transform(level,pnt);
+}
+
 CSG::CSG(uint _level, NodeTree *pnt, float _opch) : BaseSurfaceNode(_level,pnt), BaseSurfaceNode1(_level,pnt), BaseNode(_level,pnt), ICSG(_level,pnt), opch(_opch){
 	//
 }
@@ -188,7 +204,7 @@ void CSG::Evaluate(const void *pp){
 	BaseSurfaceNode1 *pnode1 = dynamic_cast<BaseSurfaceNode1*>(pnodes[INPUT_SURFACEA]);
 	BaseSurfaceNode1 *pnode2 = dynamic_cast<BaseSurfaceNode1*>(pnodes[INPUT_SURFACEB]);
 
-	DebugPrintf("> CSG operating|%c surface...\n",opch);
+	DebugPrintf("> CSG|%c operating surface...\n",opch);
 
 	openvdb::math::Transform::Ptr pgridtr = std::get<INP_TRANSFORM>(*pd);
 	openvdb::FloatGrid::Ptr pgrid1 = pnode1->ComputeLevelSet(pgridtr,bvc,bvc);

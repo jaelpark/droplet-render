@@ -409,6 +409,22 @@ public:
 	};
 };
 
+class ITransform : public virtual BaseSurfaceNode{
+protected:
+	ITransform(uint, NodeTree *);
+	~ITransform();
+public:
+	virtual void Evaluate(const void *) = 0;
+	static ITransform * Create(uint, NodeTree *);
+	enum INPUT{
+		INPUT_SCALE,
+		INPUT_ROTATE,
+		INPUT_TRANSLATE,
+		INPUT_SURFACE,
+		INPUT_COUNT
+	};
+};
+
 class ICSG : public virtual BaseSurfaceNode{
 protected:
 	ICSG(uint, NodeTree *);
