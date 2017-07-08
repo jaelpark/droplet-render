@@ -108,7 +108,6 @@ void Displacement::Evaluate(const void *pp){
 
 	float nvc = ceilf(amp/pgridtr->voxelSize().x()+bvc);
 	openvdb::FloatGrid::Ptr psgrid = pnode->ComputeLevelSet(pgridtr,nvc,bvc);
-	//openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*pgridtr,pnode->vl,pnode->tl,pnode->ql,ceilf(amp/pgridtr->voxelSize().x()+bvc),bvc);
 
 	DebugPrintf("Disp. narrow band = %f+%f (%u voxels)\n",amp,pgridtr->voxelSize().x()*bvc,(uint)nvc);
 	DebugPrintf("> Displacing SDF...\n");
@@ -153,10 +152,11 @@ void Displacement::Evaluate(const void *pp){
 			float b = pbilln->locr(indices[INPUT_BILLOW]);
 			if(b > 0.0f){
 				openvdb::math::Vec3s posw = pgridtr->indexToWorld(c);
-				f *= powf(std::min(bsampler.wsSample(posw),1.0f),b);
+				b = powf(std::min(bsampler.wsSample(posw),1.0f),b);
+				f *= b;
 			}
 
-			bgrida.setValue(c,2.0f*f/amp);
+			bgrida.setValue(c,f/amp);
 			sgrida.setValue(c,d-f);
 
 			//if(omask & (1<<OUTPUT_GRID))
