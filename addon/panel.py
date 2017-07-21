@@ -53,8 +53,8 @@ class ClRenderPanel(bpy.types.Panel):
 
 class ClSamplingProperties(bpy.types.PropertyGroup):
 	samples = IntProperty(name="Render",default=1000,min=1,description="Number of samples to be taken for each pixel.");
-	scatterevs = IntProperty(name="Scattering",default=20,min=0,max=32,description="Maximum volume scattering events.");
-	msigmas = FloatProperty(name="Sigma.S",default=18.0,min=0.001,description="Macroscopic scattering cross section for maximum density.");
+	scatterevs = IntProperty(name="Scattering",default=500,min=0,max=1000,description="Maximum volume scattering events. Recursivity is employed to compute the subsequent inscattering contributions. For large numbers stack size should be adequate to prevent overflows.");
+	msigmas = FloatProperty(name="Sigma.S",default=80.0,min=0.001,description="Macroscopic scattering cross section for maximum density.");
 	msigmaa = FloatProperty(name="Sigma.A",default=0.001,min=0.001,description="Macroscopic absorption cross section for maximum density.");
 	phasef = EnumProperty(name="Phase function",default="M",items=(
 		("H","Henyey-Greenstein","Henyey-Greenstein phase function. A fast approximation with plausible results."),
