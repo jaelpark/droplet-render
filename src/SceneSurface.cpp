@@ -76,6 +76,62 @@ Node::ISurfaceInput * ISurfaceInput::Create(uint level, NodeTree *pnt){
 	return new SurfaceInput(level,pnt);
 }
 
+SolidInput::SolidInput(uint _level, NodeTree *pnt, char _geomch) : BaseSurfaceNode(_level,pnt), BaseSurfaceNode1(_level,pnt), BaseNode(_level,pnt), ISolidInput(_level,pnt), geomch(_geomch){
+	//
+}
+
+SolidInput::~SolidInput(){
+	//
+}
+
+void SolidInput::Evaluate(const void *pp){
+	InputNodeParams *pd = (InputNodeParams*)pp;
+
+	BaseValueNode<dfloat3> *pnposw = dynamic_cast<BaseValueNode<dfloat3>*>(pnodes[INPUT_POSW]);
+	BaseValueNode<dfloat3> *pnscale = dynamic_cast<BaseValueNode<dfloat3>*>(pnodes[INPUT_SCALE]);
+
+	dfloat3 zr(0.0f);
+	ValueNodeParams np(&zr,&zr,0.0f,0.0f,&zr,0.0,0.0f,pd);
+	pntree->EvaluateNodes0(&np,level+1,emask);
+
+	vl.clear();
+	tl.clear();
+	ql.clear();
+
+	if(geomch == 'C'){
+		vl.reserve(8);
+		vl.push_back(openvdb::Vec3s(-1.0f,-1.0f,-1.0f));
+		vl.push_back(openvdb::Vec3s(+1.0f,-1.0f,-1.0f));
+		vl.push_back(openvdb::Vec3s(+1.0f,-1.0f,+1.0f));
+		vl.push_back(openvdb::Vec3s(-1.0f,-1.0f,+1.0f));
+		vl.push_back(openvdb::Vec3s(-1.0f,+1.0f,-1.0f));
+		vl.push_back(openvdb::Vec3s(+1.0f,+1.0f,-1.0f));
+		vl.push_back(openvdb::Vec3s(+1.0f,+1.0f,+1.0f));
+		vl.push_back(openvdb::Vec3s(-1.0f,+1.0f,+1.0f));
+
+		ql.reserve(6);
+		ql.push_back(openvdb::Vec4I(1,0,4,5));
+		ql.push_back(openvdb::Vec4I(2,1,5,6));
+		ql.push_back(openvdb::Vec4I(3,2,6,7));
+		ql.push_back(openvdb::Vec4I(0,3,7,4));
+		ql.push_back(openvdb::Vec4I(2,3,0,1));
+		ql.push_back(openvdb::Vec4I(5,4,7,6));
+	}
+
+	dfloat3 posw = pnposw->locr(indices[INPUT_POSW]);
+	dfloat3 scale = pnscale->locr(indices[INPUT_SCALE]);
+	openvdb::Vec3s p(posw.x,posw.y,posw.z);
+	openvdb::Vec3s s(scale.x,scale.y,scale.z);
+	for(uint i = 0, n = vl.size(); i < n; ++i){
+		vl[i] *= s;
+		vl[i] += p;
+	}
+}
+
+Node::ISolidInput * ISolidInput::Create(uint level, NodeTree *pnt, char geomch){
+	return new SolidInput(level,pnt,geomch);
+}
+
 Displacement::Displacement(uint _level, NodeTree *pnt, float _resf) : BaseSurfaceNode(_level,pnt), BaseSurfaceNode1(_level,pnt), BaseNode(_level,pnt), IDisplacement(_level,pnt), resf(_resf){
 	//
 	//DebugPrintf(">> Displacement()\n");

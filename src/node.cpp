@@ -365,6 +365,14 @@ ISurfaceInput::~ISurfaceInput(){
 	//
 }
 
+ISolidInput::ISolidInput(uint _level, NodeTree *pnt) : BaseSurfaceNode(_level,pnt), BaseNode(_level,pnt){
+	//
+}
+
+ISolidInput::~ISolidInput(){
+	//
+}
+
 IParticleInput::IParticleInput(uint _level, NodeTree *pnt) : BaseFogNode(_level,pnt), BaseNode(_level,pnt){
 	//
 }
@@ -568,6 +576,12 @@ BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, No
 		return new SceneInfo(level,pnt);
 	}else if(strcmp(pname,"ClNodeSurfaceInput") == 0){
 		return ISurfaceInput::Create(level,pnt);
+	}else if(strcmp(pname,"ClNodeSolidInput") == 0){
+		PyObject *pgeom = PyObject_GetAttrString((PyObject*)pnode,"geom");
+		const char geomch = PyUnicode_AsUTF8(pgeom)[0];
+		Py_DECREF(pgeom);
+
+		return ISolidInput::Create(level,pnt,geomch);
 	}else if(strcmp(pname,"ClNodeParticleInput") == 0){
 		return IParticleInput::Create(level,pnt);
 	}else if(strcmp(pname,"ClNodeFieldInput") == 0){
@@ -611,7 +625,7 @@ BaseNode * CreateNodeByType(const char *pname, const void *pnode, uint level, No
 		return IDisplacement::Create(level,pnt,resf);
 	}else if(strcmp(pname,"ClNodeTransform") == 0){
 		return ITransform::Create(level,pnt);
-		
+
 	}else if(strcmp(pname,"ClNodeCSG") == 0){
 		PyObject *pop = PyObject_GetAttrString((PyObject*)pnode,"op");
 		const char opch = PyUnicode_AsUTF8(pop)[0];

@@ -23,6 +23,14 @@ public:
 	void Evaluate(const void *);
 };
 
+class SolidInput : public BaseSurfaceNode1, public ISolidInput{
+public:
+	SolidInput(uint, NodeTree *, char);
+	~SolidInput();
+	void Evaluate(const void *);
+	char geomch;
+};
+
 class Displacement : public BaseSurfaceNode1, public IDisplacement{
 public:
 	Displacement(uint _level, NodeTree *pnt, float);

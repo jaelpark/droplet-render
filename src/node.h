@@ -271,6 +271,20 @@ public:
 	static ISurfaceInput * Create(uint, NodeTree *);
 };
 
+class ISolidInput : public virtual BaseSurfaceNode{
+protected:
+	ISolidInput(uint, NodeTree *);
+	~ISolidInput();
+public:
+	virtual void Evaluate(const void *) = 0;
+	static ISolidInput * Create(uint, NodeTree *, char);
+	enum INPUT{
+		INPUT_POSW,
+		INPUT_SCALE,
+		INPUT_COUNT
+	};
+};
+
 class IParticleInput : public virtual BaseFogNode{
 protected:
 	IParticleInput(uint, NodeTree *);

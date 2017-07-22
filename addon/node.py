@@ -158,6 +158,22 @@ class ClNodeSceneInfo(bpy.types.Node):
 		self.outputs.new("ClNodeVectorSocket","Vector");
 		self.outputs.new("ClNodeVectorSocket","Gradient");
 
+class ClNodeSolidInput(bpy.types.Node):
+	bl_idname = "ClNodeSolidInput";
+	bl_label = "Solid";
+
+	geom = EnumProperty(name="",default="C",items=(
+		("C","Cube",""),
+		("S","Sphere","")));
+
+	def init(self, context):
+		self.inputs.new("ClNodeVectorSocket","Center");
+		self.inputs.new("ClNodeVectorSocket","Scale");
+		self.outputs.new("ClNodeSurfaceSocket","Surface");
+
+	def draw_buttons(self, context, layout):
+		layout.prop(self,"geom");
+
 class ClNodeSurfaceInput(bpy.types.Node):
 	bl_idname = "ClNodeSurfaceInput";
 	bl_label = "Surface";
@@ -469,6 +485,7 @@ class ClNodeCategory(NodeCategory):
 categories = [
 	ClNodeCategory("INPUT_CATEGORY","Input",items = [
 		NodeItem("ClNodeSurfaceInput"),
+		NodeItem("ClNodeSolidInput"),
 		NodeItem("ClNodeParticleInput"),
 		NodeItem("ClNodeFieldInput"),
 		NodeItem("ClNodeSmokeCache"),
