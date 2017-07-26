@@ -431,6 +431,8 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 				phgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(S_ReadGridExcept(vdbc,"surface.query"));
 			//
 			pdgrid = openvdb::gridPtrCast<openvdb::FloatGrid>(S_ReadGridExcept(vdbc,"surface.density"));
+			if(SceneData::Surface::objs[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST)
+				fogppl.push_back(PostFogParams(SceneData::Surface::objs[i],pdgrid->deepCopy(),SceneData::Surface::objs[i]->flags));
 
 			//DebugPrintf("Read cached surface (VDB %f MB)\n",(float)ptgrid->memUsage()/1e6f);
 			DebugPrintf("Read cached surface\n");
@@ -450,7 +452,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 
 			pdgrid = dynamic_cast<Node::BaseFogNode1*>(SceneData::Surface::objs[i]->pnt->GetRoot()->pnodes[Node::OutputNode::INPUT_FOG])->pdgrid;
 			if(SceneData::Surface::objs[i]->pnt->GetRoot()->imask & 1<<Node::OutputNode::INPUT_FOGPOST)
-				fogppl.push_back(PostFogParams(SceneData::Surface::objs[i],pdgrid->deepCopy(),0));
+				fogppl.push_back(PostFogParams(SceneData::Surface::objs[i],pdgrid->deepCopy(),SceneData::Surface::objs[i]->flags));
 
 			if(cache){
 				if(vdbc.isOpen())
@@ -591,7 +593,7 @@ static void S_Create(float s, float qb, float lvc, float bvc, uint maxd, bool ca
 			snprintf(fn,sizeof(fn),"%s/droplet-post-cache-%s.vdb",pcachedir,std::get<PFP_OBJECT>(fogppl[i])->pname);
 			openvdb::io::File vdbc(fn);
 			try{
-				if(!cache || !(SceneData::ParticleSystem::prss[i]->flags & SCENEOBJ_CACHED))
+				if(!cache || !(std::get<PFP_FLAGS>(fogppl[i]) & SCENEOBJ_CACHED))
 					throw(0);
 				vdbc.open(false);
 
